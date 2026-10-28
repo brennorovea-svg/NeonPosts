@@ -195,7 +195,8 @@ export function conferir(bruto: Record<string, unknown>, perfil: Perfil, pedido:
   const arte = (bruto.arte || {}) as Record<string, unknown>
   const escolha = (valor: unknown, opcoes: string[]) => (opcoes.includes(String(valor)) ? String(valor) : '')
   roteiro.arte = {
-    destaque: String(arte.destaque ?? '').trim().slice(0, 40),
+    // Destaque é de 1 a 3 palavras; se a IA marcou o título inteiro, fica só a última.
+    destaque: ((d) => (d.split(/\s+/).length > 3 ? d.split(/\s+/).pop() || '' : d))(String(arte.destaque ?? '').trim().slice(0, 40)),
     tamanho_titulo: escolha(arte.tamanho_titulo, TAMANHOS) || 'normal',
     alinhamento: escolha(arte.alinhamento, ALINHAMENTOS) || 'esquerda',
     fundo: escolha(arte.fundo, FUNDOS) || 'marca',

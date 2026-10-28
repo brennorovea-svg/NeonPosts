@@ -280,16 +280,17 @@ function promo(ctx, { L, A, story, c, r, logo, foto, nome }) {
 }
 
 function aviso(ctx, { L, A, story, c, r, logo, foto, nome }) {
-  const fundo = misturar(c[0], '#0B0B10', 0.86)
-  ctx.fillStyle = fundo
+  const claro = r.arte?.fundo === 'claro'
+  const tinta = claro ? '#111114' : '#FFFFFF'
+  ctx.fillStyle = claro ? '#F6F4F9' : misturar(c[0], '#0B0B10', 0.86)
   ctx.fillRect(0, 0, L, A)
   if (foto) {
-    ctx.globalAlpha = 0.32
+    ctx.globalAlpha = claro ? 0.12 : 0.32
     cobrir(ctx, foto, 0, 0, L, A)
     ctx.globalAlpha = 1
   }
-  brilho(ctx, L / 2, A * 0.42, L * 0.75, c[0], 0.5)
-  brilho(ctx, L * 0.1, A, L * 0.6, c[1], 0.35)
+  brilho(ctx, L / 2, A * 0.42, L * 0.75, c[0], claro ? 0.18 : 0.5)
+  brilho(ctx, L * 0.1, A, L * 0.6, c[1], claro ? 0.14 : 0.35)
 
   const m = 90, topo = story ? 250 : 90, base = story ? 340 : 90
   // Moldura fina na cor da marca.
@@ -300,10 +301,16 @@ function aviso(ctx, { L, A, story, c, r, logo, foto, nome }) {
 
   const meio = A * (story ? 0.44 : 0.42)
   ctx.fillStyle = c[1]
-  arredondado(ctx, L / 2 - 60, meio - 260, 120, 12, 6)
+  arredondado(ctx, L / 2 - 60, meio - 260 - (escala(r) - 1) * 300, 120, 12, 6)
   ctx.fill()
-  const fimTitulo = bloco(ctx, r.titulo, { x: m, y: meio - 210, largura: L - m * 2, tamanho: 120, maxLinhas: 3, cor: corPedida(r, 'titulo', '#FFFFFF'), alinhar: 'center', entre: 1.0, ...marca(r, c[1]) })
-  bloco(ctx, r.apoio, { x: m + 20, y: fimTitulo + 28, largura: L - (m + 20) * 2, tamanho: 44, peso: 400, maxLinhas: 3, cor: corPedida(r, 'texto', 'rgba(255,255,255,.82)'), alinhar: 'center', entre: 1.3 })
+  // Título maior começa mais alto; o apoio desce junto e nunca encosta no botão.
+  const tOp = { x: m, largura: L - m * 2, tamanho: Math.round(120 * escala(r)), maxLinhas: 4, alinhar: 'center', entre: 1.0 }
+  const aOp = { x: m + 20, largura: L - (m + 20) * 2, tamanho: 44, peso: 400, maxLinhas: 3, alinhar: 'center', entre: 1.3 }
+  const limite = A - base - 260 - 40
+  const inicio = meio - 210 - (escala(r) - 1) * 300
+  while (inicio + medir(ctx, r.titulo, tOp) + 28 + medir(ctx, r.apoio, aOp) > limite && tOp.tamanho > 72) tOp.tamanho -= 6
+  const fimTitulo = bloco(ctx, r.titulo, { ...tOp, y: inicio, cor: corPedida(r, 'titulo', tinta), ...marca(r, destaqueSobre(tinta, c)) })
+  bloco(ctx, r.apoio, { ...aOp, y: fimTitulo + 28, cor: corPedida(r, 'texto', apagado(tinta, 0.82)) })
 
   if (r.chamada) {
     ctx.font = `700 42px ${FONTE}`
@@ -391,6 +398,10 @@ function lista(ctx, { L, A, story, c, r, logo, foto, nome }) {
   // Os pontos se espalham no espaço entre o título e a chamada, com uma linha fina entre eles.
   y += 50
   const passo = Math.min(story ? 230 : 190, (A - base - 160 - y) / Math.max(pontos.length, 1))
+  // Pontos que quebram em duas linhas diminuem até todos caberem acima do botão.
+  const pOp = { x: m + 130, largura: L - m * 2 - 130, tamanho: 50, peso: 600, maxLinhas: 2, entre: 1.15 }
+  const ocupa = () => pontos.reduce((t, p) => t + Math.max(passo, medir(ctx, p, pOp) + 44), 0)
+  while (ocupa() > A - base - 150 - y && pOp.tamanho > 36) pOp.tamanho -= 2
   pontos.forEach((ponto, i) => {
     if (i) {
       ctx.fillStyle = apagado(tinta, 0.14)
@@ -401,8 +412,8 @@ function lista(ctx, { L, A, story, c, r, logo, foto, nome }) {
     ctx.textAlign = 'left'
     ctx.textBaseline = 'alphabetic'
     ctx.fillText(String(i + 1).padStart(2, '0'), m, y + 62)
-    bloco(ctx, ponto, { x: m + 130, y: y + 6, largura: L - m * 2 - 130, tamanho: 50, peso: 600, maxLinhas: 2, entre: 1.15, cor: corPedida(r, 'texto', tinta) })
-    y += passo
+    const fim = bloco(ctx, ponto, { ...pOp, y: y + 6, cor: corPedida(r, 'texto', tinta) })
+    y = Math.max(y + passo, fim + 44)
   })
   if (r.chamada) pilula(ctx, r.chamada, { x: m, y: A - base - 112, largura: L - m * 2, fundo: corPedida(r, 'destaque', c[0]), cor: textoSobre(corPedida(r, 'destaque', c[0])) })
 }

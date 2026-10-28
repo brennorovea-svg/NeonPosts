@@ -64,9 +64,11 @@ export function montarMensagem(perfil: Perfil, pedido: string, formato: string, 
   let texto = `<marca>\n${JSON.stringify(marca, null, 2)}\n</marca>\n\n<formato>${formato === 'story' ? 'story (9:16)' : 'post de feed (4:5)'}</formato>\n\n<pedido>\n${pedido}\n</pedido>`
   if (anterior) {
     const { titulo, apoio, chamada, legenda } = anterior as Record<string, string>
-    texto += `\n\n<versao_anterior>\n${JSON.stringify({ titulo, apoio, chamada, legenda }, null, 2)}\n</versao_anterior>\n\nO dono pediu outra versão. Escreva uma peça nova de verdade: outro ângulo, outro título, outra primeira linha na legenda. Não reaproveite frases da versão anterior.`
+    texto += `\n\n<versao_anterior>\n${JSON.stringify({ titulo, apoio, chamada, legenda }, null, 2)}\n</versao_anterior>`
+    texto += ajuste
+      ? `\n\n<ajuste>\n${ajuste}\n</ajuste>\n\nO dono gostou da versão anterior e quer só este ajuste. Parta dela e mude apenas o que o ajuste pede; o resto fica igual, palavra por palavra quando der.`
+      : `\n\nO dono pediu outra versão, sem dizer o que mudar. Escreva uma peça nova de verdade: outro ângulo, outro título, outra primeira linha na legenda. Se o pedido mudou, siga o pedido novo.`
   }
-  if (ajuste) texto += `\n\n<ajuste>\n${ajuste}\n</ajuste>\n\nSiga o ajuste acima com prioridade.`
   return texto
 }
 

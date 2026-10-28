@@ -47,11 +47,11 @@ Deno.serve(async (req) => {
   let pedido = String(corpo.pedido || '').trim()
   let formato = corpo.formato === 'story' ? 'story' : 'post'
   let fotos = (corpo.fotos || []).filter((f) => typeof f === 'string' && f.startsWith(`${negocio.id}/`)).slice(0, 4)
-  let refeita: { id: string; pedido: string; refeitas: number; roteiro: Record<string, unknown>; versoes: unknown[] } | null = null
+  let refeita: { id: string; pedido: string; refeitas: number; roteiro: Record<string, unknown>; versoes: { roteiro: Record<string, unknown> }[]; escolhida: number | null } | null = null
   const ajuste = String(corpo.ajuste || '').trim().slice(0, 300)
 
   if (corpo.refazer) {
-    const { data } = await banco.from('pecas').select('id, pedido, formato, fotos, refeitas, roteiro, versoes')
+    const { data } = await banco.from('pecas').select('id, pedido, formato, fotos, refeitas, roteiro, versoes, escolhida')
       .eq('id', corpo.refazer).eq('negocio', negocio.id).single()
     if (!data) return erro('Não achamos essa peça.', 404)
     if (data.refeitas >= MAX_REFEITAS) return erro(`Você já refez esta peça ${MAX_REFEITAS} vezes. Escreva um pedido novo.`, 429)
@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
       fallbacks: 'default',
       output_config: { effort: 'medium', format: { type: 'json_schema', schema: ESQUEMA } },
       system: INSTRUCOES,
-      messages: [{ role: 'user', content: montarMensagem(perfil, pedido, formato, refeita?.roteiro, ajuste) }],
+      messages: [{ role: 'user', content: montarMensagem(perfil, pedido, formato, refeita && (refeita.versoes?.[refeita.escolhida ?? -1]?.roteiro || refeita.roteiro), ajuste) }],
     })
     if (msg.stop_reason === 'refusal') return erro('A IA não quis escrever esse pedido. Tente com outras palavras.', 422)
     const texto = msg.content.find((b) => b.type === 'text')

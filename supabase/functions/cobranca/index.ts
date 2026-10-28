@@ -48,12 +48,15 @@ async function guardarAssinatura(assinatura: Stripe.Subscription) {
   const ativa = LIBERA.includes(assinatura.status)
   const plano: Plano = ativa && pedido && PAGOS.includes(pedido) ? pedido : 'gratis'
   const fim = assinatura.items.data[0]?.current_period_end
+  // O portal da Stripe cancela marcando a data do fim (cancel_at); versões antigas usam cancel_at_period_end.
+  const cancela = assinatura.cancel_at_period_end || Boolean(assinatura.cancel_at)
+  const ultimoDia = assinatura.cancel_at || fim
   await banco.from('negocios').update({
     plano,
     limite_pecas: PLANOS[plano].pecas,
     assinatura_status: assinatura.status,
-    renova_em: ativa && fim ? new Date(fim * 1000).toISOString() : null,
-    cancela_no_fim: ativa && assinatura.cancel_at_period_end,
+    renova_em: ativa && ultimoDia ? new Date(ultimoDia * 1000).toISOString() : null,
+    cancela_no_fim: ativa && cancela,
     stripe_cliente: typeof assinatura.customer === 'string' ? assinatura.customer : assinatura.customer.id,
     stripe_assinatura: ativa ? assinatura.id : null,
   }).eq('id', negocio)
@@ -112,7 +115,8 @@ Deno.serve(async (req) => {
       const trocada = await stripe.subscriptions.update(atual.id, {
         items: [{ id: atual.items.data[0].id, price: novo.id }],
         metadata: { negocio: negocio.id, plano },
-        cancel_at_period_end: false,
+        // Trocar de plano desfaz um cancelamento marcado.
+        ...(atual.cancel_at ? { cancel_at: '' as const } : { cancel_at_period_end: false }),
         proration_behavior: 'create_prorations',
       })
       await guardarAssinatura(trocada)

@@ -153,6 +153,15 @@ export default function Area({ sessao, teste = false }) {
 
       <main className="area__conteudo">
         {aviso && <p className="area__aviso" role="status">{aviso}</p>}
+        {negocio?.cancela_no_fim && negocio.renova_em && (
+          <div className="area__aviso area__aviso--fim" role="status">
+            <p>
+              Sua assinatura do {PLANOS[negocio.plano]?.nome} foi cancelada. Você continua com {negocio.limite_pecas} peças por mês
+              até {new Date(negocio.renova_em).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' })}. Depois, a conta volta para o Grátis ({PLANOS.gratis.pecas} peças).
+            </p>
+            <button type="button" className="botao botao--fantasma" onClick={() => setVendoPlanos(true)}>Ver planos</button>
+          </div>
+        )}
         <p className="mono area__ola">{primeiroNome ? `Olá, ${primeiroNome}` : 'Olá'}</p>
         {total === 4 ? (
           <>

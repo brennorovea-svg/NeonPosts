@@ -85,13 +85,12 @@ Deno.serve(async (req) => {
   let bruto: Record<string, unknown>
   try {
     // Post: Haiku 5.5, rápido e barato para texto curto. Story: Opus 5.5, com mais cuidado.
-    // Esforço baixo na peça nova e no story: no teste com a IA real saiu 2 a 5 s mais rápido.
-    // No ajuste de post o baixo não ganhou tempo e errou mais regras, então fica o médio.
-    // As instruções ficam em cache.
+    // Esforço médio: no teste com a IA real o baixo saiu mais rápido, mas errou a voz da marca
+    // e o tamanho do texto. O Brenno escolheu a qualidade (28/10). As instruções ficam em cache.
     // O Haiku 5.5 não tem fallback no servidor, então o pedido dele vai sem `fallbacks`.
     const pedidoIA = {
       max_tokens: 16000,
-      output_config: { effort: formato === 'post' && refeita ? 'medium' : 'low', format: { type: 'json_schema', schema: ESQUEMA } },
+      output_config: { effort: 'medium', format: { type: 'json_schema', schema: ESQUEMA } },
       system: [{ type: 'text' as const, text: INSTRUCOES, cache_control: { type: 'ephemeral' as const } }],
       messages: [{ role: 'user' as const, content: montarMensagem(perfil, pedido, formato, refeita && (refeita.versoes?.[refeita.escolhida ?? -1]?.roteiro || refeita.roteiro), ajuste, fotos.length > 0) }],
     }

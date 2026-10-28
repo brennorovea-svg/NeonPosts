@@ -17,4 +17,4 @@ Tudo em [`docs/PLAYBOOK-IDENTIDADE.md`](docs/PLAYBOOK-IDENTIDADE.md). Ler antes 
 ## Rodar e publicar
 - `npm install` e `npm run dev` para ver no computador.
 - Todo merge no `main` publica sozinho em https://neonposts.com.br pela Action `Publicar no GitHub Pages`.
-- Por enquanto publica no endereço provisório https://brennorovea-svg.github.io/NeonPosts/. Quando o DNS do Registro.br estiver pronto, criar `public/CNAME` com `neonposts.com.br` e colocar o domínio em Settings › Pages.
+- O `public/CNAME` aponta para `neonposts.com.br`. Não apagar esse arquivo: sem ele o GitHub Pages volta para o endereço provisório https://brennorovea-svg.github.io/NeonPosts/.

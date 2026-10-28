@@ -238,6 +238,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
                 </div>
                 <div className="campo">
                   <label htmlFor="ajuste">O que mudar? (opcional)</label>
+                  <p className="campo__ajuda">Com ajuste, a gente mexe só no que você pedir. Em branco, sai uma versão nova.</p>
                   <input id="ajuste" maxLength={300} value={ajuste} onChange={(e) => setAjuste(e.target.value)} placeholder="Ex.: mais curto, falar do site, sem emoji" />
                   <div className="fichas">
                     {AJUSTES.map((a) => (

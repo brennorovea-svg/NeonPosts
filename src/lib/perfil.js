@@ -6,7 +6,7 @@ import { supabase } from './supabase.js'
 export const PERFIL_VAZIO = {
   identidade: { nome: '', ramo: '', cores: ['#7B5CFF'], logo: null, fotos: [] },
   voz: { tom: [], tratamento: 'você', usa: '', evita: '', exemplos: '', emoji: 'pouco' },
-  padrao: { tipos: [], frequencia: 3, hashtags: '', chamada: '' },
+  padrao: { tipos: [], feedPorSemana: 3, storiesPorSemana: 5, hashtags: '', chamada: '' },
   dados: { endereco: '', horario: '', whatsapp: '', instagram: '', site: '', itens: [] },
 }
 

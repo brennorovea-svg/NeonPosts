@@ -90,9 +90,18 @@ function Padrao({ v, mudar }) {
       <Grupo rotulo="Que tipo de post você faz">
         <Fichas rotulo="Tipos de post" opcoes={TIPOS} valor={v.tipos} onChange={(tipos) => mudar({ tipos })} varias outra />
       </Grupo>
-      <Campo id="frequencia" rotulo="Posts por semana">
-        <input id="frequencia" type="number" min={0} max={21} value={v.frequencia} onChange={(e) => mudar({ frequencia: Number(e.target.value) })} className="campo--curto" />
-      </Campo>
+      <Grupo rotulo="Quantas vezes você publica por semana?" ajuda="Pode ser o que você faz hoje ou a sua meta. A gente usa para sugerir o ritmo das próximas peças.">
+        <div className="frequencia">
+          <label className="frequencia__item">
+            <input type="number" min={0} max={21} inputMode="numeric" value={v.feedPorSemana} onChange={(e) => mudar({ feedPorSemana: Number(e.target.value) })} />
+            <span><strong>Posts no feed</strong>ficam no perfil</span>
+          </label>
+          <label className="frequencia__item">
+            <input type="number" min={0} max={50} inputMode="numeric" value={v.storiesPorSemana} onChange={(e) => mudar({ storiesPorSemana: Number(e.target.value) })} />
+            <span><strong>Stories</strong>somem em 24 horas</span>
+          </label>
+        </div>
+      </Grupo>
       <Campo id="chamada" rotulo="Chamada para ação" ajuda="O que você pede para o cliente fazer no fim do post.">
         <input id="chamada" value={v.chamada} onChange={(e) => mudar({ chamada: e.target.value })} placeholder="Chama no WhatsApp" />
       </Campo>

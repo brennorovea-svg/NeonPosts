@@ -88,3 +88,19 @@
   .perfil__conteudo { animation: none; }
   .ficha, .perfil__passos span { transition: none; }
 }
+
+/* Frequência: feed e stories lado a lado */
+.frequencia { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.frequencia__item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 12px; border-radius: var(--raio-campo);
+  background: var(--painel); border: 1px solid var(--borda); cursor: text;
+}
+.frequencia__item input {
+  width: 56px; min-height: 44px; padding: 8px; text-align: center;
+  border-radius: 10px; border: 1px solid var(--borda);
+  background: var(--grafite); color: var(--neve); font: 600 18px var(--fonte-mono);
+}
+.frequencia__item span { display: flex; flex-direction: column; gap: 2px; font-size: 13px; color: var(--texto-2); }
+.frequencia__item strong { font-size: 15px; font-weight: 600; color: var(--neve); }
+@media (max-width: 400px) { .frequencia { grid-template-columns: 1fr; } }

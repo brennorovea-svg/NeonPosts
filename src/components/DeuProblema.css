@@ -1,0 +1,33 @@
+.deu-problema__abrir {
+  align-self: center;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 0;
+  background: transparent;
+  color: var(--texto-2);
+  font: 14px var(--fonte);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  transition: opacity var(--dur-controle) var(--ease);
+}
+.deu-problema__abrir:hover { opacity: .75; }
+.deu-problema {
+  display: flex; flex-direction: column; gap: 12px;
+  padding: 16px;
+  background: var(--painel);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-cartao);
+  animation: deu-problema-entra 260ms var(--ease) both;
+}
+.deu-problema__nota { margin: 0; font-size: 13px; line-height: 1.4; color: var(--texto-2); }
+.deu-problema__acoes { display: grid; grid-template-columns: auto 1fr; gap: 10px; }
+.deu-problema__acoes .botao--destaque { min-height: 48px; }
+@keyframes deu-problema-entra {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .deu-problema { animation: none; }
+  .deu-problema__abrir { transition: none; }
+}

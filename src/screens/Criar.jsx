@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import Obturador from '../components/Obturador.jsx'
 import Imagens from '../components/campos/Imagens.jsx'
 import Layouts from '../components/Layouts.jsx'
+import DeuProblema from '../components/DeuProblema.jsx'
 import { sugerirLayouts, tipoDoPedido } from '../lib/sugerir.js'
 import { DURACAO, gravar, tocar } from '../lib/video.js'
 import { listaDeNomes, MARCADORES, marcadoresDe, preencher } from '../lib/marcadores.js'
@@ -370,6 +371,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
             Criar {video ? 'vídeo' : formato === 'story' ? 'story' : 'post'}
           </button>
           <p className="criar__nota">Preço, endereço e horário saem só dos seus dados fixos. Nada inventado.</p>
+          {erro && <DeuProblema contexto={{ Negócio: nome, Pedido: pedido.trim(), Formato: video ? 'vídeo' : formato, Erro: erro }} />}
         </main>
       )}
 
@@ -497,6 +499,10 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
                 <button type="button" className="botao botao--fantasma" onClick={() => { setPeca(null); setPedido(''); setTipo(null); setFoto(null); setLayout('ia'); setAvisoVideo(''); setDadosFaltando({}); setEstado('pedido') }}>Criar outro</button>
               </div>
               <p className="criar__nota">Gerar de novo não conta como peça nova.</p>
+              <DeuProblema
+                contexto={{ Negócio: nome, Pedido: versoes[indice]?.pedido, Formato: video && peca.formato === 'story' ? 'vídeo' : peca.formato, Modelo: NOMES_DOS_MODELOS[peca.modelo] || peca.modelo, Peça: peca.id, Erro: erro }}
+                imagem={() => paraArquivo(canvas.current, 'deu-problema.png')}
+              />
             </div>
           </div>
         </main>

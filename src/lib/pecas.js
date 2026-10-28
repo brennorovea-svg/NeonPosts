@@ -37,6 +37,8 @@ export async function gerarPeca({ pedido, formato, fotos = [], refazer, ajuste, 
       formato, modelo: modelo || antiga?.modelo || ROTEIRO_DE_TESTE.modelo, pedido: pedido || antiga?.pedido, fotos: antiga?.fotos || fotos,
       roteiro: { ...ROTEIRO_DE_TESTE, titulo: antiga ? `${ROTEIRO_DE_TESTE.titulo} (v${antiga.refeitas + 2})` : ROTEIRO_DE_TESTE.titulo, cores: /verde/i.test(ajuste || '') ? { titulo: '#2ECC71', texto: '#2ECC71' } : {} },
       // Pedido com sábado: simula a IA sem o horário, para testar o campo que pede o dado.
+      // Pedido com "direita": simula alinhamento à direita em vermelho e verde claro, para ver o ajuste de contraste.
+      ...(/direita/i.test(pedido || '') ? { roteiro: { ...ROTEIRO_DE_TESTE, titulo: 'Hora de vender muito', apoio: 'Prepare a loja para este fim de semana.', chamada: 'Chama no WhatsApp', arte: { alinhamento: 'direita', fundo: 'claro', tamanho_titulo: 'normal', destaque: '' }, cores: { titulo: '#E53935', texto: '#2ECC71' } } } : {}),
       ...(/sábado/i.test(pedido || '') ? { roteiro: { ...ROTEIRO_DE_TESTE, titulo: 'Agora também aos sábados', apoio: 'Atendimento no sábado: [HORÁRIO].', legenda: 'Agora a gente atende também aos sábados, [HORÁRIO]. Chama no WhatsApp.', avisos: ['Falta o horário: troque [HORÁRIO] antes de postar.'] } } : {}),
       imagem: null, refeitas: (antiga?.refeitas ?? -1) + 1, criado_em: new Date().toISOString(),
       versoes: antiga ? [...antiga.versoes, { pedido: antiga.pedido, roteiro: antiga.roteiro }] : [], escolhida: null,

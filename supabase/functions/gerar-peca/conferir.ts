@@ -3,7 +3,7 @@
 
 export const MODELOS = ['promo', 'aviso', 'bastidores', 'manchete', 'lista', 'citacao', 'dividido', 'foto', 'cartao']
 const TAMANHOS = ['normal', 'grande', 'gigante']
-const ALINHAMENTOS = ['esquerda', 'centro']
+const ALINHAMENTOS = ['esquerda', 'centro', 'direita']
 const FUNDOS = ['marca', 'escuro', 'claro', 'foto']
 
 export const ESQUEMA = {
@@ -35,8 +35,9 @@ export const ESQUEMA = {
       required: ['titulo', 'texto', 'destaque'],
       additionalProperties: false,
     },
+    nao_deu: { type: 'array', items: { type: 'string' } },
   },
-  required: ['modelo', 'titulo', 'apoio', 'itens', 'chamada', 'legenda', 'hashtags', 'pontos', 'autor', 'arte', 'cores'],
+  required: ['modelo', 'titulo', 'apoio', 'itens', 'chamada', 'legenda', 'hashtags', 'pontos', 'autor', 'arte', 'cores', 'nao_deu'],
   additionalProperties: false,
 }
 
@@ -66,7 +67,7 @@ Como escrever bem
 
 "hashtags": de 3 a 8, sem repetir, incluindo as fixas da marca.
 
-"cores": o app desenha a arte com as cores da marca. Só preencha quando o pedido ou o ajuste pedir uma cor; senão deixe os três vazios (""). Use código hex de 6 dígitos (ex.: verde "#2ECC71"). "titulo" é a cor do título da arte, "texto" a da frase de apoio, "destaque" a do botão, da moldura e dos detalhes. "Palavras em branco" ou "texto" quer dizer título e apoio. Se a versão anterior tinha cores e o ajuste não fala delas, repita as mesmas.
+"cores": o app desenha a arte com as cores da marca. Só preencha quando o pedido ou o ajuste pedir uma cor; senão deixe os três vazios (""). Use código hex de 6 dígitos, na cor que a pessoa nomeou (vermelho "#E53935", verde "#2E7D32", azul "#1E63D6"); o app ajusta o tom para dar leitura sobre o fundo. Se o pedido der duas cores sem dizer onde, ponha a primeira no título e a segunda no destaque. "titulo" é a cor do título da arte, "texto" a da frase de apoio, "destaque" a do botão, da moldura e dos detalhes. "Palavras em branco" ou "texto" quer dizer título e apoio. Se a versão anterior tinha cores e o ajuste não fala delas, repita as mesmas.
 
 Arte: você também decide como a peça é desenhada, para cada peça ter a sua cara.
 "modelo", o layout:
@@ -84,10 +85,11 @@ Varie: não use sempre o mesmo. Se o pedido diz que tem foto, prefira "bastidore
 "arte":
 - "destaque": 1 a 3 palavras do título, escritas igual a ele, que a arte pinta na cor de destaque (o coração da mensagem). "" para nenhuma.
 - "tamanho_titulo": "normal", "grande" ou "gigante" (título curto e forte pede maior).
-- "alinhamento": "esquerda" ou "centro".
+- "alinhamento": "esquerda", "centro" ou "direita". Se o pedido ou o ajuste pedir um alinhamento, use exatamente esse. "aviso" e "cartao" são sempre centralizados: se o pedido quiser texto à esquerda ou à direita, escolha outro modelo (se o dono já escolheu um desses dois layouts, mantenha centralizado e ponha o alinhamento em "nao_deu").
 - "fundo": "marca" (cores da marca), "escuro", "claro" ou "foto" (só se houver foto).
 
-Ajustes sobre o visual: se o ajuste pedir outro layout, mais destaque, título maior, fundo claro ou escuro, mude esses campos. Se pedir algo que esses campos não fazem (trocar a foto, mudar a fonte), mantenha a peça e não invente.`
+Pedidos sobre o visual: no pedido ou no ajuste, a pessoa pode pedir layout, destaque, tamanho do título, alinhamento, fundo claro ou escuro e cores. Atenda mudando esses campos. Esses pedidos são instrução para a arte: não escreva sobre eles no texto da peça.
+"nao_deu": cada coisa que o pedido ou o ajuste pediu sobre o visual e esses campos não fazem (trocar a foto, mudar a fonte, texto em itálico, mover o logo), em frase curta começando pelo verbo, por exemplo "trocar a fonte". Lista vazia quando deu para atender tudo. Nunca invente o que não dá.`
 
 // O que cada layout precisa quando o dono já escolheu (o texto tem de caber nele).
 const DICAS_DO_LAYOUT: Record<string, string> = {
@@ -240,6 +242,8 @@ export function conferir(bruto: Record<string, unknown>, perfil: Perfil, pedido:
     roteiro.hashtags.push(tag)
   }
 
+  const naoDeu = ((bruto.nao_deu as string[] | undefined) || []).map((t) => String(t).trim().replace(/\.$/, '')).filter(Boolean).slice(0, 3)
+  if (naoDeu.length) avisos.push(`Por aqui ainda não dá para ${naoDeu.join(', ')}. O resto do pedido foi atendido.`)
   if (trocados.size) avisos.push('A IA tentou escrever um dado que não está na sua marca. Trocamos por um marcador.')
   const tudo = [roteiro.titulo, roteiro.apoio, roteiro.chamada, roteiro.legenda, ...roteiro.pontos, ...roteiro.itens.map((i) => i.preco)].join(' ')
   for (const [marcador, texto] of Object.entries(MARCADORES)) {

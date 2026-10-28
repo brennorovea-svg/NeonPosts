@@ -17,14 +17,21 @@
 .area__texto { margin: 0; font-size: 16px; line-height: 1.55; color: var(--texto-2); }
 .area__passos { list-style: none; margin: 12px 0 8px; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .area__passo {
-  display: flex; align-items: center; gap: 16px;
-  padding: 16px 18px;
+  width: 100%; display: flex; align-items: center; gap: 16px;
+  padding: 16px 18px; text-align: left; cursor: pointer;
+  font: inherit; color: inherit;
   background: var(--painel); border: 1px solid var(--borda); border-radius: var(--raio-cartao);
+  transition: transform var(--dur-controle) var(--ease);
 }
-.area__passo div { display: flex; flex-direction: column; gap: 2px; }
+.area__passo:hover { transform: translateY(-2px); }
+.area__passo:active { transform: scale(.98); }
+.area__passo:disabled { cursor: default; transform: none; }
+.area__passo-texto { flex: 1; display: flex; flex-direction: column; gap: 2px; }
 .area__passo strong { font-weight: 600; font-size: 16px; }
-.area__passo div span { font-size: 14px; color: var(--texto-2); }
+.area__passo-texto span { font-size: 14px; color: var(--texto-2); }
+.area__estado { font-size: 12px; color: var(--cinza-claro); }
+.area__estado--feito { color: var(--lilas); }
 .area__num { font-size: 13px; color: var(--violeta); }
 .area__cta { margin-top: 4px; }
 .area__email { margin: 8px 0 0; font-size: 12px; color: var(--cinza-claro); text-align: center; }
-@media (prefers-reduced-motion: reduce) { .area { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .area { animation: none; } .area__passo, .area__passo:hover, .area__passo:active { transition: none; transform: none; } }

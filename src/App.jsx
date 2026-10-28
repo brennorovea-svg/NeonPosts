@@ -3,11 +3,13 @@ import Abertura from './components/Abertura.jsx'
 import Entrar from './screens/Entrar.jsx'
 import Area from './screens/Area.jsx'
 import { supabase } from './lib/supabase.js'
+import { usarModoDeTeste } from './lib/perfil.js'
 
 // Só no computador de desenvolvimento: ?tela=area mostra a área sem login, para prints.
 const sessaoDeTeste = import.meta.env.DEV && new URLSearchParams(location.search).get('tela') === 'area'
   ? { user: { email: 'brenno@exemplo.com.br', user_metadata: { full_name: 'Brenno Rovea' } } }
   : null
+if (sessaoDeTeste) usarModoDeTeste()
 
 export default function App() {
   const [abertura, setAbertura] = useState(true)
@@ -22,5 +24,5 @@ export default function App() {
   }, [])
 
   if (abertura) return <Abertura onFim={fimDaAbertura} />
-  return sessao ? <Area sessao={sessao} /> : <Entrar />
+  return sessao ? <Area sessao={sessao} teste={Boolean(sessaoDeTeste)} /> : <Entrar />
 }

@@ -29,7 +29,7 @@
 }
 .campo { display: flex; flex-direction: column; gap: 8px; }
 .campo label { font-size: 13px; color: var(--texto-2); }
-.campo input {
+.campo input, .campo textarea {
   min-height: 52px;
   padding: 12px 14px;
   border-radius: var(--raio-campo);
@@ -38,7 +38,12 @@
   color: var(--neve);
   font: 16px var(--fonte);
 }
-.campo input::placeholder { color: var(--cinza-claro); }
+.campo input::placeholder, .campo textarea::placeholder { color: var(--cinza-claro); }
+.campo textarea { resize: vertical; line-height: 1.5; }
+.campo__rotulo { font-size: 13px; color: var(--texto-2); }
+.campo__ajuda { margin: -4px 0 2px; font-size: 13px; line-height: 1.4; color: var(--cinza-claro); }
+.campo__erro { margin: 6px 0 0; font-size: 14px; color: #FFB4B4; }
+.campo--curto { max-width: 120px; }
 .marca { font-weight: 700; letter-spacing: -.04em; line-height: 1; }
 .marca span { color: var(--violeta); }
 .mono { font-family: var(--fonte-mono); }

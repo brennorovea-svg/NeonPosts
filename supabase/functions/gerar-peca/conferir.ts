@@ -49,7 +49,7 @@ Dados que não podem ser inventados
 
 Texto da arte
 - "titulo": até 6 palavras, forte, sem ponto final.
-- "apoio": uma frase de até 18 palavras que completa o título.
+- "apoio": uma frase de até 18 palavras que completa o título. Conte as palavras: passou de 18, corte.
 - "chamada": até 5 palavras, começando pelo verbo, ligada à chamada preferida da marca.
 
 Legenda

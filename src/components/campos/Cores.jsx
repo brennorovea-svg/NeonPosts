@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { hexParaRgb, lerCor } from '../../lib/cores.js'
+import SeletorDeCor from './SeletorDeCor.jsx'
 
 const NOMES = ['Principal', 'Apoio', 'Destaque']
 
 function LinhaDeCor({ cor, indice, podeTirar, onTrocar, onTirar }) {
+  const [aberto, setAberto] = useState(false)
   const [texto, setTexto] = useState(cor)
   const [invalida, setInvalida] = useState(false)
   useEffect(() => { setTexto(cor); setInvalida(false) }, [cor])
@@ -14,10 +16,15 @@ function LinhaDeCor({ cor, indice, podeTirar, onTrocar, onTirar }) {
   }
 
   return (
-    <div className="cor">
-      <label className="cor__amostra" style={{ background: cor }}>
-        <input type="color" value={cor} onChange={(e) => onTrocar(e.target.value.toUpperCase())} aria-label={`Escolher a cor ${NOMES[indice].toLowerCase()}`} />
-      </label>
+    <div className={`cor${aberto ? ' cor--aberta' : ''}`}>
+      <button
+        type="button"
+        className="cor__amostra"
+        style={{ background: cor }}
+        onClick={() => setAberto(!aberto)}
+        aria-expanded={aberto}
+        aria-label={`Escolher a cor ${NOMES[indice].toLowerCase()}`}
+      />
       <div className="cor__info">
         <span className="cor__nome">{NOMES[indice]}</span>
         <input
@@ -33,6 +40,7 @@ function LinhaDeCor({ cor, indice, podeTirar, onTrocar, onTirar }) {
         <span className="cor__rgb mono">{invalida ? 'Use #FF2E9A ou 255, 46, 154' : `RGB ${hexParaRgb(cor).join(', ')}`}</span>
       </div>
       {podeTirar && <button type="button" className="cor__tirar" onClick={onTirar} aria-label={`Tirar a cor ${NOMES[indice].toLowerCase()}`}>×</button>}
+      {aberto && <SeletorDeCor cor={cor} onChange={onTrocar} onFechar={() => setAberto(false)} />}
     </div>
   )
 }

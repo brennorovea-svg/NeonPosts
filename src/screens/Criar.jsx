@@ -4,6 +4,7 @@ import Imagens from '../components/campos/Imagens.jsx'
 import Layouts from '../components/Layouts.jsx'
 import { sugerirLayouts, tipoDoPedido } from '../lib/sugerir.js'
 import { DURACAO, gravar, tocar } from '../lib/video.js'
+import { MARCADORES, marcadoresDe, preencher } from '../lib/marcadores.js'
 import { enderecoDaImagem } from '../lib/perfil.js'
 import { acordarIA, escolherVersao, gerarPeca, guardarImagem } from '../lib/pecas.js'
 import { carregarImagem, desenhar, NOMES_DOS_MODELOS, paraArquivo, prepararFontes } from '../lib/desenhar.js'
@@ -160,6 +161,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
   const [avisoVideo, setAvisoVideo] = useState('')
   // Vídeo gravado esperando o segundo toque: o celular só abre o compartilhar logo depois de um toque.
   const [videoPronto, setVideoPronto] = useState(null)
+  const [dadosFaltando, setDadosFaltando] = useState({}) // { '[HORÁRIO]': 'sábado, 9h às 13h' }
   const [foto, setFoto] = useState(null)
   const [estado, setEstado] = useState(pecaInicial ? 'pronta' : 'pedido') // pedido | gerando | revelando | pronta
   const [peca, setPeca] = useState(pecaInicial || null)
@@ -222,11 +224,10 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
     }, 600)
     setVideoPronto(null)
     return () => { clearTimeout(t); parar?.() }
-  }, [peca, imagens, estado, video])
+  }, [peca, imagens, estado, video, dadosFaltando])
 
   function opcoesDoDesenho() {
-    const lista = [...(peca.versoes || []), { roteiro: peca.roteiro }]
-    return { formato: peca.formato, modelo: peca.modelo, roteiro: lista[peca.escolhida ?? (peca.versoes || []).length].roteiro, cores: perfil.identidade.cores, nome, logo: imagens.logo, foto: imagens.foto }
+    return { formato: peca.formato, modelo: peca.modelo, roteiro, cores: perfil.identidade.cores, nome, logo: imagens.logo, foto: imagens.foto }
   }
 
   async function criar(refazer) {
@@ -288,7 +289,11 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
   const trocar = (campo, valor) => setPeca((p) => ({ ...p, [campo]: valor }))
   const versoes = peca ? [...(peca.versoes || []), { pedido: peca.pedido, roteiro: peca.roteiro }] : []
   const indice = peca ? Math.min(peca.escolhida ?? versoes.length - 1, versoes.length - 1) : 0
-  const roteiro = versoes[indice]?.roteiro
+  // O que a IA deixou como marcador e o dono preencheu entra na arte e na legenda.
+  const roteiroDaIA = versoes[indice]?.roteiro
+  const faltando = marcadoresDe(roteiroDaIA)
+  const roteiro = roteiroDaIA && preencher(roteiroDaIA, dadosFaltando)
+  const semDados = faltando.filter((m) => !(dadosFaltando[m] || '').trim())
   function escolher(i) {
     const valor = i === versoes.length - 1 ? null : i
     trocar('escolhida', valor)
@@ -447,6 +452,20 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
               </div>
             </div>
 
+            {faltando.length > 0 && (
+              <div className="criar__faltando">
+                <p className="criar__faltando-titulo">Antes de baixar, complete o que a IA não pode inventar:</p>
+                {faltando.map((m) => (
+                  <div className="campo" key={m}>
+                    <label htmlFor={`falta-${m}`}>{MARCADORES[m].pergunta}</label>
+                    <input
+                      id={`falta-${m}`} maxLength={80} value={dadosFaltando[m] || ''} placeholder={MARCADORES[m].exemplo}
+                      onChange={(e) => setDadosFaltando((v) => ({ ...v, [m]: e.target.value }))}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
             {roteiro.avisos?.length > 0 && (
               <ul className="criar__avisos">
                 {roteiro.avisos.map((a) => <li key={a}>{a}</li>)}
@@ -460,8 +479,8 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
 
             {erro && <p className="campo__erro" role="alert">{erro}</p>}
             <div className="criar__acoes">
-              <button type="button" className="botao botao--primario" onClick={baixar} disabled={gravando !== null}>
-                {gravando !== null ? `Gravando o vídeo... ${Math.ceil(DURACAO * (1 - gravando))} s` : video && peca.formato === 'story' ? (videoPronto ? 'Salvar vídeo e postar' : 'Gravar vídeo') : 'Baixar e postar'}
+              <button type="button" className="botao botao--primario" onClick={baixar} disabled={gravando !== null || semDados.length > 0}>
+                {semDados.length > 0 ? `Preencha ${semDados.length > 1 ? 'os dados' : MARCADORES[semDados[0]].pergunta.replace(/^Qual (o|a) /, '$1 ').replace('?', '')} para baixar` : gravando !== null ? `Gravando o vídeo... ${Math.ceil(DURACAO * (1 - gravando))} s` : video && peca.formato === 'story' ? (videoPronto ? 'Salvar vídeo e postar' : 'Gravar vídeo') : 'Baixar e postar'}
               </button>
               {gravando !== null && (
                 <div className="criar__gravando" aria-hidden="true"><span style={{ transform: `scaleX(${gravando})` }} /></div>
@@ -474,7 +493,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
                 <button type="button" className="botao botao--fantasma" disabled={restantes <= 0 || ajustando} onClick={() => { setPedidoNovo(peca.pedido); setAjustando(true) }}>
                   Gerar de novo{restantes > 0 ? ` (${restantes})` : ''}
                 </button>
-                <button type="button" className="botao botao--fantasma" onClick={() => { setPeca(null); setPedido(''); setTipo(null); setFoto(null); setLayout('ia'); setAvisoVideo(''); setEstado('pedido') }}>Criar outro</button>
+                <button type="button" className="botao botao--fantasma" onClick={() => { setPeca(null); setPedido(''); setTipo(null); setFoto(null); setLayout('ia'); setAvisoVideo(''); setDadosFaltando({}); setEstado('pedido') }}>Criar outro</button>
               </div>
               <p className="criar__nota">Gerar de novo não conta como peça nova.</p>
             </div>

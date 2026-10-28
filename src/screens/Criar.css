@@ -175,3 +175,12 @@
 .criar__gravando { height: 4px; border-radius: 2px; background: var(--borda); overflow: hidden; margin-top: -4px; }
 .criar__gravando span { display: block; height: 100%; background: var(--violeta); transform-origin: left; }
 .criar__nota--aviso { color: #FFE69A; }
+
+/* Dados que faltam: o dono preenche aqui antes de baixar. */
+.criar__faltando {
+  display: flex; flex-direction: column; gap: 14px;
+  padding: 16px; border-radius: var(--raio-cartao);
+  background: rgba(255, 216, 77, .08); border: 1px solid rgba(255, 216, 77, .4);
+  animation: aparecer 400ms var(--ease) both;
+}
+.criar__faltando-titulo { margin: 0; font-size: 14px; font-weight: 600; color: #FFE69A; }

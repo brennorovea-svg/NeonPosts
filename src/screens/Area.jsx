@@ -5,9 +5,14 @@ import { listarPecas, pecasDoMes } from '../lib/pecas.js'
 import PerfilMarca, { PARTES } from './PerfilMarca.jsx'
 import ApresentacaoMarca from './ApresentacaoMarca.jsx'
 import Criar from './Criar.jsx'
+import Planos from './Planos.jsx'
+import { PLANOS, voltouDoPagamento } from '../lib/planos.js'
 import './Area.css'
 
-const NEGOCIO_DE_TESTE = { id: 'teste', nome: null, limite_pecas: 30 }
+const NEGOCIO_DE_TESTE = { id: 'teste', nome: null, limite_pecas: 5, plano: 'gratis' }
+const COLUNAS = 'id, nome, limite_pecas, plano, assinatura_status, renova_em, cancela_no_fim, stripe_cliente'
+// Lido uma vez, ao abrir: ?pago=pro quando a pessoa volta da Stripe.
+const pagou = voltouDoPagamento()
 
 function Miniatura({ peca, onAbrir }) {
   const [src, setSrc] = useState(null)
@@ -31,13 +36,34 @@ export default function Area({ sessao, teste = false }) {
   const [criando, setCriando] = useState(null) // null, 'nova' ou a peça aberta do histórico
   const [pecas, setPecas] = useState([])
   const [usadas, setUsadas] = useState(0)
+  const [vendoPlanos, setVendoPlanos] = useState(false)
+  const [aviso, setAviso] = useState(pagou ? `Pagamento recebido. Liberando o plano ${PLANOS[pagou].nome}...` : '')
   const usuario = sessao.user
   const primeiroNome = (usuario.user_metadata?.full_name || usuario.user_metadata?.name || '').split(' ')[0]
 
   useEffect(() => {
     if (teste || !supabase) return
-    supabase.from('negocios').select('id, nome, limite_pecas').maybeSingle()
+    supabase.from('negocios').select(COLUNAS).maybeSingle()
       .then(({ data }) => setNegocio(data))
+  }, [teste])
+
+  // A Stripe avisa o servidor alguns segundos depois do pagamento; até lá, pergunta de novo.
+  useEffect(() => {
+    if (!pagou || teste || !supabase) return
+    let tentativas = 0
+    const id = setInterval(async () => {
+      tentativas += 1
+      const { data } = await supabase.from('negocios').select(COLUNAS).maybeSingle()
+      if (data?.plano === pagou) {
+        setNegocio(data)
+        setAviso(`Pronto, você está no plano ${PLANOS[pagou].nome}: ${data.limite_pecas} peças por mês.`)
+        clearInterval(id)
+      } else if (tentativas >= 15) {
+        setAviso('O pagamento foi feito, mas o plano ainda não apareceu. Atualize a página em um minuto.')
+        clearInterval(id)
+      }
+    }, 2000)
+    return () => clearInterval(id)
   }, [teste])
 
   const recarregar = useCallback(() => {
@@ -56,6 +82,22 @@ export default function Area({ sessao, teste = false }) {
   }, [negocio])
 
   useEffect(recarregarPecas, [recarregarPecas])
+
+  if (vendoPlanos) {
+    return (
+      <Planos
+        negocio={negocio}
+        usadas={usadas}
+        onSair={() => { setVendoPlanos(false); window.scrollTo({ top: 0 }) }}
+        onTrocou={(plano) => {
+          setNegocio((n) => ({ ...n, plano, limite_pecas: PLANOS[plano].pecas }))
+          setAviso(`Pronto, você está no plano ${PLANOS[plano].nome}: ${PLANOS[plano].pecas} peças por mês.`)
+          setVendoPlanos(false)
+          window.scrollTo({ top: 0 })
+        }}
+      />
+    )
+  }
 
   if (criando && perfil) {
     return (
@@ -104,12 +146,13 @@ export default function Area({ sessao, teste = false }) {
       <header className="area__topo">
         <p className="marca area__marca">Neon<span>posts</span></p>
         <div className="area__direita">
-          <span className="mono area__contador" title="Peças usadas neste mês">{usadas}/{limite} peças</span>
+          <button type="button" className="mono area__contador" title="Peças usadas neste mês. Toque para ver os planos." onClick={() => setVendoPlanos(true)}>{usadas}/{limite} peças</button>
           <button type="button" className="botao botao--fantasma" onClick={() => supabase?.auth.signOut()}>Sair</button>
         </div>
       </header>
 
       <main className="area__conteudo">
+        {aviso && <p className="area__aviso" role="status">{aviso}</p>}
         <p className="mono area__ola">{primeiroNome ? `Olá, ${primeiroNome}` : 'Olá'}</p>
         {total === 4 ? (
           <>
@@ -144,9 +187,14 @@ export default function Area({ sessao, teste = false }) {
         {erro && <p className="campo__erro" role="alert">{erro}</p>}
 
         {total === 4 ? (
-          <button type="button" className="botao botao--primario area__cta" onClick={() => setCriando('nova')} disabled={usadas >= limite}>
-            {usadas >= limite ? `Você usou as ${limite} peças do mês` : 'Criar post'}
-          </button>
+          usadas >= limite ? (
+            <div className="area__limite">
+              <p>Você usou as {limite} peças deste mês. Suba de plano para continuar criando agora, ou espere o contador zerar no dia 1.</p>
+              <button type="button" className="botao botao--destaque" onClick={() => setVendoPlanos(true)}>Ver planos</button>
+            </div>
+          ) : (
+            <button type="button" className="botao botao--primario area__cta" onClick={() => setCriando('nova')}>Criar post</button>
+          )
         ) : (
           <button type="button" className="botao botao--primario area__cta" onClick={() => setEditando(proxima)} disabled={!perfil}>
             {total === 0 ? 'Começar' : `Continuar: ${PARTES[proxima].titulo}`}

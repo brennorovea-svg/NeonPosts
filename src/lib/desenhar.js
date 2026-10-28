@@ -139,6 +139,9 @@ function brilho(ctx, cx, cy, raio, cor, forca = 0.55) {
   ctx.fillRect(cx - raio, cy - raio, raio * 2, raio * 2)
 }
 
+// Cor pedida no ajuste (ex.: "título em verde") ou a padrão do modelo.
+const corPedida = (r, chave, padrao) => (/^#[0-9a-f]{6}$/i.test(r.cores?.[chave] || '') ? r.cores[chave] : padrao)
+
 function promo(ctx, { L, A, story, c, r, logo, foto, nome }) {
   const tinta = textoSobre(c[0])
   ctx.fillStyle = c[0]
@@ -169,8 +172,8 @@ function promo(ctx, { L, A, story, c, r, logo, foto, nome }) {
     ctx.restore()
     y += h + 50
   }
-  y = bloco(ctx, r.titulo, { ...tituloOp, y, cor: tinta })
-  y = bloco(ctx, r.apoio, { ...apoioOp, y: y + 22, cor: comAlfa(tinta === '#FFFFFF' ? '#FFFFFF' : '#111114', 0.86) })
+  y = bloco(ctx, r.titulo, { ...tituloOp, y, cor: corPedida(r, 'titulo', tinta) })
+  y = bloco(ctx, r.apoio, { ...apoioOp, y: y + 22, cor: corPedida(r, 'texto', comAlfa(tinta === '#FFFFFF' ? '#FFFFFF' : '#111114', 0.86)) })
 
   let iy = Math.max(y + 40, chamadaY - 40 - itens.length * 124)
   for (const item of itens) {
@@ -218,8 +221,8 @@ function aviso(ctx, { L, A, story, c, r, logo, foto, nome }) {
   ctx.fillStyle = c[1]
   arredondado(ctx, L / 2 - 60, meio - 260, 120, 12, 6)
   ctx.fill()
-  const fimTitulo = bloco(ctx, r.titulo, { x: m, y: meio - 210, largura: L - m * 2, tamanho: 120, maxLinhas: 3, cor: '#FFFFFF', alinhar: 'center', entre: 1.0 })
-  bloco(ctx, r.apoio, { x: m + 20, y: fimTitulo + 28, largura: L - (m + 20) * 2, tamanho: 44, peso: 400, maxLinhas: 3, cor: 'rgba(255,255,255,.82)', alinhar: 'center', entre: 1.3 })
+  const fimTitulo = bloco(ctx, r.titulo, { x: m, y: meio - 210, largura: L - m * 2, tamanho: 120, maxLinhas: 3, cor: corPedida(r, 'titulo', '#FFFFFF'), alinhar: 'center', entre: 1.0 })
+  bloco(ctx, r.apoio, { x: m + 20, y: fimTitulo + 28, largura: L - (m + 20) * 2, tamanho: 44, peso: 400, maxLinhas: 3, cor: corPedida(r, 'texto', 'rgba(255,255,255,.82)'), alinhar: 'center', entre: 1.3 })
 
   if (r.chamada) {
     ctx.font = `700 42px ${FONTE}`
@@ -258,8 +261,8 @@ function bastidores(ctx, { L, A, story, c, r, logo, foto, nome }) {
     ctx.fillText(`${r.chamada}  →`, m, y)
     y -= 80
   }
-  y = bloco(ctx, r.apoio, { x: m, y, largura: L - m * 2, tamanho: 42, peso: 400, maxLinhas: 3, cor: 'rgba(255,255,255,.86)', entre: 1.3, baseEmBaixo: true })
-  bloco(ctx, r.titulo, { x: m, y: y - 24, largura: L - m * 2, tamanho: 104, maxLinhas: 3, cor: '#FFFFFF', entre: 1.0, baseEmBaixo: true })
+  y = bloco(ctx, r.apoio, { x: m, y, largura: L - m * 2, tamanho: 42, peso: 400, maxLinhas: 3, cor: corPedida(r, 'texto', 'rgba(255,255,255,.86)'), entre: 1.3, baseEmBaixo: true })
+  bloco(ctx, r.titulo, { x: m, y: y - 24, largura: L - m * 2, tamanho: 104, maxLinhas: 3, cor: corPedida(r, 'titulo', '#FFFFFF'), entre: 1.0, baseEmBaixo: true })
 }
 
 const MODELOS = { promo, aviso, bastidores }
@@ -269,7 +272,8 @@ export function desenhar(canvas, { formato, modelo, roteiro, cores, logo, foto, 
   canvas.width = L
   canvas.height = A
   const ctx = canvas.getContext('2d')
-  const c = [cores[0] || '#7B5CFF', cores[1] || cores[0] || '#A28BFF', cores[2] || cores[1] || cores[0] || '#5B3FE0']
+  const base = [cores[0] || '#7B5CFF', cores[1] || cores[0] || '#A28BFF', cores[2] || cores[1] || cores[0] || '#5B3FE0']
+  const c = [corPedida(roteiro, 'destaque', base[0]), base[1], base[2]]
   ctx.clearRect(0, 0, L, A)
   ;(MODELOS[modelo] || aviso)(ctx, { L, A, story: formato === 'story', c, r: roteiro, logo, foto, nome })
 }

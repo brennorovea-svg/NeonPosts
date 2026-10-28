@@ -105,6 +105,12 @@ Deno.serve(async (req) => {
   }
 
   const roteiro = conferir(bruto, perfil, pedido)
+  // Ajuste que a IA não consegue fazer (trocar foto, layout, fonte) volta igual; avisa em vez de parecer que nada aconteceu.
+  const base = refeita && (refeita.versoes?.[refeita.escolhida ?? -1]?.roteiro || refeita.roteiro) as Record<string, unknown> | null
+  if (ajuste && base && ['titulo', 'apoio', 'chamada', 'legenda'].every((k) => base[k] === (roteiro as Record<string, unknown>)[k])
+    && JSON.stringify(base.cores || {}) === JSON.stringify(roteiro.cores)) {
+    roteiro.avisos.push('Esse ajuste não mudou nada. Por aqui a IA muda o texto e as cores; para trocar o layout, use Modelo e Formato.')
+  }
   const linha = {
     perfil_versao: perfil.versao,
     formato,

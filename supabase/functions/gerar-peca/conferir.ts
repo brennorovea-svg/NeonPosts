@@ -13,8 +13,14 @@ export const ESQUEMA = {
     chamada: { type: 'string' },
     legenda: { type: 'string' },
     hashtags: { type: 'array', items: { type: 'string' } },
+    cores: {
+      type: 'object',
+      properties: { titulo: { type: 'string' }, texto: { type: 'string' }, destaque: { type: 'string' } },
+      required: ['titulo', 'texto', 'destaque'],
+      additionalProperties: false,
+    },
   },
-  required: ['modelo', 'titulo', 'apoio', 'itens', 'chamada', 'legenda', 'hashtags'],
+  required: ['modelo', 'titulo', 'apoio', 'itens', 'chamada', 'legenda', 'hashtags', 'cores'],
   additionalProperties: false,
 }
 
@@ -44,6 +50,8 @@ Como escrever bem
 
 "hashtags": de 3 a 8, sem repetir, incluindo as fixas da marca.
 
+"cores": o app desenha a arte com as cores da marca. Só preencha quando o pedido ou o ajuste pedir uma cor; senão deixe os três vazios (""). Use código hex de 6 dígitos (ex.: verde "#2ECC71"). "titulo" é a cor do título da arte, "texto" a da frase de apoio, "destaque" a do botão, da moldura e dos detalhes. "Palavras em branco" ou "texto" quer dizer título e apoio. Se a versão anterior tinha cores e o ajuste não fala delas, repita as mesmas.
+
 "modelo": "promo" para oferta, preço ou itens; "aviso" para novidade, comunicado, evento ou horário; "bastidores" para rotina, equipe, processo ou foto do dia a dia.`
 
 type Perfil = {
@@ -63,8 +71,8 @@ export function montarMensagem(perfil: Perfil, pedido: string, formato: string, 
   }
   let texto = `<marca>\n${JSON.stringify(marca, null, 2)}\n</marca>\n\n<formato>${formato === 'story' ? 'story (9:16)' : 'post de feed (4:5)'}</formato>\n\n<pedido>\n${pedido}\n</pedido>`
   if (anterior) {
-    const { titulo, apoio, chamada, legenda } = anterior as Record<string, string>
-    texto += `\n\n<versao_anterior>\n${JSON.stringify({ titulo, apoio, chamada, legenda }, null, 2)}\n</versao_anterior>`
+    const { titulo, apoio, chamada, legenda, cores } = anterior as Record<string, unknown>
+    texto += `\n\n<versao_anterior>\n${JSON.stringify({ titulo, apoio, chamada, legenda, cores: cores || { titulo: '', texto: '', destaque: '' } }, null, 2)}\n</versao_anterior>`
     texto += ajuste
       ? `\n\n<ajuste>\n${ajuste}\n</ajuste>\n\nO dono gostou da versão anterior e quer só este ajuste. Parta dela e mude apenas o que o ajuste pede; o resto fica igual, palavra por palavra quando der.`
       : `\n\nO dono pediu outra versão, sem dizer o que mudar. Escreva uma peça nova de verdade: outro ângulo, outro título, outra primeira linha na legenda. Se o pedido mudou, siga o pedido novo.`
@@ -142,7 +150,14 @@ export function conferir(bruto: Record<string, unknown>, perfil: Perfil, pedido:
     legenda: limpar(bruto.legenda),
     itens: [] as { nome: string; preco: string }[],
     hashtags: [] as string[],
+    cores: {} as Record<string, string>,
     avisos,
+  }
+
+  const pedidas = (bruto.cores || {}) as Record<string, unknown>
+  for (const chave of ['titulo', 'texto', 'destaque']) {
+    const cor = String(pedidas[chave] ?? '').trim()
+    if (/^#[0-9a-f]{6}$/i.test(cor)) roteiro.cores[chave] = cor.toUpperCase()
   }
 
   const daMarca = perfil.dados.itens || []

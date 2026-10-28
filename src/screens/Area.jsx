@@ -90,8 +90,10 @@ export default function Area({ sessao, teste = false }) {
         usadas={usadas}
         onSair={() => { setVendoPlanos(false); window.scrollTo({ top: 0 }) }}
         onTrocou={(plano) => {
-          setNegocio((n) => ({ ...n, plano, limite_pecas: PLANOS[plano].pecas }))
-          setAviso(`Pronto, você está no plano ${PLANOS[plano].nome}: ${PLANOS[plano].pecas} peças por mês.`)
+          setNegocio((n) => ({ ...n, plano, limite_pecas: PLANOS[plano].pecas, cancela_no_fim: false }))
+          setAviso(negocio?.cancela_no_fim
+            ? `Pronto, sua assinatura voltou no plano ${PLANOS[plano].nome}: ${PLANOS[plano].pecas} peças por mês.`
+            : `Pronto, você está no plano ${PLANOS[plano].nome}: ${PLANOS[plano].pecas} peças por mês.`)
           setVendoPlanos(false)
           window.scrollTo({ top: 0 })
         }}

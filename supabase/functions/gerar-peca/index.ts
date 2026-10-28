@@ -1,0 +1,112 @@
+// Recebe o pedido do cliente, junta com o perfil da marca e pede o roteiro à IA.
+// A chave da IA fica só aqui (segredo ANTHROPIC_API_KEY). A peça é desenhada no aparelho.
+import Anthropic from 'npm:@anthropic-ai/sdk@0.132.1'
+import { createClient } from 'npm:@supabase/supabase-js@2.117.3'
+import { conferir, ESQUEMA, INSTRUCOES, montarMensagem } from './conferir.ts'
+
+const CABECALHOS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+}
+const MAX_REFEITAS = 3
+
+function resposta(corpo: unknown, status = 200) {
+  return new Response(JSON.stringify(corpo), { status, headers: { ...CABECALHOS, 'Content-Type': 'application/json' } })
+}
+const erro = (mensagem: string, status: number) => resposta({ erro: mensagem }, status)
+
+function chaveDeServico() {
+  const antiga = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+  if (antiga) return antiga
+  try { return Object.values(JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS') || '{}'))[0] as string } catch { return '' }
+}
+
+// Primeiro dia do mês no horário de São Paulo (sem horário de verão desde 2019).
+function inicioDoMes() {
+  const [ano, mes] = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit' })
+    .format(new Date()).split('-')
+  return `${ano}-${mes}-01T00:00:00-03:00`
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: CABECALHOS })
+  if (req.method !== 'POST') return erro('Método não aceito.', 405)
+
+  const banco = createClient(Deno.env.get('SUPABASE_URL')!, chaveDeServico(), { auth: { persistSession: false } })
+  const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '')
+  const { data: conta } = await banco.auth.getUser(token)
+  if (!conta?.user) return erro('Entre de novo para continuar.', 401)
+
+  const { data: negocio } = await banco.from('negocios').select('id, limite_pecas').eq('dono', conta.user.id).single()
+  if (!negocio) return erro('Não achamos o seu negócio.', 404)
+
+  let corpo: { pedido?: string; formato?: string; fotos?: string[]; refazer?: string }
+  try { corpo = await req.json() } catch { return erro('Pedido inválido.', 400) }
+
+  let pedido = String(corpo.pedido || '').trim()
+  let formato = corpo.formato === 'story' ? 'story' : 'post'
+  let fotos = (corpo.fotos || []).filter((f) => typeof f === 'string' && f.startsWith(`${negocio.id}/`)).slice(0, 4)
+  let refeita: { id: string; refeitas: number } | null = null
+
+  if (corpo.refazer) {
+    const { data } = await banco.from('pecas').select('id, pedido, formato, fotos, refeitas')
+      .eq('id', corpo.refazer).eq('negocio', negocio.id).single()
+    if (!data) return erro('Não achamos essa peça.', 404)
+    if (data.refeitas >= MAX_REFEITAS) return erro(`Você já refez esta peça ${MAX_REFEITAS} vezes. Escreva um pedido novo.`, 429)
+    refeita = data
+    pedido = data.pedido
+    formato = corpo.formato ? formato : data.formato
+    fotos = data.fotos
+  } else {
+    const { count } = await banco.from('pecas').select('id', { count: 'exact', head: true })
+      .eq('negocio', negocio.id).gte('criado_em', inicioDoMes())
+    if ((count ?? 0) >= negocio.limite_pecas) return erro(`Você usou as ${negocio.limite_pecas} peças deste mês.`, 429)
+  }
+  if (pedido.length < 3 || pedido.length > 600) return erro('Escreva o pedido com 3 a 600 letras.', 400)
+
+  const { data: perfil } = await banco.from('perfis_marca').select('versao, identidade, voz, padrao, dados')
+    .eq('negocio', negocio.id).order('versao', { ascending: false }).limit(1).maybeSingle()
+  if (!perfil) return erro('Conte a sua marca antes de criar um post.', 409)
+
+  const chave = Deno.env.get('ANTHROPIC_API_KEY')
+  if (!chave) return erro('A IA ainda não foi ligada. Tente mais tarde.', 503)
+  const ia = new Anthropic({ apiKey: chave, timeout: 60_000, maxRetries: 1 })
+
+  let bruto: Record<string, unknown>
+  try {
+    const msg = await ia.beta.messages.create({
+      model: 'claude-opus-5-5',
+      max_tokens: 8000,
+      betas: ['server-side-fallback-2026-07-01'],
+      // @ts-ignore: campo novo da API, ainda sem tipo nesta versão do SDK
+      fallbacks: 'default',
+      output_config: { effort: 'low', format: { type: 'json_schema', schema: ESQUEMA } },
+      system: INSTRUCOES,
+      messages: [{ role: 'user', content: montarMensagem(perfil, pedido, formato) }],
+    })
+    if (msg.stop_reason === 'refusal') return erro('A IA não quis escrever esse pedido. Tente com outras palavras.', 422)
+    const texto = msg.content.find((b) => b.type === 'text')
+    if (!texto || texto.type !== 'text') throw new Error('sem texto')
+    bruto = JSON.parse(texto.text)
+  } catch (falha) {
+    console.error('ia', falha)
+    if (falha instanceof Anthropic.RateLimitError) return erro('Muita gente criando agora. Tente de novo em um minuto.', 503)
+    return erro('A IA não respondeu agora. Tente de novo.', 502)
+  }
+
+  const roteiro = conferir(bruto, perfil, pedido)
+  const linha = {
+    perfil_versao: perfil.versao,
+    formato,
+    modelo: roteiro.modelo,
+    roteiro,
+    imagem: null,
+  }
+  const consulta = refeita
+    ? banco.from('pecas').update({ ...linha, refeitas: refeita.refeitas + 1 }).eq('id', refeita.id)
+    : banco.from('pecas').insert({ ...linha, negocio: negocio.id, pedido, fotos })
+  const { data: peca, error } = await consulta.select('*').single()
+  if (error) { console.error('banco', error); return erro('Não deu para guardar a peça. Tente de novo.', 500) }
+  return resposta({ peca, refeitasRestantes: MAX_REFEITAS - peca.refeitas })
+})

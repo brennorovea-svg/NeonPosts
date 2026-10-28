@@ -13,7 +13,8 @@ export const PERFIL_VAZIO = {
 const PARTES = ['identidade', 'voz', 'padrao', 'dados']
 
 let memoriaDeTeste = null
-export function usarModoDeTeste() { memoriaDeTeste = { versao: 0, perfil: null } }
+export function usarModoDeTeste(perfil = null) { memoriaDeTeste = { versao: perfil ? 1 : 0, perfil } }
+export const modoDeTeste = () => Boolean(memoriaDeTeste)
 
 // Junta o que veio do banco com os campos vazios, para nenhum campo faltar.
 function completar(perfil) {

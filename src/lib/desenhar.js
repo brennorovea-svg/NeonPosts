@@ -228,6 +228,12 @@ function pilula(ctx, texto, { x, y, largura, altura = 112, fundo, cor, tamanho =
 }
 
 function brilho(ctx, cx, cy, raio, cor, forca = 0.55) {
+  // No vídeo, as luzes do fundo andam devagar, para a arte não ficar parada depois das entradas.
+  if (relogio) {
+    const fase = (cx + cy) * 0.003
+    cx += Math.sin(relogio.t * 0.6 + fase) * raio * 0.08
+    cy += Math.cos(relogio.t * 0.5 + fase) * raio * 0.06
+  }
   const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, raio)
   g.addColorStop(0, comAlfa(cor, forca))
   g.addColorStop(1, comAlfa(cor, 0))

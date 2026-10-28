@@ -91,10 +91,6 @@
 }
 
 /* Como pedir bem */
-.criar__ver-exemplos {
-  align-self: flex-start; margin-top: 2px; padding: 4px 0; border: 0; background: none; cursor: pointer;
-  font: 500 14px var(--fonte); color: var(--lilas); text-decoration: underline; text-underline-offset: 3px;
-}
 .criar__exemplos {
   display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: var(--raio-campo);
   background: rgba(123, 92, 255, .08); border: 1px solid rgba(123, 92, 255, .28);

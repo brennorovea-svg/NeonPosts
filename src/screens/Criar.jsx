@@ -65,7 +65,6 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
   const [restantes, setRestantes] = useState(pecaInicial ? 3 - pecaInicial.refeitas : 3)
   const [erro, setErro] = useState('')
   const [copiou, setCopiou] = useState(false)
-  const [exemplos, setExemplos] = useState(false)
   const [ajustando, setAjustando] = useState(false)
   const [pedidoNovo, setPedidoNovo] = useState('')
   const [ajuste, setAjuste] = useState('')
@@ -171,14 +170,11 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
                 ))}
               </div>
             )}
-            <button type="button" className="criar__ver-exemplos" aria-expanded={exemplos} onClick={() => setExemplos(!exemplos)}>
-              {exemplos ? 'Esconder exemplos' : 'Como pedir bem? Ver exemplos'}
-            </button>
-            {exemplos && (
+            {pedido.trim().length < 3 && (
               <div className="criar__exemplos">
-                <p>Diga <strong>o que</strong> é o post, <strong>para quem</strong>, o que a pessoa deve <strong>fazer depois</strong> e algum detalhe (preço, data, tom). Toque num exemplo para usar.</p>
+                <p>Um bom pedido diz <strong>o que</strong> é o post, <strong>para quem</strong>, o que a pessoa deve <strong>fazer depois</strong> e algum detalhe (preço, data, tom). Toque num exemplo para usar como base.</p>
                 {EXEMPLOS.map((e) => (
-                  <button key={e} type="button" className="criar__exemplo" onClick={() => { setPedido(e); setExemplos(false); area.current?.focus() }}>{e}</button>
+                  <button key={e} type="button" className="criar__exemplo" onClick={() => { setPedido(e); area.current?.focus() }}>{e}</button>
                 ))}
               </div>
             )}

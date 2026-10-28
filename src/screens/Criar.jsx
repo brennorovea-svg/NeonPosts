@@ -4,7 +4,7 @@ import Imagens from '../components/campos/Imagens.jsx'
 import Layouts from '../components/Layouts.jsx'
 import { sugerirLayouts, tipoDoPedido } from '../lib/sugerir.js'
 import { DURACAO, gravar, tocar } from '../lib/video.js'
-import { MARCADORES, marcadoresDe, preencher } from '../lib/marcadores.js'
+import { listaDeNomes, MARCADORES, marcadoresDe, preencher } from '../lib/marcadores.js'
 import { enderecoDaImagem } from '../lib/perfil.js'
 import { acordarIA, escolherVersao, gerarPeca, guardarImagem } from '../lib/pecas.js'
 import { carregarImagem, desenhar, NOMES_DOS_MODELOS, paraArquivo, prepararFontes } from '../lib/desenhar.js'
@@ -454,7 +454,8 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
 
             {faltando.length > 0 && (
               <div className="criar__faltando">
-                <p className="criar__faltando-titulo">Antes de baixar, complete o que a IA não pode inventar:</p>
+                <p className="criar__faltando-titulo">Precisamos saber {listaDeNomes(faltando)} para gerar o seu {video && peca.formato === 'story' ? 'vídeo' : peca.formato}</p>
+                <p className="criar__faltando-texto">A IA não inventa esse dado. O que você escrever aqui entra na arte e na legenda.</p>
                 {faltando.map((m) => (
                   <div className="campo" key={m}>
                     <label htmlFor={`falta-${m}`}>{MARCADORES[m].pergunta}</label>
@@ -480,7 +481,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
             {erro && <p className="campo__erro" role="alert">{erro}</p>}
             <div className="criar__acoes">
               <button type="button" className="botao botao--primario" onClick={baixar} disabled={gravando !== null || semDados.length > 0}>
-                {semDados.length > 0 ? `Preencha ${semDados.length > 1 ? 'os dados' : MARCADORES[semDados[0]].pergunta.replace(/^Qual (o|a) /, '$1 ').replace('?', '')} para baixar` : gravando !== null ? `Gravando o vídeo... ${Math.ceil(DURACAO * (1 - gravando))} s` : video && peca.formato === 'story' ? (videoPronto ? 'Salvar vídeo e postar' : 'Gravar vídeo') : 'Baixar e postar'}
+                {semDados.length > 0 ? `Preencha ${listaDeNomes(semDados)} para baixar` : gravando !== null ? `Gravando o vídeo... ${Math.ceil(DURACAO * (1 - gravando))} s` : video && peca.formato === 'story' ? (videoPronto ? 'Salvar vídeo e postar' : 'Gravar vídeo') : 'Baixar e postar'}
               </button>
               {gravando !== null && (
                 <div className="criar__gravando" aria-hidden="true"><span style={{ transform: `scaleX(${gravando})` }} /></div>

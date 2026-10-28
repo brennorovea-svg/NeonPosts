@@ -183,4 +183,5 @@
   background: rgba(255, 216, 77, .08); border: 1px solid rgba(255, 216, 77, .4);
   animation: aparecer 400ms var(--ease) both;
 }
-.criar__faltando-titulo { margin: 0; font-size: 14px; font-weight: 600; color: #FFE69A; }
+.criar__faltando-titulo { margin: 0; font-size: 17px; font-weight: 700; color: #FFE69A; }
+.criar__faltando-texto { margin: -8px 0 0; font-size: 13px; color: var(--texto-2); }

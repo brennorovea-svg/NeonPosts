@@ -8,6 +8,8 @@ const CABECALHOS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  // O navegador guarda a checagem de CORS por um dia e não repete o OPTIONS a cada peça.
+  'Access-Control-Max-Age': '86400',
 }
 const MAX_REFEITAS = 3
 
@@ -50,24 +52,30 @@ Deno.serve(async (req) => {
   let refeita: { id: string; pedido: string; refeitas: number; roteiro: Record<string, unknown>; versoes: { roteiro: Record<string, unknown> }[]; escolhida: number | null } | null = null
   const ajuste = String(corpo.ajuste || '').trim().slice(0, 300)
 
+  // Perfil e (peça antiga ou contagem do mês) saem do banco ao mesmo tempo.
+  const [{ data: perfil }, anterior] = await Promise.all([
+    banco.from('perfis_marca').select('versao, identidade, voz, padrao, dados')
+      .eq('negocio', negocio.id).order('versao', { ascending: false }).limit(1).maybeSingle(),
+    corpo.refazer
+      ? banco.from('pecas').select('id, pedido, formato, fotos, refeitas, roteiro, versoes, escolhida')
+        .eq('id', corpo.refazer).eq('negocio', negocio.id).maybeSingle()
+      : banco.from('pecas').select('id', { count: 'exact', head: true })
+        .eq('negocio', negocio.id).gte('criado_em', inicioDoMes()),
+  ])
+
   if (corpo.refazer) {
-    const { data } = await banco.from('pecas').select('id, pedido, formato, fotos, refeitas, roteiro, versoes, escolhida')
-      .eq('id', corpo.refazer).eq('negocio', negocio.id).single()
+    const data = anterior.data as (NonNullable<typeof refeita> & { formato: string; fotos: string[] }) | null
     if (!data) return erro('Não achamos essa peça.', 404)
     if (data.refeitas >= MAX_REFEITAS) return erro(`Você já refez esta peça ${MAX_REFEITAS} vezes. Escreva um pedido novo.`, 429)
     refeita = data
     pedido = pedido || data.pedido
     formato = corpo.formato ? formato : data.formato
     fotos = data.fotos
-  } else {
-    const { count } = await banco.from('pecas').select('id', { count: 'exact', head: true })
-      .eq('negocio', negocio.id).gte('criado_em', inicioDoMes())
-    if ((count ?? 0) >= negocio.limite_pecas) return erro(`Você usou as ${negocio.limite_pecas} peças deste mês.`, 429)
+  } else if ((anterior.count ?? 0) >= negocio.limite_pecas) {
+    return erro(`Você usou as ${negocio.limite_pecas} peças deste mês.`, 429)
   }
   if (pedido.length < 3 || pedido.length > 600) return erro('Escreva o pedido com 3 a 600 letras.', 400)
 
-  const { data: perfil } = await banco.from('perfis_marca').select('versao, identidade, voz, padrao, dados')
-    .eq('negocio', negocio.id).order('versao', { ascending: false }).limit(1).maybeSingle()
   if (!perfil) return erro('Conte a sua marca antes de criar um post.', 409)
 
   const chave = Deno.env.get('ANTHROPIC_API_KEY')
@@ -77,11 +85,12 @@ Deno.serve(async (req) => {
   let bruto: Record<string, unknown>
   try {
     // Post: Haiku 5.5, rápido e barato para texto curto. Story: Opus 5.5, com mais cuidado.
+    // Esforço baixo nos dois: a peça é curta e quem espera é o cliente. As instruções ficam em cache.
     // O Haiku 5.5 não tem fallback no servidor, então o pedido dele vai sem `fallbacks`.
     const pedidoIA = {
       max_tokens: 16000,
-      output_config: { effort: 'medium', format: { type: 'json_schema', schema: ESQUEMA } },
-      system: INSTRUCOES,
+      output_config: { effort: 'low', format: { type: 'json_schema', schema: ESQUEMA } },
+      system: [{ type: 'text' as const, text: INSTRUCOES, cache_control: { type: 'ephemeral' as const } }],
       messages: [{ role: 'user' as const, content: montarMensagem(perfil, pedido, formato, refeita && (refeita.versoes?.[refeita.escolhida ?? -1]?.roteiro || refeita.roteiro), ajuste, fotos.length > 0) }],
     }
     const msg = formato === 'story'

@@ -1,5 +1,6 @@
 import { supabase } from './supabase.js'
 import { modoDeTeste } from './perfil.js'
+import { SUPABASE_URL } from '../config.js'
 
 // Peças geradas. A IA roda na função gerar-peca do Supabase; aqui só chamamos,
 // listamos e guardamos a imagem que o aparelho desenhou.
@@ -19,6 +20,12 @@ let pecasDeTeste = []
 export function inicioDoMes() {
   const agora = new Date()
   return new Date(agora.getFullYear(), agora.getMonth(), 1).toISOString()
+}
+
+// Um GET vazio acorda a função (responde 405 sem chamar a IA) para o clique não pagar a partida a frio.
+export function acordarIA() {
+  if (modoDeTeste() || !SUPABASE_URL) return
+  fetch(`${SUPABASE_URL}/functions/v1/gerar-peca`).catch(() => {})
 }
 
 export async function gerarPeca({ pedido, formato, fotos = [], refazer, ajuste }) {

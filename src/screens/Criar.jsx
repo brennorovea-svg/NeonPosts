@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import Obturador from '../components/Obturador.jsx'
 import Imagens from '../components/campos/Imagens.jsx'
 import { enderecoDaImagem } from '../lib/perfil.js'
-import { gerarPeca, guardarImagem } from '../lib/pecas.js'
+import { escolherVersao, gerarPeca, guardarImagem } from '../lib/pecas.js'
 import { carregarImagem, desenhar, NOMES_DOS_MODELOS, paraArquivo, prepararFontes } from '../lib/desenhar.js'
 import './Criar.css'
 
@@ -40,6 +40,13 @@ function Lente({ pronta, onFim }) {
   )
 }
 
+const EXEMPLOS = [
+  'Promoção do nosso serviço mais pedido só até sexta, para quem ainda não conhece a gente. Chamar no WhatsApp.',
+  'Bastidores: mostrar a equipe preparando os pedidos de hoje, num tom leve e divertido.',
+  'Aviso: no feriado vamos abrir das 10h às 16h. Lembrar que dá para pedir pelo WhatsApp.',
+]
+const AJUSTES = ['Mais curto', 'Mais divertido', 'Mais direto', 'Outro título', 'Sem emoji']
+
 const FORMATOS = [['post', 'Post', '4:5'], ['story', 'Story', '9:16']]
 
 // Começos de pedido a partir dos tipos que a marca disse que posta.
@@ -58,6 +65,10 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
   const [restantes, setRestantes] = useState(pecaInicial ? 3 - pecaInicial.refeitas : 3)
   const [erro, setErro] = useState('')
   const [copiou, setCopiou] = useState(false)
+  const [exemplos, setExemplos] = useState(false)
+  const [ajustando, setAjustando] = useState(false)
+  const [pedidoNovo, setPedidoNovo] = useState('')
+  const [ajuste, setAjuste] = useState('')
   const [flash, setFlash] = useState(false)
   const [imagens, setImagens] = useState({ logo: null, foto: null, pronto: false })
   const canvas = useRef(null)
@@ -80,7 +91,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
   // Redesenha a cada troca de modelo ou formato e guarda a imagem para o histórico.
   useEffect(() => {
     if (!peca || !canvas.current || estado !== 'pronta' || !imagens.pronto) return
-    desenhar(canvas.current, { formato: peca.formato, modelo: peca.modelo, roteiro: peca.roteiro, cores: perfil.identidade.cores, nome, logo: imagens.logo, foto: imagens.foto })
+    desenhar(canvas.current, { formato: peca.formato, modelo: peca.modelo, roteiro: [...(peca.versoes || []), { roteiro: peca.roteiro }][peca.escolhida ?? (peca.versoes || []).length].roteiro, cores: perfil.identidade.cores, nome, logo: imagens.logo, foto: imagens.foto })
     const t = setTimeout(async () => {
       try { await guardarImagem(peca, negocioId, await paraArquivo(canvas.current, 'peca.png')) } catch { /* o histórico fica sem miniatura */ }
     }, 600)
@@ -92,7 +103,11 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
     setEstado('gerando')
     window.scrollTo({ top: 0 })
     try {
-      const r = await gerarPeca(refazer ? { refazer: peca.id, formato: peca.formato } : { pedido: pedido.trim(), formato, fotos: foto ? [foto] : [] })
+      const r = await gerarPeca(refazer
+        ? { refazer: peca.id, formato: peca.formato, pedido: pedidoNovo.trim(), ajuste: ajuste.trim() }
+        : { pedido: pedido.trim(), formato, fotos: foto ? [foto] : [] })
+      setAjustando(false)
+      setAjuste('')
       setPeca(r.peca)
       setRestantes(r.refeitasRestantes)
       setEstado('revelando')
@@ -115,13 +130,21 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
   }
 
   async function copiar() {
-    const r = peca.roteiro
+    const r = roteiro
     await navigator.clipboard.writeText(`${r.legenda}\n\n${r.hashtags.join(' ')}`)
     setCopiou(true)
     setTimeout(() => setCopiou(false), 1800)
   }
 
   const trocar = (campo, valor) => setPeca((p) => ({ ...p, [campo]: valor }))
+  const versoes = peca ? [...(peca.versoes || []), { pedido: peca.pedido, roteiro: peca.roteiro }] : []
+  const indice = peca ? Math.min(peca.escolhida ?? versoes.length - 1, versoes.length - 1) : 0
+  const roteiro = versoes[indice]?.roteiro
+  function escolher(i) {
+    const valor = i === versoes.length - 1 ? null : i
+    trocar('escolhida', valor)
+    escolherVersao(peca.id, valor).catch(() => {})
+  }
   const comecos = perfil.padrao.tipos.map((t) => [t, COMECOS[t] || `Post de ${t.toLowerCase()} sobre `])
 
   return (
@@ -145,6 +168,17 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
               <div className="fichas criar__comecos">
                 {comecos.map(([tipo, comeco]) => (
                   <button key={tipo} type="button" className="ficha" onClick={() => { setPedido(comeco); area.current?.focus() }}>{tipo}</button>
+                ))}
+              </div>
+            )}
+            <button type="button" className="criar__ver-exemplos" aria-expanded={exemplos} onClick={() => setExemplos(!exemplos)}>
+              {exemplos ? 'Esconder exemplos' : 'Como pedir bem? Ver exemplos'}
+            </button>
+            {exemplos && (
+              <div className="criar__exemplos">
+                <p>Diga <strong>o que</strong> é o post, <strong>para quem</strong>, o que a pessoa deve <strong>fazer depois</strong> e algum detalhe (preço, data, tom). Toque num exemplo para usar.</p>
+                {EXEMPLOS.map((e) => (
+                  <button key={e} type="button" className="criar__exemplo" onClick={() => { setPedido(e); setExemplos(false); area.current?.focus() }}>{e}</button>
                 ))}
               </div>
             )}
@@ -192,11 +226,47 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
         <main className="criar__pronta">
           {flash && <div className="criar__flash" aria-hidden="true" />}
           <div className={`criar__previa criar__previa--${peca.formato}`}>
-            <canvas ref={canvas} aria-label={`Prévia: ${peca.roteiro.titulo}`} />
+            <canvas ref={canvas} aria-label={`Prévia: ${roteiro.titulo}`} />
           </div>
 
           <div className="criar__painel">
-            <p className="criar__pedido">“{peca.pedido}”</p>
+            {ajustando ? (
+              <div className="criar__ajustar">
+                <div className="campo">
+                  <label htmlFor="pedido-novo">Seu pedido</label>
+                  <textarea id="pedido-novo" rows={3} maxLength={600} value={pedidoNovo} onChange={(e) => setPedidoNovo(e.target.value)} />
+                </div>
+                <div className="campo">
+                  <label htmlFor="ajuste">O que mudar? (opcional)</label>
+                  <input id="ajuste" maxLength={300} value={ajuste} onChange={(e) => setAjuste(e.target.value)} placeholder="Ex.: mais curto, falar do site, sem emoji" />
+                  <div className="fichas">
+                    {AJUSTES.map((a) => (
+                      <button key={a} type="button" className="ficha" onClick={() => setAjuste((v) => (v ? `${v}, ${a.toLowerCase()}` : a))}>{a}</button>
+                    ))}
+                  </div>
+                </div>
+                <div className="criar__acoes-linha">
+                  <button type="button" className="botao botao--fantasma" onClick={() => setAjustando(false)}>Cancelar</button>
+                  <button type="button" className="botao botao--destaque" disabled={pedidoNovo.trim().length < 3} onClick={() => criar(true)}>Gerar nova versão ({restantes})</button>
+                </div>
+              </div>
+            ) : (
+              <p className="criar__pedido">“{versoes[indice]?.pedido || peca.pedido}”</p>
+            )}
+
+            {versoes.length > 1 && (
+              <div className="campo">
+                <span className="campo__rotulo">Versão que vai para o post</span>
+                <div className="criar__versoes">
+                  {versoes.map((v, i) => (
+                    <button key={i} type="button" className="criar__versao" aria-pressed={indice === i} onClick={() => escolher(i)}>
+                      <span className="mono">{i + 1}</span>
+                      <span>{v.roteiro.titulo}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="campo">
               <span className="campo__rotulo">Modelo</span>
@@ -215,15 +285,15 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
               </div>
             </div>
 
-            {peca.roteiro.avisos?.length > 0 && (
+            {roteiro.avisos?.length > 0 && (
               <ul className="criar__avisos">
-                {peca.roteiro.avisos.map((a) => <li key={a}>{a}</li>)}
+                {roteiro.avisos.map((a) => <li key={a}>{a}</li>)}
               </ul>
             )}
 
             <div className="criar__legenda">
-              <p>{peca.roteiro.legenda}</p>
-              <p className="criar__hashtags">{peca.roteiro.hashtags.join(' ')}</p>
+              <p>{roteiro.legenda}</p>
+              <p className="criar__hashtags">{roteiro.hashtags.join(' ')}</p>
             </div>
 
             {erro && <p className="campo__erro" role="alert">{erro}</p>}
@@ -231,7 +301,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
               <button type="button" className="botao botao--primario" onClick={baixar}>Baixar e postar</button>
               <button type="button" className="botao botao--destaque" onClick={copiar}>{copiou ? 'Legenda copiada' : 'Copiar legenda'}</button>
               <div className="criar__acoes-linha">
-                <button type="button" className="botao botao--fantasma" disabled={restantes <= 0} onClick={() => criar(true)}>
+                <button type="button" className="botao botao--fantasma" disabled={restantes <= 0 || ajustando} onClick={() => { setPedidoNovo(peca.pedido); setAjustando(true) }}>
                   Gerar de novo{restantes > 0 ? ` (${restantes})` : ''}
                 </button>
                 <button type="button" className="botao botao--fantasma" onClick={() => { setPeca(null); setPedido(''); setFoto(null); setEstado('pedido') }}>Criar outro</button>

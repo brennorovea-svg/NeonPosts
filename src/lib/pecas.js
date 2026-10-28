@@ -21,19 +21,21 @@ export function inicioDoMes() {
   return new Date(agora.getFullYear(), agora.getMonth(), 1).toISOString()
 }
 
-export async function gerarPeca({ pedido, formato, fotos = [], refazer }) {
+export async function gerarPeca({ pedido, formato, fotos = [], refazer, ajuste }) {
   if (modoDeTeste()) {
     await new Promise((ok) => setTimeout(ok, 2200))
     const antiga = refazer && pecasDeTeste.find((p) => p.id === refazer)
     const peca = {
       id: antiga?.id || `teste-${Date.now()}`,
-      formato, modelo: ROTEIRO_DE_TESTE.modelo, pedido: antiga?.pedido || pedido, fotos: antiga?.fotos || fotos,
-      roteiro: ROTEIRO_DE_TESTE, imagem: null, refeitas: (antiga?.refeitas ?? -1) + 1, criado_em: new Date().toISOString(),
+      formato, modelo: ROTEIRO_DE_TESTE.modelo, pedido: pedido || antiga?.pedido, fotos: antiga?.fotos || fotos,
+      roteiro: { ...ROTEIRO_DE_TESTE, titulo: antiga ? `${ROTEIRO_DE_TESTE.titulo} (v${antiga.refeitas + 2})` : ROTEIRO_DE_TESTE.titulo },
+      imagem: null, refeitas: (antiga?.refeitas ?? -1) + 1, criado_em: new Date().toISOString(),
+      versoes: antiga ? [...antiga.versoes, { pedido: antiga.pedido, roteiro: antiga.roteiro }] : [], escolhida: null,
     }
     pecasDeTeste = [peca, ...pecasDeTeste.filter((p) => p.id !== peca.id)]
     return { peca, refeitasRestantes: 3 - peca.refeitas }
   }
-  const { data, error } = await supabase.functions.invoke('gerar-peca', { body: { pedido, formato, fotos, refazer } })
+  const { data, error } = await supabase.functions.invoke('gerar-peca', { body: { pedido, formato, fotos, refazer, ajuste } })
   if (error) {
     let mensagem = 'Não deu para criar agora. Tente de novo.'
     try { mensagem = (await error.context.json()).erro || mensagem } catch { /* resposta sem corpo */ }
@@ -45,7 +47,7 @@ export async function gerarPeca({ pedido, formato, fotos = [], refazer }) {
 export async function listarPecas(negocioId, quantas = 12) {
   if (modoDeTeste()) return pecasDeTeste.slice(0, quantas)
   const { data, error } = await supabase.from('pecas')
-    .select('id, formato, modelo, pedido, roteiro, fotos, imagem, refeitas, criado_em')
+    .select('id, formato, modelo, pedido, roteiro, versoes, escolhida, fotos, imagem, refeitas, criado_em')
     .eq('negocio', negocioId).order('criado_em', { ascending: false }).limit(quantas)
   if (error) throw error
   return data
@@ -61,9 +63,15 @@ export async function pecasDoMes(negocioId) {
 // Guarda a imagem desenhada (uma por modelo) para o histórico mostrar a miniatura.
 export async function guardarImagem(peca, negocioId, arquivo) {
   if (modoDeTeste()) return
-  const caminho = `${negocioId}/peca-${peca.id}-${peca.formato}-${peca.modelo}-${peca.refeitas}.png`
+  const caminho = `${negocioId}/peca-${peca.id}-${peca.formato}-${peca.modelo}-${peca.refeitas}-${peca.escolhida ?? 'n'}.png`
   const { error } = await supabase.storage.from('marcas').upload(caminho, arquivo, { contentType: 'image/png' })
   if (error && !/exists/i.test(error.message)) return
   await supabase.from('pecas').update({ modelo: peca.modelo, formato: peca.formato, imagem: caminho }).eq('id', peca.id)
   return caminho
+}
+
+// Qual versão vai para o post. Vazio é a mais nova.
+export async function escolherVersao(pecaId, indice) {
+  if (modoDeTeste()) return
+  await supabase.from('pecas').update({ escolhida: indice }).eq('id', pecaId)
 }

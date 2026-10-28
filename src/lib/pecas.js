@@ -28,13 +28,13 @@ export function acordarIA() {
   fetch(`${SUPABASE_URL}/functions/v1/gerar-peca`).catch(() => {})
 }
 
-export async function gerarPeca({ pedido, formato, fotos = [], refazer, ajuste }) {
+export async function gerarPeca({ pedido, formato, fotos = [], refazer, ajuste, modelo }) {
   if (modoDeTeste()) {
     await new Promise((ok) => setTimeout(ok, 6000))
     const antiga = refazer && pecasDeTeste.find((p) => p.id === refazer)
     const peca = {
       id: antiga?.id || `teste-${Date.now()}`,
-      formato, modelo: ROTEIRO_DE_TESTE.modelo, pedido: pedido || antiga?.pedido, fotos: antiga?.fotos || fotos,
+      formato, modelo: modelo || antiga?.modelo || ROTEIRO_DE_TESTE.modelo, pedido: pedido || antiga?.pedido, fotos: antiga?.fotos || fotos,
       roteiro: { ...ROTEIRO_DE_TESTE, titulo: antiga ? `${ROTEIRO_DE_TESTE.titulo} (v${antiga.refeitas + 2})` : ROTEIRO_DE_TESTE.titulo, cores: /verde/i.test(ajuste || '') ? { titulo: '#2ECC71', texto: '#2ECC71' } : {} },
       imagem: null, refeitas: (antiga?.refeitas ?? -1) + 1, criado_em: new Date().toISOString(),
       versoes: antiga ? [...antiga.versoes, { pedido: antiga.pedido, roteiro: antiga.roteiro }] : [], escolhida: null,
@@ -42,7 +42,7 @@ export async function gerarPeca({ pedido, formato, fotos = [], refazer, ajuste }
     pecasDeTeste = [peca, ...pecasDeTeste.filter((p) => p.id !== peca.id)]
     return { peca, refeitasRestantes: 3 - peca.refeitas }
   }
-  const { data, error } = await supabase.functions.invoke('gerar-peca', { body: { pedido, formato, fotos, refazer, ajuste } })
+  const { data, error } = await supabase.functions.invoke('gerar-peca', { body: { pedido, formato, fotos, refazer, ajuste, modelo } })
   if (error) {
     let mensagem = 'Não deu para criar agora. Tente de novo.'
     try { mensagem = (await error.context.json()).erro || mensagem } catch { /* resposta sem corpo */ }

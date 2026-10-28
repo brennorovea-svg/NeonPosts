@@ -6,6 +6,40 @@ import { gerarPeca, guardarImagem } from '../lib/pecas.js'
 import { carregarImagem, desenhar, NOMES_DOS_MODELOS, paraArquivo, prepararFontes } from '../lib/desenhar.js'
 import './Criar.css'
 
+const suave = (t) => 1 - Math.pow(1 - Math.min(1, Math.max(0, t)), 4)
+
+// Enquanto a IA trabalha, a lente fica fechada e respira. Quando a peça chega,
+// a íris abre, dispara o flash e a faísca, e só então a peça aparece.
+function Lente({ pronta, onFim }) {
+  const [q, setQ] = useState({ abertura: 0.08, flash: 0, faisca: 0, escalaFaisca: 0.5 })
+  useEffect(() => {
+    if (!pronta) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { onFim(); return }
+    let id
+    const inicio = performance.now()
+    const passo = (agora) => {
+      const t = (agora - inicio) / 1000
+      const ft = (t - 0.5) / 0.32
+      const kt = (t - 0.5) / 0.45
+      setQ({
+        abertura: 0.08 + suave(t / 0.55) * 0.92,
+        flash: ft < 0 || ft > 1 ? 0 : ft < 0.25 ? ft / 0.25 : 1 - suave((ft - 0.25) / 0.75),
+        faisca: kt < 0 || kt > 1 ? 0 : kt < 0.3 ? kt / 0.3 : 1 - (kt - 0.3) / 0.7,
+        escalaFaisca: 0.5 + 0.5 * suave(kt),
+      })
+      if (t < 1.0) id = requestAnimationFrame(passo)
+      else onFim()
+    }
+    id = requestAnimationFrame(passo)
+    return () => cancelAnimationFrame(id)
+  }, [pronta])
+  return (
+    <div className={pronta ? undefined : 'criar__respira'}>
+      <Obturador tamanho={140} {...q} />
+    </div>
+  )
+}
+
 const FORMATOS = [['post', 'Post', '4:5'], ['story', 'Story', '9:16']]
 
 // Começos de pedido a partir dos tipos que a marca disse que posta.
@@ -19,7 +53,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
   const [pedido, setPedido] = useState('')
   const [formato, setFormato] = useState('post')
   const [foto, setFoto] = useState(null)
-  const [estado, setEstado] = useState(pecaInicial ? 'pronta' : 'pedido') // pedido | gerando | pronta
+  const [estado, setEstado] = useState(pecaInicial ? 'pronta' : 'pedido') // pedido | gerando | revelando | pronta
   const [peca, setPeca] = useState(pecaInicial || null)
   const [restantes, setRestantes] = useState(pecaInicial ? 3 - pecaInicial.refeitas : 3)
   const [erro, setErro] = useState('')
@@ -61,9 +95,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
       const r = await gerarPeca(refazer ? { refazer: peca.id, formato: peca.formato } : { pedido: pedido.trim(), formato, fotos: foto ? [foto] : [] })
       setPeca(r.peca)
       setRestantes(r.refeitasRestantes)
-      setFlash(true)
-      setTimeout(() => setFlash(false), 420)
-      setEstado('pronta')
+      setEstado('revelando')
     } catch (falha) {
       setErro(falha.message)
       setEstado(refazer ? 'pronta' : 'pedido')
@@ -145,11 +177,14 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
         </main>
       )}
 
-      {estado === 'gerando' && (
+      {(estado === 'gerando' || estado === 'revelando') && (
         <main className="criar__gerando" aria-live="polite">
-          <div className="criar__respira"><Obturador tamanho={140} /></div>
-          <p className="criar__gerando-texto">Criando com a cara {nome ? `da ${nome}` : 'da sua marca'}...</p>
-          <p className="criar__gerando-sub mono">Leva uns segundos</p>
+          <Lente
+            pronta={estado === 'revelando'}
+            onFim={() => { setFlash(true); setTimeout(() => setFlash(false), 420); setEstado('pronta') }}
+          />
+          <p className="criar__gerando-texto">{estado === 'revelando' ? 'Pronto.' : `Criando com a cara ${nome ? `da ${nome}` : 'da sua marca'}...`}</p>
+          <p className="criar__gerando-sub mono">{estado === 'revelando' ? '\u00a0' : 'Leva uns segundos'}</p>
         </main>
       )}
 

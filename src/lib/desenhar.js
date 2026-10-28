@@ -9,6 +9,44 @@ export const NOMES_DOS_MODELOS = {
 }
 const FONTE = '"Instrument Sans", system-ui, sans-serif'
 
+// Vídeo: quando há relógio, cada elemento entra na ordem em que é desenhado.
+// Só opacidade, deslocamento e escala, no easing da marca. Sem relógio, a arte sai parada.
+let relogio = null
+const suave = (x) => 1 - Math.pow(1 - Math.min(1, Math.max(0, x)), 4)
+function proximaEntrada() {
+  const inicio = 0.35 + relogio.ordem * 0.32
+  relogio.ordem += 1
+  return inicio
+}
+// Abre a entrada de um elemento: some, desce um pouco e sobe até o lugar.
+function entrar(ctx, inicio, { dur = 0.6, desloca = 36, escala = 0 } = {}, cx = 0, cy = 0) {
+  if (!relogio) return 1
+  const p = suave((relogio.t - inicio) / dur)
+  ctx.globalAlpha = p
+  ctx.translate(0, (1 - p) * desloca)
+  if (escala) {
+    const e = 1 - escala * (1 - p)
+    ctx.translate(cx, cy)
+    ctx.scale(e, e)
+    ctx.translate(-cx, -cy)
+  }
+  return p
+}
+// Desenha um elemento solto (chamada em texto, número, aspas) com a sua entrada no vídeo.
+function animado(ctx, desenho, opcoes) {
+  ctx.save()
+  if (relogio) entrar(ctx, proximaEntrada(), opcoes)
+  desenho()
+  ctx.restore()
+}
+// Piscada de neon da palavra em destaque: apaga e acende rápido duas vezes, depois fica acesa.
+function piscada(inicio) {
+  if (!relogio) return 1
+  const t = relogio.t - inicio
+  if (t < 0) return 1
+  return [[0.0, 0.08], [0.16, 0.22], [2.6, 2.66]].some(([a, b]) => t >= a && t < b) ? 0.25 : 1
+}
+
 export async function prepararFontes() {
   await Promise.all(['400', '600', '700'].map((p) => document.fonts.load(`${p} 40px "Instrument Sans"`)))
 }
@@ -92,35 +130,50 @@ function bloco(ctx, texto, { x, y, largura, tamanho, minimo = 36, peso = 700, ma
   ctx.textBaseline = 'alphabetic'
   const topo = baseEmBaixo ? y - altura * n : y
   const pintar = corMarca ? marcadas(texto, marcar) : new Set()
+  const inicio = relogio ? proximaEntrada() : 0
+  // No vídeo, cada linha entra um pouco depois da anterior.
+  const linha = (i, desenho) => {
+    ctx.save()
+    entrar(ctx, inicio + i * 0.12)
+    desenho()
+    ctx.restore()
+  }
   if (!pintar.size) {
     ctx.fillStyle = cor
     ctx.textAlign = alinhar
     const ax = alinhar === 'center' ? x + largura / 2 : x
-    linhas.forEach((l, i) => ctx.fillText(l, ax, topo + t * 0.9 + altura * i))
+    linhas.forEach((l, i) => linha(i, () => ctx.fillText(l, ax, topo + t * 0.9 + altura * i)))
   } else {
     // Palavra por palavra, para trocar a cor só no trecho destacado.
     ctx.textAlign = 'left'
     const espaco = ctx.measureText(' ').width
     let n = 0
-    linhas.forEach((l, i) => {
+    const brilhoMarca = piscada(inicio + 0.3 + linhas.length * 0.12 + 0.5)
+    linhas.forEach((l, i) => linha(i, () => {
       const w = ctx.measureText(l).width
       let px = alinhar === 'center' ? x + (largura - w) / 2 : x
       for (const palavra of l.split(' ')) {
-        ctx.fillStyle = pintar.has(n++) ? corMarca : cor
+        const marcada = pintar.has(n++)
+        ctx.fillStyle = marcada ? corMarca : cor
+        if (marcada && brilhoMarca < 1) ctx.globalAlpha *= brilhoMarca
         ctx.fillText(palavra, px, topo + t * 0.9 + altura * i)
+        if (marcada && brilhoMarca < 1) ctx.globalAlpha /= brilhoMarca
         px += ctx.measureText(palavra).width + espaco
       }
-    })
+    }))
   }
   return baseEmBaixo ? topo : topo + altura * n
 }
 
 // Altura que um bloco ocupa, sem desenhar.
 function medir(ctx, texto, opcoes) {
+  const guardado = relogio
+  relogio = null
   ctx.save()
   ctx.fillStyle = 'transparent'
   const fim = bloco(ctx, texto, { ...opcoes, y: 0, cor: 'rgba(0,0,0,0)' })
   ctx.restore()
+  relogio = guardado
   return fim
 }
 
@@ -130,7 +183,9 @@ function arredondado(ctx, x, y, l, a, r) {
 }
 
 function cobrir(ctx, img, x, y, l, a) {
-  const escala = Math.max(l / img.width, a / img.height)
+  // No vídeo, a foto começa um pouco mais perto e se afasta devagar.
+  const zoom = relogio ? 1.12 - 0.12 * suave(relogio.t / relogio.total) : 1
+  const escala = Math.max(l / img.width, a / img.height) * zoom
   const w = img.width * escala, h = img.height * escala
   ctx.drawImage(img, x + (l - w) / 2, y + (a - h) / 2, w, h)
 }
@@ -138,6 +193,7 @@ function cobrir(ctx, img, x, y, l, a) {
 // Logo num selo claro, para funcionar sobre qualquer fundo; sem logo, o nome.
 function selo(ctx, { logo, nome, x, y, altura = 96, alinhar = 'left', claro = true }) {
   ctx.save()
+  if (relogio) entrar(ctx, 0.1, { desloca: -20 })
   if (logo) {
     const l = Math.min(altura * (logo.width / logo.height), 360)
     const pad = 18
@@ -158,6 +214,8 @@ function selo(ctx, { logo, nome, x, y, altura = 96, alinhar = 'left', claro = tr
 }
 
 function pilula(ctx, texto, { x, y, largura, altura = 112, fundo, cor, tamanho = 42 }) {
+  ctx.save()
+  if (relogio) entrar(ctx, proximaEntrada() + 0.2, { dur: 0.5, desloca: 0, escala: 0.12 }, x + largura / 2, y + altura / 2)
   arredondado(ctx, x, y, largura, altura, altura / 2)
   ctx.fillStyle = fundo
   ctx.fill()
@@ -166,9 +224,16 @@ function pilula(ctx, texto, { x, y, largura, altura = 112, fundo, cor, tamanho =
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
   ctx.fillText(texto, x + largura / 2, y + altura / 2 + 2)
+  ctx.restore()
 }
 
 function brilho(ctx, cx, cy, raio, cor, forca = 0.55) {
+  // No vídeo, as luzes do fundo andam devagar, para a arte não ficar parada depois das entradas.
+  if (relogio) {
+    const fase = (cx + cy) * 0.003
+    cx += Math.sin(relogio.t * 0.6 + fase) * raio * 0.08
+    cy += Math.cos(relogio.t * 0.5 + fase) * raio * 0.06
+  }
   const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, raio)
   g.addColorStop(0, comAlfa(cor, forca))
   g.addColorStop(1, comAlfa(cor, 0))
@@ -258,6 +323,8 @@ function promo(ctx, { L, A, story, c, r, logo, foto, nome }) {
 
   let iy = Math.max(y + 40, chamadaY - 40 - itens.length * 124)
   for (const item of itens) {
+    ctx.save()
+    if (relogio) entrar(ctx, proximaEntrada(), { desloca: 0, escala: 0.06 }, L / 2, iy + 54)
     arredondado(ctx, m, iy, L - m * 2, 108, 28)
     ctx.fillStyle = 'rgba(255,255,255,.94)'
     ctx.fill()
@@ -274,6 +341,7 @@ function promo(ctx, { L, A, story, c, r, logo, foto, nome }) {
     ctx.fillStyle = textoSobre(c[0])
     ctx.textAlign = 'center'
     ctx.fillText(item.preco, L - m - 16 - pw / 2, iy + 56)
+    ctx.restore()
     iy += 124
   }
   if (r.chamada) pilula(ctx, r.chamada, { x: m, y: chamadaY, largura: L - m * 2, fundo: tinta, cor: tinta === '#FFFFFF' ? c[0] : '#FFFFFF' })
@@ -347,11 +415,14 @@ function bastidores(ctx, { L, A, story, c, r, logo, foto, nome }) {
 
   let y = A - base
   if (r.chamada) {
-    ctx.font = `700 40px ${FONTE}`
-    ctx.fillStyle = corPedida(r, 'destaque', destaqueSobre(tinta, c))
-    ctx.textAlign = meio ? 'center' : 'left'
-    ctx.textBaseline = 'alphabetic'
-    ctx.fillText(`${r.chamada}  →`, meio ? L / 2 : m, y)
+    const yc = y
+    animado(ctx, () => {
+      ctx.font = `700 40px ${FONTE}`
+      ctx.fillStyle = corPedida(r, 'destaque', destaqueSobre(tinta, c))
+      ctx.textAlign = meio ? 'center' : 'left'
+      ctx.textBaseline = 'alphabetic'
+      ctx.fillText(`${r.chamada}  →`, meio ? L / 2 : m, yc)
+    })
     y -= 80
   }
   const alinhar = meio ? 'center' : 'left'
@@ -379,11 +450,13 @@ function manchete(ctx, { L, A, story, c, r, logo, foto, nome }) {
   y = bloco(ctx, r.titulo, { ...op, y, cor: corPedida(r, 'titulo', tinta), ...marca(r, destaqueSobre(tinta, c)) })
   bloco(ctx, r.apoio, { ...apoioOp, y: y + 30, cor: corPedida(r, 'texto', apagado(tinta)) })
   if (r.chamada) {
-    ctx.font = `700 42px ${FONTE}`
-    ctx.fillStyle = corPedida(r, 'destaque', destaqueSobre(tinta, c))
-    ctx.textAlign = meio ? 'center' : 'left'
-    ctx.textBaseline = 'alphabetic'
-    ctx.fillText(`${r.chamada}  →`, meio ? L / 2 : m, fimChamada)
+    animado(ctx, () => {
+      ctx.font = `700 42px ${FONTE}`
+      ctx.fillStyle = corPedida(r, 'destaque', destaqueSobre(tinta, c))
+      ctx.textAlign = meio ? 'center' : 'left'
+      ctx.textBaseline = 'alphabetic'
+      ctx.fillText(`${r.chamada}  →`, meio ? L / 2 : m, fimChamada)
+    })
   }
 }
 
@@ -407,11 +480,14 @@ function lista(ctx, { L, A, story, c, r, logo, foto, nome }) {
       ctx.fillStyle = apagado(tinta, 0.14)
       ctx.fillRect(m, y - 22, L - m * 2, 2)
     }
-    ctx.font = `700 64px ${FONTE}`
-    ctx.fillStyle = corPedida(r, 'destaque', destaque)
-    ctx.textAlign = 'left'
-    ctx.textBaseline = 'alphabetic'
-    ctx.fillText(String(i + 1).padStart(2, '0'), m, y + 62)
+    const yn = y
+    animado(ctx, () => {
+      ctx.font = `700 64px ${FONTE}`
+      ctx.fillStyle = corPedida(r, 'destaque', destaque)
+      ctx.textAlign = 'left'
+      ctx.textBaseline = 'alphabetic'
+      ctx.fillText(String(i + 1).padStart(2, '0'), m, yn + 62)
+    }, { desloca: 0 })
     const fim = bloco(ctx, ponto, { ...pOp, y: y + 6, cor: corPedida(r, 'texto', tinta) })
     y = Math.max(y + passo, fim + 44)
   })
@@ -427,17 +503,22 @@ function citacao(ctx, { L, A, story, c, r, logo, foto, nome }) {
   const fala = { x: m, largura: L - m * 2, tamanho: Math.round(84 * escala(r)), peso: 600, maxLinhas: story ? 7 : 5, entre: 1.15, alinhar: meio ? 'center' : 'left' }
   const altura = 190 + medir(ctx, r.titulo, fala) + (r.autor ? 70 : 0) + 120
   const y0 = topo + Math.max(0, (A - base - 160 - topo - altura) / 2)
-  ctx.font = `700 300px ${FONTE}`
-  ctx.fillStyle = corPedida(r, 'destaque', destaque)
-  ctx.textAlign = meio ? 'center' : 'left'
-  ctx.textBaseline = 'alphabetic'
-  ctx.fillText('“', meio ? L / 2 : m - 10, y0 + 270)
+  animado(ctx, () => {
+    ctx.font = `700 300px ${FONTE}`
+    ctx.fillStyle = corPedida(r, 'destaque', destaque)
+    ctx.textAlign = meio ? 'center' : 'left'
+    ctx.textBaseline = 'alphabetic'
+    ctx.fillText('“', meio ? L / 2 : m - 10, y0 + 270)
+  }, { escala: 0.3, desloca: 0 }, meio ? L / 2 : m + 60, y0 + 200)
   let y = bloco(ctx, r.titulo, { ...fala, y: y0 + 190, cor: corPedida(r, 'titulo', tinta), ...marca(r, destaque) })
   if (r.autor) {
-    ctx.font = `700 40px ${FONTE}`
-    ctx.fillStyle = corPedida(r, 'texto', tinta)
-    ctx.textAlign = meio ? 'center' : 'left'
-    ctx.fillText(`— ${r.autor}`, meio ? L / 2 : m, y + 70)
+    const ya = y
+    animado(ctx, () => {
+      ctx.font = `700 40px ${FONTE}`
+      ctx.fillStyle = corPedida(r, 'texto', tinta)
+      ctx.textAlign = meio ? 'center' : 'left'
+      ctx.fillText(`— ${r.autor}`, meio ? L / 2 : m, ya + 70)
+    })
     y += 70
   }
   bloco(ctx, r.apoio, { x: m, y: y + 40, largura: L - m * 2, tamanho: 36, peso: 400, maxLinhas: 2, entre: 1.3, alinhar: meio ? 'center' : 'left', cor: apagado(tinta, 0.72) })
@@ -497,17 +578,21 @@ function fotoInteira(ctx, { L, A, story, c, r, logo, foto, nome }) {
   const aOp = { x: m + 50, largura: dentro, tamanho: 36, peso: 400, maxLinhas: 3, entre: 1.3 }
   const h = 60 + medir(ctx, r.titulo, tOp) + 18 + medir(ctx, r.apoio, aOp) + (r.chamada ? 90 : 0) + 50
   const y0 = A - base - h
-  arredondado(ctx, m, y0, L - m * 2, h, 36)
-  ctx.fillStyle = claro ? 'rgba(255,255,255,.95)' : 'rgba(13,13,18,.9)'
-  ctx.fill()
+  animado(ctx, () => {
+    arredondado(ctx, m, y0, L - m * 2, h, 36)
+    ctx.fillStyle = claro ? 'rgba(255,255,255,.95)' : 'rgba(13,13,18,.9)'
+    ctx.fill()
+  }, { desloca: 60 })
   let y = bloco(ctx, r.titulo, { ...tOp, y: y0 + 60, cor: corPedida(r, 'titulo', tinta), ...marca(r, destaque) })
   y = bloco(ctx, r.apoio, { ...aOp, y: y + 18, cor: corPedida(r, 'texto', apagado(tinta, 0.75)) })
   if (r.chamada) {
-    ctx.font = `700 38px ${FONTE}`
-    ctx.fillStyle = corPedida(r, 'destaque', destaque)
-    ctx.textAlign = 'left'
-    ctx.textBaseline = 'alphabetic'
-    ctx.fillText(`${r.chamada}  →`, m + 50, y + 70)
+    animado(ctx, () => {
+      ctx.font = `700 38px ${FONTE}`
+      ctx.fillStyle = corPedida(r, 'destaque', destaque)
+      ctx.textAlign = 'left'
+      ctx.textBaseline = 'alphabetic'
+      ctx.fillText(`${r.chamada}  →`, m + 50, y + 70)
+    })
   }
 }
 
@@ -519,13 +604,13 @@ function cartao(ctx, { L, A, story, c, r, logo, foto, nome }) {
   const aOp = { x: m + 60, largura: larg - 120, tamanho: 38, peso: 400, maxLinhas: 3, entre: 1.3, alinhar: 'center' }
   const h = 150 + medir(ctx, r.titulo, tOp) + 24 + medir(ctx, r.apoio, aOp) + (r.chamada ? 150 : 40) + 60
   const y0 = (A - h) / 2
-  ctx.save()
-  ctx.shadowColor = 'rgba(0,0,0,.35)'
-  ctx.shadowBlur = 60
-  arredondado(ctx, m, y0, larg, h, 44)
-  ctx.fillStyle = '#FFFFFF'
-  ctx.fill()
-  ctx.restore()
+  animado(ctx, () => {
+    ctx.shadowColor = 'rgba(0,0,0,.35)'
+    ctx.shadowBlur = 60
+    arredondado(ctx, m, y0, larg, h, 44)
+    ctx.fillStyle = '#FFFFFF'
+    ctx.fill()
+  }, { desloca: 0, escala: 0.06 }, L / 2, y0 + h / 2)
   selo(ctx, { logo, nome, x: L / 2, y: y0 - 50, altura: 64, alinhar: 'center', claro: false })
   const destaque = destaqueSobre('#111114', c)
   let y = bloco(ctx, r.titulo, { ...tOp, y: y0 + 130, cor: corPedida(r, 'titulo', '#111114'), ...marca(r, destaque) })
@@ -541,7 +626,7 @@ function cartao(ctx, { L, A, story, c, r, logo, foto, nome }) {
 
 const MODELOS = { promo, aviso, bastidores, manchete, lista, citacao, dividido, foto: fotoInteira, cartao }
 
-export function desenhar(canvas, { formato, modelo, roteiro, cores, logo, foto, nome }) {
+export function desenhar(canvas, { formato, modelo, roteiro, cores, logo, foto, nome, tempo = null, total = 8 }) {
   const [L, A] = TAMANHOS[formato] || TAMANHOS.post
   canvas.width = L
   canvas.height = A
@@ -549,7 +634,12 @@ export function desenhar(canvas, { formato, modelo, roteiro, cores, logo, foto, 
   const base = [cores[0] || '#7B5CFF', cores[1] || cores[0] || '#A28BFF', cores[2] || cores[1] || cores[0] || '#5B3FE0']
   const c = [corPedida(roteiro, 'destaque', base[0]), base[1], base[2]]
   ctx.clearRect(0, 0, L, A)
-  ;(MODELOS[modelo] || aviso)(ctx, { L, A, story: formato === 'story', c, r: roteiro, logo, foto, nome })
+  relogio = tempo === null ? null : { t: tempo, total, ordem: 0 }
+  try {
+    ;(MODELOS[modelo] || aviso)(ctx, { L, A, story: formato === 'story', c, r: roteiro, logo, foto, nome })
+  } finally {
+    relogio = null
+  }
 }
 
 export function paraArquivo(canvas, nome) {

@@ -76,16 +76,24 @@ Deno.serve(async (req) => {
 
   let bruto: Record<string, unknown>
   try {
-    const msg = await ia.beta.messages.create({
-      model: 'claude-opus-5-5',
+    // Post: Haiku 5.5, rápido e barato para texto curto. Story: Opus 5.5, com mais cuidado.
+    // O Haiku 5.5 não tem fallback no servidor, então o pedido dele vai sem `fallbacks`.
+    const pedidoIA = {
       max_tokens: 16000,
-      betas: ['server-side-fallback-2026-07-01'],
-      // @ts-ignore: campo novo da API, ainda sem tipo nesta versão do SDK
-      fallbacks: 'default',
       output_config: { effort: 'medium', format: { type: 'json_schema', schema: ESQUEMA } },
       system: INSTRUCOES,
-      messages: [{ role: 'user', content: montarMensagem(perfil, pedido, formato, refeita && (refeita.versoes?.[refeita.escolhida ?? -1]?.roteiro || refeita.roteiro), ajuste) }],
-    })
+      messages: [{ role: 'user' as const, content: montarMensagem(perfil, pedido, formato, refeita && (refeita.versoes?.[refeita.escolhida ?? -1]?.roteiro || refeita.roteiro), ajuste) }],
+    }
+    const msg = formato === 'story'
+      ? await ia.beta.messages.create({
+        ...pedidoIA,
+        model: 'claude-opus-5-5',
+        betas: ['server-side-fallback-2026-07-01'],
+        // @ts-ignore: campo novo da API, ainda sem tipo nesta versão do SDK
+        fallbacks: 'default',
+      })
+      // @ts-ignore: output_config.format ainda sem tipo nesta versão do SDK
+      : await ia.messages.create({ ...pedidoIA, model: 'claude-haiku-5-5' })
     if (msg.stop_reason === 'refusal') return erro('A IA não quis escrever esse pedido. Tente com outras palavras.', 422)
     const texto = msg.content.find((b) => b.type === 'text')
     if (!texto || texto.type !== 'text') throw new Error('sem texto')

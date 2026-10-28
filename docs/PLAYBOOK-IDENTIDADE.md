@@ -1,31 +1,35 @@
-# Posta.AI · Playbook de identidade visual
+# Neonposts · Playbook de identidade visual
 
-Versão 1.0 · 2026-10-27 · aprovado pelo Brenno nesta data.
-Fonte única de verdade da marca Posta.AI. Antes de criar tela, peça, post ou vídeo do produto, leia aqui. Mudou algo? Atualize este arquivo e o log no fim.
+Versão 1.1 · 2026-10-27 · nome trocado de Posta.AI para Neonposts (o domínio postaai.com.br já estava em uso). Cores, ícone e animação seguem os da v1.0.
+Fonte única de verdade da marca Neonposts. Antes de criar tela, peça, post ou vídeo do produto, leia aqui. Mudou algo? Atualize este arquivo e o log no fim.
 
 ---
 
 ## 1. Essência
 
-- **Nome:** Posta.AI. Lê-se "posta aí", um chamado para postar.
+- **Nome:** Neonposts. Os posts com a luz da Neon Scripts: o nome já diz de quem é e o que faz.
 - **O que é:** gerador de posts e stories (imagem ou vídeo) para pequenos negócios. O cliente escreve uma frase, sai a peça pronta com a cara da marca dele, ele baixa e publica.
-- **Assinatura:** sempre "da Neon Scripts". A identidade é própria, mais descolada que a da Neon, porque o assunto é rede social.
+- **Assinatura:** sempre "da Neon Scripts". A identidade é própria, mais descolada que a da Neon Scripts, porque o assunto é rede social.
 - **Personalidade:** limpo, rápido, confiante, cara de produto tech. Moderno sem ser frio.
 - **Taglines aprovadas:**
   - "Uma frase. Um post pronto. Com a cara da sua marca." (principal)
-  - "Posta aí." (curta, para CTA e redes)
+  - "Posta aí." (curta, para CTA e redes; continua valendo como chamado)
 
 ## 2. Nome e wordmark
 
 | Onde | Como escrever |
 |---|---|
-| Logo / wordmark | `posta.ai`, tudo minúsculo, `.ai` em violeta #7B5CFF |
-| Texto corrido | Posta.AI |
+| Logo / wordmark | `Neonposts`, numa palavra só, com N maiúsculo e o resto minúsculo: `Neon` em neve #F5F5F7 e `posts` em violeta #7B5CFF |
+| Texto corrido | Neonposts (igual ao logo) |
 | Assinatura | "da Neon Scripts" em JetBrains Mono, cor #A1A1B0, abaixo ou ao lado do wordmark |
 
 - Fonte do wordmark: Instrument Sans 700, letter-spacing -0.05em, line-height 0.9.
-- Sobre fundo claro: `posta` em grafite #101014 e `.ai` em #5B3FE0.
-- Nunca: "Posta AI" sem ponto, "POSTA.AI" em caixa alta no logo, "posta.AI".
+- Sobre fundo claro: `Neon` em grafite #101014 e `posts` em #5B3FE0.
+- Nunca: "Neon Posts" separado, "NeonPosts" com P maiúsculo, "NEONPOSTS" em caixa alta, "neonposts" todo minúsculo, "neon.posts" com ponto.
+- Nunca abreviar para "Neon": conflita com o banco Neon e com o Neon Postgres.
+- Dentro do app e no dia a dia pode chamar só de "Posts" ("Abrir Posts", "Seus Posts do mês"). O nome oficial, que vai em domínio, contrato e INPI, é sempre Neonposts.
+- Família da Neon Scripts: os próximos produtos seguem o molde Neon + palavra.
+- Domínio livre em 27/10/2026 (consulta, sem compra): neonposts.com.br e neonposts.app. neonposts.com está ocupado.
 
 ## 3. Ícone: Obturador
 
@@ -59,7 +63,7 @@ Placa violeta #7B5CFF, disco grafite r=36, hexágono neve `78,60 69,75.6 51,75.6
 
 ### Arquivos prontos
 
-`/mnt/project-files/posta-ai/marca/`: `posta-ai-icone.svg`, `posta-ai-icone-1024.png`, `-512`, `-192`, `-180` (Apple), `-32` (favicon).
+`/mnt/project-files/neonposts/marca/`: `neonposts-icone.svg`, `neonposts-icone-1024.png`, `-512`, `-192`, `-180` (Apple), `-32` (favicon).
 
 ## 4. Cores
 
@@ -68,7 +72,7 @@ Placa violeta #7B5CFF, disco grafite r=36, hexágono neve `78,60 69,75.6 51,75.6
 | `--grafite` | #101014 | fundo principal do app, texto sobre claro |
 | `--painel` | #1C1C23 | cartões, painéis, folhas |
 | `--borda` | #2E2E38 | bordas de 1px, divisores |
-| `--violeta` | #7B5CFF | cor de destaque: `.ai`, ícone, seleção, botão de destaque |
+| `--violeta` | #7B5CFF | cor de destaque: `posts` do logo, ícone, seleção, botão de destaque |
 | `--lilas` | #A28BFF | destaque secundário, links, frase de apoio |
 | `--neve` | #F5F5F7 | texto principal no escuro, botão primário, fundo das peças |
 | `--texto-2` | #A1A1B0 | texto secundário, legendas, contadores |
@@ -90,7 +94,7 @@ Placa violeta #7B5CFF, disco grafite r=36, hexágono neve `78,60 69,75.6 51,75.6
 | branco sobre violeta | 4,36 | só texto 19px bold+; texto menor vai em #5B3FE0 |
 | violeta sobre neve | 4,0 | só elementos gráficos, nunca texto pequeno |
 
-Sem rosa neon #FF2E9A: é da Neon Scripts, não do Posta.AI.
+Sem rosa neon #FF2E9A, mesmo com "Neon" no nome: o rosa e o letreiro são da Neon Scripts. O Neonposts é o irmão violeta.
 
 ## 5. Tipografia
 
@@ -121,7 +125,7 @@ ease(t) = 1 − (1 − t)^4
 | 1,25s | clique: em 0,36s fecha até o=0,1 nos primeiros 40% e reabre com ease |
 | 1,40s | **flash**: brilho branco radial (r 40), 0,32s, pico de opacidade 0,9, sobe nos primeiros 25% e apaga |
 | 1,40s | **faísca** no canto superior direito, 0,45s, escala 0,5 a 1 e some |
-| 1,6s | wordmark `posta.ai` sobe 12px (30px no vídeo 1080) e aparece em 0,5s |
+| 1,6s | wordmark `Neonposts` sobe 12px (30px no vídeo 1080) e aparece em 0,5s |
 
 Path da faísca: `M92 14 C93 23 95.5 25.5 104 27 C95.5 28.5 93 31 92 40 C91 31 88.5 28.5 80 27 C88.5 25.5 91 23 92 14 Z`
 
@@ -139,8 +143,8 @@ Com `prefers-reduced-motion: reduce`: ícone parado aberto (o=1), sem flash, wor
 
 ### Arquivos
 
-- `posta-ai-abertura.mp4` (3s, 1080x1080, com flash)
-- `posta-ai-gerando-loop.mp4` (1,2s, loop sem emenda)
+- `neonposts-abertura.mp4` (3s, 1080x1080, com flash)
+- `neonposts-gerando-loop.mp4` (1,2s, loop sem emenda)
 - `previa-abertura.png` (tira de quadros)
 - `fonte-animacao.html` (fonte com `renderAt(t)`, para renderizar de novo no Playwright + ffmpeg)
 
@@ -172,7 +176,7 @@ Seguem a skill `emil-kowalski-motion`.
 
 ## 9. Peças geradas (modelo padrão)
 
-O visual das peças que o cliente baixa vem do **perfil da marca do cliente** (cores, logo, voz), não do Posta.AI. O modelo neutro abaixo é o de demonstração:
+O visual das peças que o cliente baixa vem do **perfil da marca do cliente** (cores, logo, voz), não do Neonposts. O modelo neutro abaixo é o de demonstração:
 
 - Cartão neve #F5F5F7, texto grafite, raio 16, proporção 4:5 (post) ou 9:16 (stories).
 - Sobretítulo JetBrains Mono caixa alta em #5B3FE0 (ex.: "SÓ ATÉ SEXTA").
@@ -180,7 +184,7 @@ O visual das peças que o cliente baixa vem do **perfil da marca do cliente** (c
 - Pílula de preço violeta, raio 999.
 - Logo do cliente no canto inferior direito.
 - **A IA nunca inventa preço, endereço, data ou horário.** Esses vêm dos dados fixos do cliente; sem o dado, aparece um marcador como `[SEU PREÇO]`.
-- Nas peças do cliente não aparece marca do Posta.AI (no máximo, opcional, "feito com posta.ai" bem pequeno no plano gratuito, se existir).
+- Nas peças do cliente não aparece marca do Neonposts (no máximo, opcional, "feito com Neonposts" bem pequeno no plano gratuito, se existir).
 
 ## 10. Tom de voz do produto
 
@@ -205,8 +209,9 @@ O visual das peças que o cliente baixa vem do **perfil da marca do cliente** (c
 
 - Canvas de identidade (todos os caminhos A-F, 8 ícones, obturador animado interativo): https://claude.ai/artifact/RNXo2PeA4PUC9nQXUTUrUW
 - Plano do SaaS (Claude Doc): https://claude.ai/artifact/EQ24RLCKExmCkvahmQbrGv
+- Plano em blocos: https://claude.ai/artifact/TYuCHEdJpTP2H8axptyaZP
 - Guia de pagamento: https://claude.ai/artifact/UesKGM5txJ5hSo4KvNoP6H
-- Arquivos da marca: `/mnt/project-files/posta-ai/marca/`
+- Arquivos da marca: `/mnt/project-files/neonposts/marca/` (a pasta antiga `posta-ai/marca/` fica só como histórico)
 
 ### Tokens CSS prontos
 
@@ -235,11 +240,15 @@ O visual das peças que o cliente baixa vem do **perfil da marca do cliente** (c
 
 | Hora | Decisão do Brenno |
 |---|---|
-| 19:55 | Nome Posta.AI, sempre "da Neon Scripts", identidade própria e mais descolada |
+| 19:55 | Nome Posta.AI (trocado às 21:55), sempre "da Neon Scripts", identidade própria e mais descolada |
 | 20:01 | Pediu mais caminhos (D, E, F) além de A, B, C |
 | 20:10 | Escolheu as **cores do F** (grafite + violeta), pediu outro ícone |
 | 20:18 | Escolheu o **ícone 04, Obturador**, animado |
 | 20:36 | Abertura aprovada, **sem giro**, com **pequeno flash** quando a lente fotografa |
 | 20:43 | Pediu este playbook para não ter retrabalho |
+| 21:43 | Descobriu que postaai.com.br já está em uso; nome reaberto |
+| 21:55 | Nome novo: **Neonposts**. Identidade visual mantida, só o nome muda |
+| 21:58 | Logo com **N maiúsculo**: Neonposts |
+| 28/10 01:48 | Nome oficial Neonposts; "Posts" só como apelido dentro do app; família Neon + palavra |
 
 Pendente: domínio (qual extensão), INPI depois do MVP.

@@ -1,4 +1,4 @@
-# Posta.AI
+# Neonposts
 
 Produto SaaS da Neon Scripts: gera posts e stories para pequenos negócios a partir de uma frase e do perfil de marca do cliente.
 
@@ -13,5 +13,5 @@ Produto SaaS da Neon Scripts: gera posts e stories para pequenos negócios a par
 - O perfil da marca (identidade, voz, padrão de postagem, dados fixos) é o motor da criação e é versionado.
 - A IA nunca inventa preço, endereço, data ou horário. Sem o dado, a peça mostra um marcador como `[SEU PREÇO]`.
 - Chave da IA e chaves secretas só em edge functions do Supabase. No front só a URL e a chave pública (anon) do Supabase.
-- Nome: `posta.ai` no logo, Posta.AI no texto, sempre "da Neon Scripts". Nunca escrever só "Neon".
+- Nome: Neonposts, com N maiúsculo e junto, no logo e no texto, sempre "da Neon Scripts". Dentro do app pode chamar só de "Posts". Nunca "Neon Posts" separado nem abreviar para "Neon".
 - Nunca imitar o ícone do Instagram.

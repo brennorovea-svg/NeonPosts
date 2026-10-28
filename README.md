@@ -1,8 +1,8 @@
-# posta.ai
+# Neonposts
 
 **Uma frase. Um post pronto. Com a cara da sua marca.**
 
-Posta.AI, da Neon Scripts: gerador de posts e stories (imagem ou vídeo) para pequenos negócios. O cliente conta a marca uma vez (identidade visual, jeito de falar, padrão de postagem e dados fixos), escreve uma frase e baixa a peça pronta para publicar.
+Neonposts, da Neon Scripts: gerador de posts e stories (imagem ou vídeo) para pequenos negócios. O cliente conta a marca uma vez (identidade visual, jeito de falar, padrão de postagem e dados fixos), escreve uma frase e baixa a peça pronta para publicar.
 
 ## Stack
 - App: React + Vite (PWA), publicado no GitHub Pages.
@@ -13,3 +13,8 @@ Posta.AI, da Neon Scripts: gerador de posts e stories (imagem ou vídeo) para pe
 
 ## Identidade
 Tudo em [`docs/PLAYBOOK-IDENTIDADE.md`](docs/PLAYBOOK-IDENTIDADE.md). Ler antes de mexer em qualquer tela.
+
+## Rodar e publicar
+- `npm install` e `npm run dev` para ver no computador.
+- Todo merge no `main` publica sozinho em https://neonposts.com.br pela Action `Publicar no GitHub Pages`.
+- Por enquanto publica no endereço provisório https://brennorovea-svg.github.io/NeonPosts/. Quando o DNS do Registro.br estiver pronto, criar `public/CNAME` com `neonposts.com.br` e colocar o domínio em Settings › Pages.

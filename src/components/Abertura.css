@@ -1,0 +1,39 @@
+.abertura {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 40px;
+  padding: 48px 16px;
+  text-align: center;
+}
+.abertura__texto {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  will-change: transform, opacity;
+}
+.abertura__nome {
+  margin: 0;
+  font-weight: 700;
+  font-size: clamp(56px, 14vw, 104px);
+  line-height: .9;
+  letter-spacing: -.05em;
+}
+.abertura__nome span { color: var(--violeta); }
+.abertura__frase {
+  margin: 0;
+  font-weight: 600;
+  font-size: clamp(20px, 4.4vw, 26px);
+  line-height: 1.2;
+  letter-spacing: -.02em;
+}
+.abertura__frase span { display: block; color: var(--lilas); }
+.abertura__assinatura {
+  margin: 0;
+  font-family: var(--fonte-mono);
+  font-size: 13px;
+  color: var(--texto-2);
+}

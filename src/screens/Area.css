@@ -16,6 +16,8 @@
   margin: 0 0 8px; padding: 14px 16px; border-radius: var(--raio-cartao);
   background: rgba(123, 92, 255, .12); border: 1px solid var(--violeta); font-size: 14px;
 }
+.area__aviso--fim { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; border-color: rgba(255, 216, 77, .4); background: rgba(255, 216, 77, .08); }
+.area__aviso--fim p { margin: 0; line-height: 1.5; color: #FFE69A; }
 .area__limite {
   margin-top: 4px; display: flex; flex-direction: column; gap: 12px;
   padding: 16px; border-radius: var(--raio-cartao); background: var(--painel); border: 1px solid var(--violeta);

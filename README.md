@@ -13,3 +13,8 @@ Neonposts, da Neon Scripts: gerador de posts e stories (imagem ou vídeo) para p
 
 ## Identidade
 Tudo em [`docs/PLAYBOOK-IDENTIDADE.md`](docs/PLAYBOOK-IDENTIDADE.md). Ler antes de mexer em qualquer tela.
+
+## Rodar e publicar
+- `npm install` e `npm run dev` para ver no computador.
+- Todo merge no `main` publica sozinho em https://neonposts.com.br pela Action `Publicar no GitHub Pages`.
+- O domínio fica em `public/CNAME` (neonposts.com.br). Não apagar.

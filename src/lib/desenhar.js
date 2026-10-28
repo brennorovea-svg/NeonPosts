@@ -76,6 +76,7 @@ function marcadas(texto, trecho) {
 }
 
 // Escreve um bloco de texto, diminuindo a fonte até caber no número de linhas.
+// Se nem no mínimo couber, desenha todas as linhas: texto nunca some da arte.
 // `marcar` pinta um trecho com `corMarca` (a palavra que a IA escolheu destacar).
 function bloco(ctx, texto, { x, y, largura, tamanho, minimo = 36, peso = 700, maxLinhas = 4, cor, alinhar = 'left', entre = 1.04, baseEmBaixo = false, marcar = '', corMarca }) {
   if (!texto) return y
@@ -84,23 +85,24 @@ function bloco(ctx, texto, { x, y, largura, tamanho, minimo = 36, peso = 700, ma
     ctx.font = `${peso} ${t}px ${FONTE}`
     linhas = peso >= 600 ? equilibrar(ctx, texto, largura) : quebrar(ctx, texto, largura)
     t -= 4
-  } while (linhas.length > maxLinhas && t >= minimo)
+  } while (linhas.length > maxLinhas && t >= Math.min(minimo, tamanho * 0.7))
   t += 4
+  const n = linhas.length
   const altura = t * entre
   ctx.textBaseline = 'alphabetic'
-  const topo = baseEmBaixo ? y - altura * Math.min(linhas.length, maxLinhas) : y
+  const topo = baseEmBaixo ? y - altura * n : y
   const pintar = corMarca ? marcadas(texto, marcar) : new Set()
   if (!pintar.size) {
     ctx.fillStyle = cor
     ctx.textAlign = alinhar
     const ax = alinhar === 'center' ? x + largura / 2 : x
-    linhas.slice(0, maxLinhas).forEach((l, i) => ctx.fillText(l, ax, topo + t * 0.9 + altura * i))
+    linhas.forEach((l, i) => ctx.fillText(l, ax, topo + t * 0.9 + altura * i))
   } else {
     // Palavra por palavra, para trocar a cor só no trecho destacado.
     ctx.textAlign = 'left'
     const espaco = ctx.measureText(' ').width
     let n = 0
-    linhas.slice(0, maxLinhas).forEach((l, i) => {
+    linhas.forEach((l, i) => {
       const w = ctx.measureText(l).width
       let px = alinhar === 'center' ? x + (largura - w) / 2 : x
       for (const palavra of l.split(' ')) {
@@ -110,7 +112,7 @@ function bloco(ctx, texto, { x, y, largura, tamanho, minimo = 36, peso = 700, ma
       }
     })
   }
-  return baseEmBaixo ? topo : topo + altura * Math.min(linhas.length, maxLinhas)
+  return baseEmBaixo ? topo : topo + altura * n
 }
 
 // Altura que um bloco ocupa, sem desenhar.
@@ -278,16 +280,17 @@ function promo(ctx, { L, A, story, c, r, logo, foto, nome }) {
 }
 
 function aviso(ctx, { L, A, story, c, r, logo, foto, nome }) {
-  const fundo = misturar(c[0], '#0B0B10', 0.86)
-  ctx.fillStyle = fundo
+  const claro = r.arte?.fundo === 'claro'
+  const tinta = claro ? '#111114' : '#FFFFFF'
+  ctx.fillStyle = claro ? '#F6F4F9' : misturar(c[0], '#0B0B10', 0.86)
   ctx.fillRect(0, 0, L, A)
   if (foto) {
-    ctx.globalAlpha = 0.32
+    ctx.globalAlpha = claro ? 0.12 : 0.32
     cobrir(ctx, foto, 0, 0, L, A)
     ctx.globalAlpha = 1
   }
-  brilho(ctx, L / 2, A * 0.42, L * 0.75, c[0], 0.5)
-  brilho(ctx, L * 0.1, A, L * 0.6, c[1], 0.35)
+  brilho(ctx, L / 2, A * 0.42, L * 0.75, c[0], claro ? 0.18 : 0.5)
+  brilho(ctx, L * 0.1, A, L * 0.6, c[1], claro ? 0.14 : 0.35)
 
   const m = 90, topo = story ? 250 : 90, base = story ? 340 : 90
   // Moldura fina na cor da marca.
@@ -298,10 +301,16 @@ function aviso(ctx, { L, A, story, c, r, logo, foto, nome }) {
 
   const meio = A * (story ? 0.44 : 0.42)
   ctx.fillStyle = c[1]
-  arredondado(ctx, L / 2 - 60, meio - 260, 120, 12, 6)
+  arredondado(ctx, L / 2 - 60, meio - 260 - (escala(r) - 1) * 300, 120, 12, 6)
   ctx.fill()
-  const fimTitulo = bloco(ctx, r.titulo, { x: m, y: meio - 210, largura: L - m * 2, tamanho: 120, maxLinhas: 3, cor: corPedida(r, 'titulo', '#FFFFFF'), alinhar: 'center', entre: 1.0, ...marca(r, c[1]) })
-  bloco(ctx, r.apoio, { x: m + 20, y: fimTitulo + 28, largura: L - (m + 20) * 2, tamanho: 44, peso: 400, maxLinhas: 3, cor: corPedida(r, 'texto', 'rgba(255,255,255,.82)'), alinhar: 'center', entre: 1.3 })
+  // Título maior começa mais alto; o apoio desce junto e nunca encosta no botão.
+  const tOp = { x: m, largura: L - m * 2, tamanho: Math.round(120 * escala(r)), maxLinhas: 4, alinhar: 'center', entre: 1.0 }
+  const aOp = { x: m + 20, largura: L - (m + 20) * 2, tamanho: 44, peso: 400, maxLinhas: 3, alinhar: 'center', entre: 1.3 }
+  const limite = A - base - 260 - 40
+  const inicio = meio - 210 - (escala(r) - 1) * 300
+  while (inicio + medir(ctx, r.titulo, tOp) + 28 + medir(ctx, r.apoio, aOp) > limite && tOp.tamanho > 72) tOp.tamanho -= 6
+  const fimTitulo = bloco(ctx, r.titulo, { ...tOp, y: inicio, cor: corPedida(r, 'titulo', tinta), ...marca(r, destaqueSobre(tinta, c)) })
+  bloco(ctx, r.apoio, { ...aOp, y: fimTitulo + 28, cor: corPedida(r, 'texto', apagado(tinta, 0.82)) })
 
   if (r.chamada) {
     ctx.font = `700 42px ${FONTE}`
@@ -322,26 +331,32 @@ function bastidores(ctx, { L, A, story, c, r, logo, foto, nome }) {
     ctx.fillRect(0, 0, L, A)
     brilho(ctx, L * 0.8, A * 0.2, L * 0.7, c[1], 0.5)
   }
-  const sombra = ctx.createLinearGradient(0, A * 0.35, 0, A)
-  sombra.addColorStop(0, 'rgba(8,8,12,0)')
-  sombra.addColorStop(1, 'rgba(8,8,12,.9)')
+  // Fundo claro: a foto some num degradê claro embaixo e o texto fica escuro.
+  const claro = r.arte?.fundo === 'claro'
+  const tinta = claro ? '#111114' : '#FFFFFF'
+  const sombra = ctx.createLinearGradient(0, A * (claro ? 0.2 : 0.35), 0, A)
+  sombra.addColorStop(0, claro ? 'rgba(246,244,249,0)' : 'rgba(8,8,12,0)')
+  sombra.addColorStop(claro ? 0.45 : 1, claro ? 'rgba(246,244,249,.96)' : 'rgba(8,8,12,.9)')
+  if (claro) sombra.addColorStop(1, 'rgba(246,244,249,1)')
   ctx.fillStyle = sombra
   ctx.fillRect(0, 0, L, A)
 
   const m = 80, topo = story ? 230 : 80, base = story ? 330 : 90
-  selo(ctx, { logo, nome, x: m, y: topo, altura: 88 })
+  const meio = centro(r, false)
+  selo(ctx, { logo, nome, x: meio ? L / 2 : m, y: topo, altura: 88, alinhar: meio ? 'center' : 'left' })
 
   let y = A - base
   if (r.chamada) {
     ctx.font = `700 40px ${FONTE}`
-    ctx.fillStyle = c[1]
-    ctx.textAlign = 'left'
+    ctx.fillStyle = corPedida(r, 'destaque', destaqueSobre(tinta, c))
+    ctx.textAlign = meio ? 'center' : 'left'
     ctx.textBaseline = 'alphabetic'
-    ctx.fillText(`${r.chamada}  →`, m, y)
+    ctx.fillText(`${r.chamada}  →`, meio ? L / 2 : m, y)
     y -= 80
   }
-  y = bloco(ctx, r.apoio, { x: m, y, largura: L - m * 2, tamanho: 42, peso: 400, maxLinhas: 3, cor: corPedida(r, 'texto', 'rgba(255,255,255,.86)'), entre: 1.3, baseEmBaixo: true })
-  bloco(ctx, r.titulo, { x: m, y: y - 24, largura: L - m * 2, tamanho: 104, maxLinhas: 3, cor: corPedida(r, 'titulo', '#FFFFFF'), entre: 1.0, baseEmBaixo: true, ...marca(r, c[1]) })
+  const alinhar = meio ? 'center' : 'left'
+  y = bloco(ctx, r.apoio, { x: m, y, largura: L - m * 2, tamanho: 42, peso: 400, maxLinhas: 3, cor: corPedida(r, 'texto', apagado(tinta, 0.86)), entre: 1.3, baseEmBaixo: true, alinhar })
+  bloco(ctx, r.titulo, { x: m, y: y - 24, largura: L - m * 2, tamanho: Math.round(104 * escala(r)), maxLinhas: 3, cor: corPedida(r, 'titulo', tinta), entre: 1.0, baseEmBaixo: true, alinhar, ...marca(r, destaqueSobre(tinta, c)) })
 }
 
 // Título gigante ocupando a arte; o resto pequeno. Bom para novidade e frase de impacto.
@@ -383,6 +398,10 @@ function lista(ctx, { L, A, story, c, r, logo, foto, nome }) {
   // Os pontos se espalham no espaço entre o título e a chamada, com uma linha fina entre eles.
   y += 50
   const passo = Math.min(story ? 230 : 190, (A - base - 160 - y) / Math.max(pontos.length, 1))
+  // Pontos que quebram em duas linhas diminuem até todos caberem acima do botão.
+  const pOp = { x: m + 130, largura: L - m * 2 - 130, tamanho: 50, peso: 600, maxLinhas: 2, entre: 1.15 }
+  const ocupa = () => pontos.reduce((t, p) => t + Math.max(passo, medir(ctx, p, pOp) + 44), 0)
+  while (ocupa() > A - base - 150 - y && pOp.tamanho > 36) pOp.tamanho -= 2
   pontos.forEach((ponto, i) => {
     if (i) {
       ctx.fillStyle = apagado(tinta, 0.14)
@@ -393,8 +412,8 @@ function lista(ctx, { L, A, story, c, r, logo, foto, nome }) {
     ctx.textAlign = 'left'
     ctx.textBaseline = 'alphabetic'
     ctx.fillText(String(i + 1).padStart(2, '0'), m, y + 62)
-    bloco(ctx, ponto, { x: m + 130, y: y + 6, largura: L - m * 2 - 130, tamanho: 50, peso: 600, maxLinhas: 2, entre: 1.15, cor: corPedida(r, 'texto', tinta) })
-    y += passo
+    const fim = bloco(ctx, ponto, { ...pOp, y: y + 6, cor: corPedida(r, 'texto', tinta) })
+    y = Math.max(y + passo, fim + 44)
   })
   if (r.chamada) pilula(ctx, r.chamada, { x: m, y: A - base - 112, largura: L - m * 2, fundo: corPedida(r, 'destaque', c[0]), cor: textoSobre(corPedida(r, 'destaque', c[0])) })
 }
@@ -427,7 +446,8 @@ function citacao(ctx, { L, A, story, c, r, logo, foto, nome }) {
 
 // Metade de cima com a foto (ou a cor da marca), metade de baixo com o texto.
 function dividido(ctx, { L, A, story, c, r, logo, foto, nome }) {
-  const corte = Math.round(A * (story ? 0.42 : 0.46))
+  // Título maior pede mais espaço: a foto encolhe para o texto crescer.
+  const corte = Math.round(A * ((story ? 0.42 : 0.46) - (escala(r) - 1) * 0.3))
   const claro = r.arte?.fundo === 'claro'
   const tinta = claro ? '#111114' : '#FFFFFF'
   ctx.fillStyle = claro ? '#F6F4F9' : '#0D0D12'
@@ -444,13 +464,22 @@ function dividido(ctx, { L, A, story, c, r, logo, foto, nome }) {
   const m = 80, topo = story ? 230 : 70, base = story ? 330 : 80
   selo(ctx, { logo, nome, x: m, y: topo, altura: 72 })
   const destaque = destaqueSobre(tinta, c)
-  let y = bloco(ctx, r.titulo, { x: m, y: corte + 70, largura: L - m * 2, tamanho: Math.round(96 * escala(r)), maxLinhas: 3, entre: 1.0, cor: corPedida(r, 'titulo', tinta), ...marca(r, destaque) })
-  y = bloco(ctx, r.apoio, { x: m, y: y + 22, largura: L - m * 2, tamanho: 40, peso: 400, maxLinhas: 3, entre: 1.3, cor: corPedida(r, 'texto', apagado(tinta)) })
+  const tOp = { x: m, largura: L - m * 2, tamanho: Math.round(96 * escala(r)), maxLinhas: 3, entre: 1.0 }
+  const aOp = { x: m, largura: L - m * 2, tamanho: 40, peso: 400, maxLinhas: 3, entre: 1.3 }
+  // Título e apoio diminuem até caber entre a foto e o botão; o botão nunca fica por cima do texto.
+  const pilulaY = A - base - 104
+  const livre = pilulaY - 44 - (corte + 70)
+  const altura = () => medir(ctx, r.titulo, tOp) + 22 + medir(ctx, r.apoio, aOp)
+  while (altura() > livre && tOp.tamanho > 56) {
+    tOp.tamanho -= 6
+    aOp.tamanho = Math.max(30, aOp.tamanho - 1)
+  }
+  let y = bloco(ctx, r.titulo, { ...tOp, y: corte + 70, cor: corPedida(r, 'titulo', tinta), ...marca(r, destaque) })
+  y = bloco(ctx, r.apoio, { ...aOp, y: y + 22, cor: corPedida(r, 'texto', apagado(tinta)) })
   if (r.chamada) {
     ctx.font = `700 40px ${FONTE}`
     const w = Math.min(ctx.measureText(r.chamada).width + 110, L - m * 2)
-    // Embaixo da arte, mas nunca por cima do texto.
-    pilula(ctx, r.chamada, { x: m, y: Math.min(A - 200, Math.max(y + 44, A - base - 104)), largura: w, altura: 104, tamanho: 40, fundo: corPedida(r, 'destaque', c[0]), cor: textoSobre(corPedida(r, 'destaque', c[0])) })
+    pilula(ctx, r.chamada, { x: m, y: Math.max(y + 44, pilulaY), largura: w, altura: 104, tamanho: 40, fundo: corPedida(r, 'destaque', c[0]), cor: textoSobre(corPedida(r, 'destaque', c[0])) })
   }
 }
 
@@ -465,7 +494,7 @@ function fotoInteira(ctx, { L, A, story, c, r, logo, foto, nome }) {
   const destaque = destaqueSobre(tinta, c)
   const dentro = L - m * 2 - 100
   const tOp = { x: m + 50, largura: dentro, tamanho: Math.round(76 * escala(r)), maxLinhas: 3, entre: 1.02 }
-  const aOp = { x: m + 50, largura: dentro, tamanho: 36, peso: 400, maxLinhas: 2, entre: 1.3 }
+  const aOp = { x: m + 50, largura: dentro, tamanho: 36, peso: 400, maxLinhas: 3, entre: 1.3 }
   const h = 60 + medir(ctx, r.titulo, tOp) + 18 + medir(ctx, r.apoio, aOp) + (r.chamada ? 90 : 0) + 50
   const y0 = A - base - h
   arredondado(ctx, m, y0, L - m * 2, h, 36)

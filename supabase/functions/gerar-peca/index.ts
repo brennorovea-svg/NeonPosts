@@ -84,25 +84,18 @@ Deno.serve(async (req) => {
 
   let bruto: Record<string, unknown>
   try {
-    // Post: Haiku 5.5, rápido e barato para texto curto. Story: Opus 5.5, com mais cuidado.
-    // Esforço baixo nos dois: a peça é curta e quem espera é o cliente. As instruções ficam em cache.
-    // O Haiku 5.5 não tem fallback no servidor, então o pedido dele vai sem `fallbacks`.
-    const pedidoIA = {
+    // Haiku 5.5 no post e no story: a arte é desenhada no app, então a IA só escolhe texto e layout,
+    // e no teste com a IA real o Haiku no médio fez isso bem (Brenno, 28/10). O baixo saiu mais rápido,
+    // mas errou a voz da marca e o tamanho do texto. As instruções ficam em cache.
+    // O Haiku 5.5 não tem fallback no servidor, então o pedido vai sem `fallbacks`.
+    const msg = await ia.messages.create({
+      model: 'claude-haiku-5-5',
       max_tokens: 16000,
-      output_config: { effort: 'low', format: { type: 'json_schema', schema: ESQUEMA } },
-      system: [{ type: 'text' as const, text: INSTRUCOES, cache_control: { type: 'ephemeral' as const } }],
-      messages: [{ role: 'user' as const, content: montarMensagem(perfil, pedido, formato, refeita && (refeita.versoes?.[refeita.escolhida ?? -1]?.roteiro || refeita.roteiro), ajuste, fotos.length > 0) }],
-    }
-    const msg = formato === 'story'
-      ? await ia.beta.messages.create({
-        ...pedidoIA,
-        model: 'claude-opus-5-5',
-        betas: ['server-side-fallback-2026-07-01'],
-        // @ts-ignore: campo novo da API, ainda sem tipo nesta versão do SDK
-        fallbacks: 'default',
-      })
       // @ts-ignore: output_config.format ainda sem tipo nesta versão do SDK
-      : await ia.messages.create({ ...pedidoIA, model: 'claude-haiku-5-5' })
+      output_config: { effort: 'medium', format: { type: 'json_schema', schema: ESQUEMA } },
+      system: [{ type: 'text', text: INSTRUCOES, cache_control: { type: 'ephemeral' } }],
+      messages: [{ role: 'user', content: montarMensagem(perfil, pedido, formato, refeita && (refeita.versoes?.[refeita.escolhida ?? -1]?.roteiro || refeita.roteiro), ajuste, fotos.length > 0) }],
+    })
     if (msg.stop_reason === 'refusal') return erro('A IA não quis escrever esse pedido. Tente com outras palavras.', 422)
     const texto = msg.content.find((b) => b.type === 'text')
     if (!texto || texto.type !== 'text') throw new Error('sem texto')

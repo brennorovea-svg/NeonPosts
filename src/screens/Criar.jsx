@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import Obturador from '../components/Obturador.jsx'
 import Imagens from '../components/campos/Imagens.jsx'
+import Layouts from '../components/Layouts.jsx'
+import { sugerirLayouts, tipoDoPedido } from '../lib/sugerir.js'
 import { enderecoDaImagem } from '../lib/perfil.js'
 import { acordarIA, escolherVersao, gerarPeca, guardarImagem } from '../lib/pecas.js'
 import { carregarImagem, desenhar, NOMES_DOS_MODELOS, paraArquivo, prepararFontes } from '../lib/desenhar.js'
@@ -161,13 +163,26 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
   const [ajuste, setAjuste] = useState('')
   const [flash, setFlash] = useState(false)
   const [imagens, setImagens] = useState({ logo: null, foto: null, pronto: false })
+  const [layout, setLayout] = useState('ia') // 'ia' ou um dos modelos sugeridos
+  const [miniaturas, setMiniaturas] = useState({ logo: null, foto: null, fotoDaMarca: null })
   const canvas = useRef(null)
   const area = useRef(null)
   const nome = perfil.identidade.nome
 
   // Adianta o que dá antes do clique: acorda a função da IA, carrega fontes, logo e foto.
   useEffect(() => { acordarIA(); prepararFontes(); imagemDe(perfil.identidade.logo) }, [])
-  useEffect(() => { imagemDe(foto) }, [foto])
+  useEffect(() => {
+    let vivo = true
+    Promise.all([imagemDe(perfil.identidade.logo), imagemDe(foto), imagemDe(perfil.identidade.fotos?.[0])])
+      .then(([logo, f, daMarca]) => vivo && setMiniaturas({ logo, foto: f, fotoDaMarca: daMarca }))
+    return () => { vivo = false }
+  }, [foto])
+
+  // Sugestão de layout pelo tipo (ficha ou texto do pedido) e pela foto. Se a escolhida
+  // sai da sugestão (trocou o tipo ou tirou a foto), volta para a IA escolher.
+  const tipoPercebido = tipoDoPedido(tipo, pedido)
+  const sugeridos = sugerirLayouts(tipoPercebido, Boolean(foto))
+  useEffect(() => { if (layout !== 'ia' && !sugeridos.includes(layout)) setLayout('ia') }, [sugeridos.join()])
 
   // Logo e foto carregados uma vez por peça; fontes antes do primeiro desenho.
   useEffect(() => {
@@ -199,7 +214,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
     try {
       const r = await gerarPeca(refazer
         ? { refazer: peca.id, formato: peca.formato, pedido: pedidoNovo.trim(), ajuste: ajuste.trim() }
-        : { pedido: pedido.trim(), formato, fotos: foto ? [foto] : [] })
+        : { pedido: pedido.trim(), formato, fotos: foto ? [foto] : [], modelo: layout === 'ia' ? undefined : layout })
       setAjustando(false)
       setAjuste('')
       setPeca(r.peca)
@@ -294,6 +309,15 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
             <span className="campo__rotulo">Foto (opcional)</span>
             <p className="campo__ajuda">Uma foto do produto, do serviço ou do dia a dia deixa o post mais seu.</p>
             <Imagens negocioId={negocioId} valor={foto} onChange={setFoto} maximo={1} tipo="peca-foto" texto="Adicionar foto" />
+          </div>
+
+          <div className="campo">
+            <span className="campo__rotulo">Layout</span>
+            <p className="campo__ajuda">Escolha um jeito para a arte ou deixe a IA decidir. Dá para trocar depois.</p>
+            <Layouts
+              sugeridos={sugeridos} escolhido={layout} onEscolher={setLayout} tipo={tipoPercebido}
+              perfil={perfil} formato={formato} {...miniaturas}
+            />
           </div>
 
           {erro && <p className="campo__erro" role="alert">{erro}</p>}
@@ -398,7 +422,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
                 <button type="button" className="botao botao--fantasma" disabled={restantes <= 0 || ajustando} onClick={() => { setPedidoNovo(peca.pedido); setAjustando(true) }}>
                   Gerar de novo{restantes > 0 ? ` (${restantes})` : ''}
                 </button>
-                <button type="button" className="botao botao--fantasma" onClick={() => { setPeca(null); setPedido(''); setTipo(null); setFoto(null); setEstado('pedido') }}>Criar outro</button>
+                <button type="button" className="botao botao--fantasma" onClick={() => { setPeca(null); setPedido(''); setTipo(null); setFoto(null); setLayout('ia'); setEstado('pedido') }}>Criar outro</button>
               </div>
               <p className="criar__nota">Gerar de novo não conta como peça nova.</p>
             </div>

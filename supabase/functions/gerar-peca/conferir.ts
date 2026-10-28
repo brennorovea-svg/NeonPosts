@@ -89,6 +89,19 @@ Varie: não use sempre o mesmo. Se o pedido diz que tem foto, prefira "bastidore
 
 Ajustes sobre o visual: se o ajuste pedir outro layout, mais destaque, título maior, fundo claro ou escuro, mude esses campos. Se pedir algo que esses campos não fazem (trocar a foto, mudar a fonte), mantenha a peça e não invente.`
 
+// O que cada layout precisa quando o dono já escolheu (o texto tem de caber nele).
+const DICAS_DO_LAYOUT: Record<string, string> = {
+  promo: 'oferta com título curto; preencha "itens" se o pedido fala de itens da lista.',
+  aviso: 'comunicado curto e direto, título de até 5 palavras.',
+  bastidores: 'título curto sobre o momento mostrado; o apoio conta o que está acontecendo.',
+  manchete: 'título forte e curto, de até 5 palavras, que funcione sozinho.',
+  lista: 'preencha "pontos" com 2 a 4 frases de até 6 palavras.',
+  citacao: 'a fala do cliente vai no "titulo" (até 18 palavras, sem aspas) e o nome em "autor" (vazio se o pedido não tem o nome).',
+  dividido: 'título curto e apoio que completa; a foto ou a cor da marca fica em cima.',
+  foto: 'título curto, a foto é a protagonista.',
+  cartao: 'tom de convite ou comunicado, título de até 6 palavras.',
+}
+
 type Perfil = {
   identidade: { nome: string; ramo: string }
   voz: Record<string, unknown>
@@ -96,7 +109,7 @@ type Perfil = {
   dados: { endereco: string; horario: string; whatsapp: string; instagram: string; site: string; itens: { nome: string; preco: string }[] }
 }
 
-export function montarMensagem(perfil: Perfil, pedido: string, formato: string, anterior?: Record<string, unknown> | null, ajuste?: string, temFoto = false) {
+export function montarMensagem(perfil: Perfil, pedido: string, formato: string, anterior?: Record<string, unknown> | null, ajuste?: string, temFoto = false, layout = '') {
   const marca = {
     nome: perfil.identidade.nome,
     ramo: perfil.identidade.ramo,
@@ -105,6 +118,9 @@ export function montarMensagem(perfil: Perfil, pedido: string, formato: string, 
     dados_fixos: perfil.dados,
   }
   let texto = `<marca>\n${JSON.stringify(marca, null, 2)}\n</marca>\n\n<formato>${formato === 'story' ? 'story (9:16)' : 'post de feed (4:5)'}</formato>\n\n<foto>${temFoto ? 'o dono mandou uma foto para esta peça' : 'sem foto: não use o fundo "foto" nem o modelo "foto"'}</foto>\n\n<pedido>\n${pedido}\n</pedido>`
+  if (layout) {
+    texto += `\n\n<layout>${layout}</layout>\n\nO dono já escolheu o layout. Use "modelo": "${layout}" e escreva pensando nele: ${DICAS_DO_LAYOUT[layout] || ''} Você continua decidindo o destaque, o tamanho do título, o alinhamento e o fundo.`
+  }
   if (anterior) {
     const { modelo, titulo, apoio, chamada, legenda, pontos, autor, arte, cores } = anterior as Record<string, unknown>
     texto += `\n\n<versao_anterior>\n${JSON.stringify({ modelo, titulo, apoio, chamada, legenda, pontos: pontos || [], autor: autor || '', arte: arte || {}, cores: cores || { titulo: '', texto: '', destaque: '' } }, null, 2)}\n</versao_anterior>`

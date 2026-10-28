@@ -2,7 +2,7 @@
 // A chave da IA fica só aqui (segredo ANTHROPIC_API_KEY). A peça é desenhada no aparelho.
 import Anthropic from 'npm:@anthropic-ai/sdk@0.132.1'
 import { createClient } from 'npm:@supabase/supabase-js@2.117.3'
-import { conferir, ESQUEMA, INSTRUCOES, montarMensagem } from './conferir.ts'
+import { conferir, ESQUEMA, INSTRUCOES, MODELOS, montarMensagem } from './conferir.ts'
 
 const CABECALHOS = {
   'Access-Control-Allow-Origin': '*',
@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
   const { data: negocio } = await banco.from('negocios').select('id, limite_pecas').eq('dono', conta.user.id).single()
   if (!negocio) return erro('Não achamos o seu negócio.', 404)
 
-  let corpo: { pedido?: string; formato?: string; fotos?: string[]; refazer?: string; ajuste?: string }
+  let corpo: { pedido?: string; formato?: string; fotos?: string[]; refazer?: string; ajuste?: string; modelo?: string }
   try { corpo = await req.json() } catch { return erro('Pedido inválido.', 400) }
 
   let pedido = String(corpo.pedido || '').trim()
@@ -51,6 +51,8 @@ Deno.serve(async (req) => {
   let fotos = (corpo.fotos || []).filter((f) => typeof f === 'string' && f.startsWith(`${negocio.id}/`)).slice(0, 4)
   let refeita: { id: string; pedido: string; refeitas: number; roteiro: Record<string, unknown>; versoes: { roteiro: Record<string, unknown> }[]; escolhida: number | null } | null = null
   const ajuste = String(corpo.ajuste || '').trim().slice(0, 300)
+  // Layout que o dono escolheu nas miniaturas, antes da peça nova. Sem escolha, a IA decide.
+  let layout = !corpo.refazer && MODELOS.includes(String(corpo.modelo)) ? String(corpo.modelo) : ''
 
   // Perfil e (peça antiga ou contagem do mês) saem do banco ao mesmo tempo.
   const [{ data: perfil }, anterior] = await Promise.all([
@@ -77,6 +79,7 @@ Deno.serve(async (req) => {
   if (pedido.length < 3 || pedido.length > 600) return erro('Escreva o pedido com 3 a 600 letras.', 400)
 
   if (!perfil) return erro('Conte a sua marca antes de criar um post.', 409)
+  if (layout === 'foto' && !fotos.length) layout = ''
 
   const chave = Deno.env.get('ANTHROPIC_API_KEY')
   if (!chave) return erro('A IA ainda não foi ligada. Tente mais tarde.', 503)
@@ -94,7 +97,7 @@ Deno.serve(async (req) => {
       // @ts-ignore: output_config.format ainda sem tipo nesta versão do SDK
       output_config: { effort: 'medium', format: { type: 'json_schema', schema: ESQUEMA } },
       system: [{ type: 'text', text: INSTRUCOES, cache_control: { type: 'ephemeral' } }],
-      messages: [{ role: 'user', content: montarMensagem(perfil, pedido, formato, refeita && (refeita.versoes?.[refeita.escolhida ?? -1]?.roteiro || refeita.roteiro), ajuste, fotos.length > 0) }],
+      messages: [{ role: 'user', content: montarMensagem(perfil, pedido, formato, refeita && (refeita.versoes?.[refeita.escolhida ?? -1]?.roteiro || refeita.roteiro), ajuste, fotos.length > 0, layout) }],
     })
     if (msg.stop_reason === 'refusal') return erro('A IA não quis escrever esse pedido. Tente com outras palavras.', 422)
     const texto = msg.content.find((b) => b.type === 'text')
@@ -107,6 +110,7 @@ Deno.serve(async (req) => {
   }
 
   const roteiro = conferir(bruto, perfil, pedido)
+  if (layout) roteiro.modelo = layout
   // Ajuste que a IA não consegue fazer (trocar foto, layout, fonte) volta igual; avisa em vez de parecer que nada aconteceu.
   const base = refeita && (refeita.versoes?.[refeita.escolhida ?? -1]?.roteiro || refeita.roteiro) as Record<string, unknown> | null
   const igual = (k: string) => JSON.stringify(base?.[k] ?? null) === JSON.stringify((roteiro as Record<string, unknown>)[k] ?? null)

@@ -1,8 +1,12 @@
 // Desenha a peça no próprio aparelho, num canvas de 1080 de largura.
-// Post 4:5 (1080x1350) e story 9:16 (1080x1920). Três modelos: promo, aviso, bastidores.
+// Post 4:5 (1080x1350) e story 9:16 (1080x1920). Nove modelos; a IA escolhe o modelo e o
+// jeito da arte (palavra em destaque, tamanho do título, alinhamento e fundo).
 
 export const TAMANHOS = { post: [1080, 1350], story: [1080, 1920] }
-export const NOMES_DOS_MODELOS = { promo: 'Promoção', aviso: 'Aviso', bastidores: 'Bastidores' }
+export const NOMES_DOS_MODELOS = {
+  promo: 'Promoção', aviso: 'Aviso', bastidores: 'Bastidores', manchete: 'Manchete', lista: 'Lista',
+  citacao: 'Citação', dividido: 'Dividido', foto: 'Foto inteira', cartao: 'Cartão',
+}
 const FONTE = '"Instrument Sans", system-ui, sans-serif'
 
 export async function prepararFontes() {
@@ -58,8 +62,22 @@ function equilibrar(ctx, texto, largura) {
   return quebrar(ctx, texto, max)
 }
 
+// Índices das palavras do texto que fazem parte do trecho a destacar (ex.: "sábados").
+function marcadas(texto, trecho) {
+  const limpo = (p) => p.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\p{L}\p{N}]/gu, '')
+  const palavras = String(texto).split(/\s+/).filter(Boolean).map(limpo)
+  const alvo = String(trecho || '').split(/\s+/).filter(Boolean).map(limpo).filter(Boolean)
+  const set = new Set()
+  if (!alvo.length) return set
+  for (let i = 0; i + alvo.length <= palavras.length; i++) {
+    if (alvo.every((a, j) => palavras[i + j] === a)) for (let j = 0; j < alvo.length; j++) set.add(i + j)
+  }
+  return set
+}
+
 // Escreve um bloco de texto, diminuindo a fonte até caber no número de linhas.
-function bloco(ctx, texto, { x, y, largura, tamanho, minimo = 36, peso = 700, maxLinhas = 4, cor, alinhar = 'left', entre = 1.04, baseEmBaixo = false }) {
+// `marcar` pinta um trecho com `corMarca` (a palavra que a IA escolheu destacar).
+function bloco(ctx, texto, { x, y, largura, tamanho, minimo = 36, peso = 700, maxLinhas = 4, cor, alinhar = 'left', entre = 1.04, baseEmBaixo = false, marcar = '', corMarca }) {
   if (!texto) return y
   let t = tamanho, linhas
   do {
@@ -69,12 +87,29 @@ function bloco(ctx, texto, { x, y, largura, tamanho, minimo = 36, peso = 700, ma
   } while (linhas.length > maxLinhas && t >= minimo)
   t += 4
   const altura = t * entre
-  ctx.fillStyle = cor
-  ctx.textAlign = alinhar
   ctx.textBaseline = 'alphabetic'
-  const ax = alinhar === 'center' ? x + largura / 2 : x
-  let topo = baseEmBaixo ? y - altura * linhas.length : y
-  linhas.slice(0, maxLinhas).forEach((l, i) => ctx.fillText(l, ax, topo + t * 0.9 + altura * i))
+  const topo = baseEmBaixo ? y - altura * Math.min(linhas.length, maxLinhas) : y
+  const pintar = corMarca ? marcadas(texto, marcar) : new Set()
+  if (!pintar.size) {
+    ctx.fillStyle = cor
+    ctx.textAlign = alinhar
+    const ax = alinhar === 'center' ? x + largura / 2 : x
+    linhas.slice(0, maxLinhas).forEach((l, i) => ctx.fillText(l, ax, topo + t * 0.9 + altura * i))
+  } else {
+    // Palavra por palavra, para trocar a cor só no trecho destacado.
+    ctx.textAlign = 'left'
+    const espaco = ctx.measureText(' ').width
+    let n = 0
+    linhas.slice(0, maxLinhas).forEach((l, i) => {
+      const w = ctx.measureText(l).width
+      let px = alinhar === 'center' ? x + (largura - w) / 2 : x
+      for (const palavra of l.split(' ')) {
+        ctx.fillStyle = pintar.has(n++) ? corMarca : cor
+        ctx.fillText(palavra, px, topo + t * 0.9 + altura * i)
+        px += ctx.measureText(palavra).width + espaco
+      }
+    })
+  }
   return baseEmBaixo ? topo : topo + altura * Math.min(linhas.length, maxLinhas)
 }
 
@@ -139,6 +174,53 @@ function brilho(ctx, cx, cy, raio, cor, forca = 0.55) {
   ctx.fillRect(cx - raio, cy - raio, raio * 2, raio * 2)
 }
 
+// Cor pedida no ajuste (ex.: "título em verde") ou a padrão do modelo.
+const corPedida = (r, chave, padrao) => (/^#[0-9a-f]{6}$/i.test(r.cores?.[chave] || '') ? r.cores[chave] : padrao)
+// Trecho do título que a IA quer em destaque, na cor de destaque (ou na cor pedida).
+const marca = (r, cor) => ({ marcar: r.arte?.destaque || '', corMarca: corPedida(r, 'destaque', cor) })
+const TAMANHO_TITULO = { normal: 1, grande: 1.18, gigante: 1.4 }
+const escala = (r) => TAMANHO_TITULO[r.arte?.tamanho_titulo] || 1
+const centro = (r, padrao) => (r.arte?.alinhamento ? r.arte.alinhamento === 'centro' : padrao)
+
+// Fundo escolhido pela IA. Devolve a cor do texto que funciona por cima.
+function pintarFundo(ctx, { L, A, c, foto, r, padrao = 'marca' }) {
+  let fundo = r.arte?.fundo || padrao
+  if (fundo === 'foto' && !foto) fundo = 'marca'
+  if (fundo === 'foto') {
+    cobrir(ctx, foto, 0, 0, L, A)
+    const g = ctx.createLinearGradient(0, 0, 0, A)
+    g.addColorStop(0, 'rgba(8,8,12,.35)')
+    g.addColorStop(1, 'rgba(8,8,12,.85)')
+    ctx.fillStyle = g
+    ctx.fillRect(0, 0, L, A)
+    return '#FFFFFF'
+  }
+  if (fundo === 'claro') {
+    ctx.fillStyle = '#F6F4F9'
+    ctx.fillRect(0, 0, L, A)
+    brilho(ctx, L, 0, L * 0.9, c[0], 0.18)
+    brilho(ctx, 0, A, L * 0.8, c[1], 0.16)
+    return '#111114'
+  }
+  if (fundo === 'escuro') {
+    ctx.fillStyle = '#0D0D12'
+    ctx.fillRect(0, 0, L, A)
+    brilho(ctx, L * 0.85, A * 0.15, L * 0.8, c[0], 0.45)
+    brilho(ctx, L * 0.1, A * 0.95, L * 0.7, c[1], 0.3)
+    return '#FFFFFF'
+  }
+  const g = ctx.createLinearGradient(0, 0, L, A)
+  g.addColorStop(0, c[0])
+  g.addColorStop(1, c[2])
+  ctx.fillStyle = g
+  ctx.fillRect(0, 0, L, A)
+  brilho(ctx, L * 0.85, A * 0.2, L * 0.7, c[1], 0.45)
+  return textoSobre(c[0])
+}
+const apagado = (tinta, a = 0.84) => comAlfa(tinta === '#FFFFFF' ? '#FFFFFF' : '#111114', a)
+// Cor de destaque que aparece bem sobre o fundo: no claro, o tom mais escuro da marca.
+const destaqueSobre = (tinta, c) => (tinta === '#FFFFFF' ? c[1] : (luz(c[0]) < 0.35 ? c[0] : misturar(c[0], '#000000', 0.4)))
+
 function promo(ctx, { L, A, story, c, r, logo, foto, nome }) {
   const tinta = textoSobre(c[0])
   ctx.fillStyle = c[0]
@@ -169,8 +251,8 @@ function promo(ctx, { L, A, story, c, r, logo, foto, nome }) {
     ctx.restore()
     y += h + 50
   }
-  y = bloco(ctx, r.titulo, { ...tituloOp, y, cor: tinta })
-  y = bloco(ctx, r.apoio, { ...apoioOp, y: y + 22, cor: comAlfa(tinta === '#FFFFFF' ? '#FFFFFF' : '#111114', 0.86) })
+  y = bloco(ctx, r.titulo, { ...tituloOp, y, cor: corPedida(r, 'titulo', tinta), ...marca(r, tinta === '#FFFFFF' ? c[1] : misturar(c[0], '#000000', 0.55)) })
+  y = bloco(ctx, r.apoio, { ...apoioOp, y: y + 22, cor: corPedida(r, 'texto', comAlfa(tinta === '#FFFFFF' ? '#FFFFFF' : '#111114', 0.86)) })
 
   let iy = Math.max(y + 40, chamadaY - 40 - itens.length * 124)
   for (const item of itens) {
@@ -218,8 +300,8 @@ function aviso(ctx, { L, A, story, c, r, logo, foto, nome }) {
   ctx.fillStyle = c[1]
   arredondado(ctx, L / 2 - 60, meio - 260, 120, 12, 6)
   ctx.fill()
-  const fimTitulo = bloco(ctx, r.titulo, { x: m, y: meio - 210, largura: L - m * 2, tamanho: 120, maxLinhas: 3, cor: '#FFFFFF', alinhar: 'center', entre: 1.0 })
-  bloco(ctx, r.apoio, { x: m + 20, y: fimTitulo + 28, largura: L - (m + 20) * 2, tamanho: 44, peso: 400, maxLinhas: 3, cor: 'rgba(255,255,255,.82)', alinhar: 'center', entre: 1.3 })
+  const fimTitulo = bloco(ctx, r.titulo, { x: m, y: meio - 210, largura: L - m * 2, tamanho: 120, maxLinhas: 3, cor: corPedida(r, 'titulo', '#FFFFFF'), alinhar: 'center', entre: 1.0, ...marca(r, c[1]) })
+  bloco(ctx, r.apoio, { x: m + 20, y: fimTitulo + 28, largura: L - (m + 20) * 2, tamanho: 44, peso: 400, maxLinhas: 3, cor: corPedida(r, 'texto', 'rgba(255,255,255,.82)'), alinhar: 'center', entre: 1.3 })
 
   if (r.chamada) {
     ctx.font = `700 42px ${FONTE}`
@@ -258,18 +340,185 @@ function bastidores(ctx, { L, A, story, c, r, logo, foto, nome }) {
     ctx.fillText(`${r.chamada}  →`, m, y)
     y -= 80
   }
-  y = bloco(ctx, r.apoio, { x: m, y, largura: L - m * 2, tamanho: 42, peso: 400, maxLinhas: 3, cor: 'rgba(255,255,255,.86)', entre: 1.3, baseEmBaixo: true })
-  bloco(ctx, r.titulo, { x: m, y: y - 24, largura: L - m * 2, tamanho: 104, maxLinhas: 3, cor: '#FFFFFF', entre: 1.0, baseEmBaixo: true })
+  y = bloco(ctx, r.apoio, { x: m, y, largura: L - m * 2, tamanho: 42, peso: 400, maxLinhas: 3, cor: corPedida(r, 'texto', 'rgba(255,255,255,.86)'), entre: 1.3, baseEmBaixo: true })
+  bloco(ctx, r.titulo, { x: m, y: y - 24, largura: L - m * 2, tamanho: 104, maxLinhas: 3, cor: corPedida(r, 'titulo', '#FFFFFF'), entre: 1.0, baseEmBaixo: true, ...marca(r, c[1]) })
 }
 
-const MODELOS = { promo, aviso, bastidores }
+// Título gigante ocupando a arte; o resto pequeno. Bom para novidade e frase de impacto.
+function manchete(ctx, { L, A, story, c, r, logo, foto, nome }) {
+  const tinta = pintarFundo(ctx, { L, A, c, foto, r, padrao: 'escuro' })
+  const m = 80, topo = story ? 230 : 80, base = story ? 330 : 90
+  const meio = centro(r, false)
+  selo(ctx, { logo, nome, x: meio ? L / 2 : m, y: topo, altura: 72, alinhar: meio ? 'center' : 'left', claro: tinta === '#FFFFFF' })
+  const op = { x: m, largura: L - m * 2, tamanho: Math.round(150 * escala(r)), maxLinhas: story ? 6 : 5, entre: 0.98, alinhar: meio ? 'center' : 'left' }
+  const apoioOp = { x: m, largura: L - m * 2, tamanho: 40, peso: 400, maxLinhas: 3, entre: 1.3, alinhar: meio ? 'center' : 'left' }
+  const fimChamada = A - base
+  // Título gigante pode não caber na altura: diminui até caber entre o selo e a chamada.
+  const livre = fimChamada - 110 - (topo + 140)
+  let altura = medir(ctx, r.titulo, op) + 30 + medir(ctx, r.apoio, apoioOp)
+  while (altura > livre && op.tamanho > 72) {
+    op.tamanho -= 8
+    altura = medir(ctx, r.titulo, op) + 30 + medir(ctx, r.apoio, apoioOp)
+  }
+  let y = topo + 140 + Math.max(0, (livre - altura) / 2)
+  y = bloco(ctx, r.titulo, { ...op, y, cor: corPedida(r, 'titulo', tinta), ...marca(r, destaqueSobre(tinta, c)) })
+  bloco(ctx, r.apoio, { ...apoioOp, y: y + 30, cor: corPedida(r, 'texto', apagado(tinta)) })
+  if (r.chamada) {
+    ctx.font = `700 42px ${FONTE}`
+    ctx.fillStyle = corPedida(r, 'destaque', destaqueSobre(tinta, c))
+    ctx.textAlign = meio ? 'center' : 'left'
+    ctx.textBaseline = 'alphabetic'
+    ctx.fillText(`${r.chamada}  →`, meio ? L / 2 : m, fimChamada)
+  }
+}
+
+// Título e até 4 pontos numerados. Bom para dica, passo a passo e o que está incluso.
+function lista(ctx, { L, A, story, c, r, logo, foto, nome }) {
+  const tinta = pintarFundo(ctx, { L, A, c, foto, r, padrao: 'claro' })
+  const m = 80, topo = story ? 230 : 80, base = story ? 330 : 80
+  selo(ctx, { logo, nome, x: m, y: topo, altura: 72, claro: tinta === '#FFFFFF' })
+  const destaque = destaqueSobre(tinta, c)
+  let y = bloco(ctx, r.titulo, { x: m, y: topo + 150, largura: L - m * 2, tamanho: Math.round(100 * escala(r)), maxLinhas: 3, entre: 1.0, cor: corPedida(r, 'titulo', tinta), ...marca(r, destaque) })
+  const pontos = (r.pontos?.length ? r.pontos : [r.apoio]).filter(Boolean).slice(0, 4)
+  // Os pontos se espalham no espaço entre o título e a chamada, com uma linha fina entre eles.
+  y += 50
+  const passo = Math.min(story ? 230 : 190, (A - base - 160 - y) / Math.max(pontos.length, 1))
+  pontos.forEach((ponto, i) => {
+    if (i) {
+      ctx.fillStyle = apagado(tinta, 0.14)
+      ctx.fillRect(m, y - 22, L - m * 2, 2)
+    }
+    ctx.font = `700 64px ${FONTE}`
+    ctx.fillStyle = corPedida(r, 'destaque', destaque)
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'alphabetic'
+    ctx.fillText(String(i + 1).padStart(2, '0'), m, y + 62)
+    bloco(ctx, ponto, { x: m + 130, y: y + 6, largura: L - m * 2 - 130, tamanho: 50, peso: 600, maxLinhas: 2, entre: 1.15, cor: corPedida(r, 'texto', tinta) })
+    y += passo
+  })
+  if (r.chamada) pilula(ctx, r.chamada, { x: m, y: A - base - 112, largura: L - m * 2, fundo: corPedida(r, 'destaque', c[0]), cor: textoSobre(corPedida(r, 'destaque', c[0])) })
+}
+
+// Aspas grandes com a fala do cliente. Bom para depoimento.
+function citacao(ctx, { L, A, story, c, r, logo, foto, nome }) {
+  const tinta = pintarFundo(ctx, { L, A, c, foto, r, padrao: 'marca' })
+  const m = 90, topo = story ? 250 : 90, base = story ? 340 : 100
+  const meio = centro(r, false)
+  const destaque = destaqueSobre(tinta, c)
+  const fala = { x: m, largura: L - m * 2, tamanho: Math.round(84 * escala(r)), peso: 600, maxLinhas: story ? 7 : 5, entre: 1.15, alinhar: meio ? 'center' : 'left' }
+  const altura = 190 + medir(ctx, r.titulo, fala) + (r.autor ? 70 : 0) + 120
+  const y0 = topo + Math.max(0, (A - base - 160 - topo - altura) / 2)
+  ctx.font = `700 300px ${FONTE}`
+  ctx.fillStyle = corPedida(r, 'destaque', destaque)
+  ctx.textAlign = meio ? 'center' : 'left'
+  ctx.textBaseline = 'alphabetic'
+  ctx.fillText('“', meio ? L / 2 : m - 10, y0 + 270)
+  let y = bloco(ctx, r.titulo, { ...fala, y: y0 + 190, cor: corPedida(r, 'titulo', tinta), ...marca(r, destaque) })
+  if (r.autor) {
+    ctx.font = `700 40px ${FONTE}`
+    ctx.fillStyle = corPedida(r, 'texto', tinta)
+    ctx.textAlign = meio ? 'center' : 'left'
+    ctx.fillText(`— ${r.autor}`, meio ? L / 2 : m, y + 70)
+    y += 70
+  }
+  bloco(ctx, r.apoio, { x: m, y: y + 40, largura: L - m * 2, tamanho: 36, peso: 400, maxLinhas: 2, entre: 1.3, alinhar: meio ? 'center' : 'left', cor: apagado(tinta, 0.72) })
+  selo(ctx, { logo, nome, x: meio ? L / 2 : m, y: A - base - 100, altura: 72, alinhar: meio ? 'center' : 'left', claro: tinta === '#FFFFFF' })
+}
+
+// Metade de cima com a foto (ou a cor da marca), metade de baixo com o texto.
+function dividido(ctx, { L, A, story, c, r, logo, foto, nome }) {
+  const corte = Math.round(A * (story ? 0.42 : 0.46))
+  const claro = r.arte?.fundo === 'claro'
+  const tinta = claro ? '#111114' : '#FFFFFF'
+  ctx.fillStyle = claro ? '#F6F4F9' : '#0D0D12'
+  ctx.fillRect(0, 0, L, A)
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(0, 0, L, corte)
+  ctx.clip()
+  if (foto) cobrir(ctx, foto, 0, 0, L, corte)
+  else pintarFundo(ctx, { L, A: corte, c, foto: null, r: { arte: { fundo: 'marca' } } })
+  ctx.restore()
+  ctx.fillStyle = corPedida(r, 'destaque', c[0])
+  ctx.fillRect(0, corte - 8, L, 16)
+  const m = 80, topo = story ? 230 : 70, base = story ? 330 : 80
+  selo(ctx, { logo, nome, x: m, y: topo, altura: 72 })
+  const destaque = destaqueSobre(tinta, c)
+  let y = bloco(ctx, r.titulo, { x: m, y: corte + 70, largura: L - m * 2, tamanho: Math.round(96 * escala(r)), maxLinhas: 3, entre: 1.0, cor: corPedida(r, 'titulo', tinta), ...marca(r, destaque) })
+  y = bloco(ctx, r.apoio, { x: m, y: y + 22, largura: L - m * 2, tamanho: 40, peso: 400, maxLinhas: 3, entre: 1.3, cor: corPedida(r, 'texto', apagado(tinta)) })
+  if (r.chamada) {
+    ctx.font = `700 40px ${FONTE}`
+    const w = Math.min(ctx.measureText(r.chamada).width + 110, L - m * 2)
+    // Embaixo da arte, mas nunca por cima do texto.
+    pilula(ctx, r.chamada, { x: m, y: Math.min(A - 200, Math.max(y + 44, A - base - 104)), largura: w, altura: 104, tamanho: 40, fundo: corPedida(r, 'destaque', c[0]), cor: textoSobre(corPedida(r, 'destaque', c[0])) })
+  }
+}
+
+// Foto ocupando tudo e um cartão embaixo com o texto. Precisa de foto; sem ela, usa a cor da marca.
+function fotoInteira(ctx, { L, A, story, c, r, logo, foto, nome }) {
+  if (foto) cobrir(ctx, foto, 0, 0, L, A)
+  else pintarFundo(ctx, { L, A, c, foto: null, r: { arte: { fundo: 'marca' } } })
+  const m = 60, topo = story ? 230 : 60, base = story ? 330 : 60
+  selo(ctx, { logo, nome, x: m, y: topo, altura: 72 })
+  const claro = r.arte?.fundo !== 'escuro'
+  const tinta = claro ? '#111114' : '#FFFFFF'
+  const destaque = destaqueSobre(tinta, c)
+  const dentro = L - m * 2 - 100
+  const tOp = { x: m + 50, largura: dentro, tamanho: Math.round(76 * escala(r)), maxLinhas: 3, entre: 1.02 }
+  const aOp = { x: m + 50, largura: dentro, tamanho: 36, peso: 400, maxLinhas: 2, entre: 1.3 }
+  const h = 60 + medir(ctx, r.titulo, tOp) + 18 + medir(ctx, r.apoio, aOp) + (r.chamada ? 90 : 0) + 50
+  const y0 = A - base - h
+  arredondado(ctx, m, y0, L - m * 2, h, 36)
+  ctx.fillStyle = claro ? 'rgba(255,255,255,.95)' : 'rgba(13,13,18,.9)'
+  ctx.fill()
+  let y = bloco(ctx, r.titulo, { ...tOp, y: y0 + 60, cor: corPedida(r, 'titulo', tinta), ...marca(r, destaque) })
+  y = bloco(ctx, r.apoio, { ...aOp, y: y + 18, cor: corPedida(r, 'texto', apagado(tinta, 0.75)) })
+  if (r.chamada) {
+    ctx.font = `700 38px ${FONTE}`
+    ctx.fillStyle = corPedida(r, 'destaque', destaque)
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'alphabetic'
+    ctx.fillText(`${r.chamada}  →`, m + 50, y + 70)
+  }
+}
+
+// Cartão claro centralizado sobre a cor da marca (ou a foto). Bom para comunicado e convite.
+function cartao(ctx, { L, A, story, c, r, logo, foto, nome }) {
+  pintarFundo(ctx, { L, A, c, foto, r, padrao: foto ? 'foto' : 'marca' })
+  const m = 90, larg = L - m * 2
+  const tOp = { x: m + 60, largura: larg - 120, tamanho: Math.round(92 * escala(r)), maxLinhas: 4, entre: 1.0, alinhar: 'center' }
+  const aOp = { x: m + 60, largura: larg - 120, tamanho: 38, peso: 400, maxLinhas: 3, entre: 1.3, alinhar: 'center' }
+  const h = 150 + medir(ctx, r.titulo, tOp) + 24 + medir(ctx, r.apoio, aOp) + (r.chamada ? 150 : 40) + 60
+  const y0 = (A - h) / 2
+  ctx.save()
+  ctx.shadowColor = 'rgba(0,0,0,.35)'
+  ctx.shadowBlur = 60
+  arredondado(ctx, m, y0, larg, h, 44)
+  ctx.fillStyle = '#FFFFFF'
+  ctx.fill()
+  ctx.restore()
+  selo(ctx, { logo, nome, x: L / 2, y: y0 - 50, altura: 64, alinhar: 'center', claro: false })
+  const destaque = destaqueSobre('#111114', c)
+  let y = bloco(ctx, r.titulo, { ...tOp, y: y0 + 130, cor: corPedida(r, 'titulo', '#111114'), ...marca(r, destaque) })
+  y = bloco(ctx, r.apoio, { ...aOp, y: y + 24, cor: corPedida(r, 'texto', 'rgba(17,17,20,.72)') })
+  if (r.chamada) {
+    ctx.font = `700 40px ${FONTE}`
+    const w = Math.min(ctx.measureText(r.chamada).width + 110, larg - 120)
+    const fundo = corPedida(r, 'destaque', c[0])
+    pilula(ctx, r.chamada, { x: (L - w) / 2, y: y + 46, largura: w, altura: 104, tamanho: 40, fundo, cor: textoSobre(fundo) })
+  }
+  void story
+}
+
+const MODELOS = { promo, aviso, bastidores, manchete, lista, citacao, dividido, foto: fotoInteira, cartao }
 
 export function desenhar(canvas, { formato, modelo, roteiro, cores, logo, foto, nome }) {
   const [L, A] = TAMANHOS[formato] || TAMANHOS.post
   canvas.width = L
   canvas.height = A
   const ctx = canvas.getContext('2d')
-  const c = [cores[0] || '#7B5CFF', cores[1] || cores[0] || '#A28BFF', cores[2] || cores[1] || cores[0] || '#5B3FE0']
+  const base = [cores[0] || '#7B5CFF', cores[1] || cores[0] || '#A28BFF', cores[2] || cores[1] || cores[0] || '#5B3FE0']
+  const c = [corPedida(roteiro, 'destaque', base[0]), base[1], base[2]]
   ctx.clearRect(0, 0, L, A)
   ;(MODELOS[modelo] || aviso)(ctx, { L, A, story: formato === 'story', c, r: roteiro, logo, foto, nome })
 }

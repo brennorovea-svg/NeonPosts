@@ -61,7 +61,7 @@ const EXEMPLOS = [
   'Bastidores: mostrar a equipe preparando os pedidos de hoje, num tom leve e divertido.',
   'Aviso: no feriado vamos abrir das 10h às 16h. Lembrar que dá para pedir pelo WhatsApp.',
 ]
-const AJUSTES = ['Mais curto', 'Mais divertido', 'Mais direto', 'Outro título', 'Sem emoji']
+const AJUSTES = ['Mais curto', 'Mais divertido', 'Outro título', 'Outro layout', 'Título maior', 'Fundo claro', 'Fundo escuro']
 
 const FORMATOS = [['post', 'Post', '4:5'], ['story', 'Story', '9:16']]
 

@@ -28,7 +28,7 @@ export async function gerarPeca({ pedido, formato, fotos = [], refazer, ajuste }
     const peca = {
       id: antiga?.id || `teste-${Date.now()}`,
       formato, modelo: ROTEIRO_DE_TESTE.modelo, pedido: pedido || antiga?.pedido, fotos: antiga?.fotos || fotos,
-      roteiro: { ...ROTEIRO_DE_TESTE, titulo: antiga ? `${ROTEIRO_DE_TESTE.titulo} (v${antiga.refeitas + 2})` : ROTEIRO_DE_TESTE.titulo },
+      roteiro: { ...ROTEIRO_DE_TESTE, titulo: antiga ? `${ROTEIRO_DE_TESTE.titulo} (v${antiga.refeitas + 2})` : ROTEIRO_DE_TESTE.titulo, cores: /verde/i.test(ajuste || '') ? { titulo: '#2ECC71', texto: '#2ECC71' } : {} },
       imagem: null, refeitas: (antiga?.refeitas ?? -1) + 1, criado_em: new Date().toISOString(),
       versoes: antiga ? [...antiga.versoes, { pedido: antiga.pedido, roteiro: antiga.roteiro }] : [], escolhida: null,
     }

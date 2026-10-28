@@ -22,22 +22,26 @@ function quadro(t) {
 const PARADO = { abertura: 1, flash: 0, faisca: 0, escalaFaisca: 1, nome: 1 }
 const FIM = 2.2
 
-export default function Abertura() {
+export default function Abertura({ onFim }) {
   const reduzido = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
   const [q, setQ] = useState(reduzido ? PARADO : quadro(0))
 
   useEffect(() => {
-    if (reduzido) return
-    let id
+    if (reduzido) {
+      const t = setTimeout(() => onFim?.(), 900)
+      return () => clearTimeout(t)
+    }
+    let id, espera
     const inicio = performance.now()
     const passo = (agora) => {
       const t = (agora - inicio) / 1000
       setQ(quadro(Math.min(t, FIM)))
       if (t < FIM) id = requestAnimationFrame(passo)
+      else espera = setTimeout(() => onFim?.(), 500)
     }
     id = requestAnimationFrame(passo)
-    return () => cancelAnimationFrame(id)
-  }, [reduzido])
+    return () => { cancelAnimationFrame(id); clearTimeout(espera) }
+  }, [reduzido, onFim])
 
   const sobe = { opacity: q.nome, transform: `translateY(${(1 - q.nome) * 12}px)` }
 
@@ -47,7 +51,7 @@ export default function Abertura() {
       <div className="abertura__texto" style={sobe}>
         <h1 className="abertura__nome">Neon<span>posts</span></h1>
         <p className="abertura__frase">Uma frase. Um post pronto. <span>Com a cara da sua marca.</span></p>
-        <p className="abertura__assinatura">Em breve · da Neon Scripts</p>
+        <p className="abertura__assinatura">da Neon Scripts</p>
       </div>
     </main>
   )

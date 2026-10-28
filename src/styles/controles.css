@@ -1,0 +1,48 @@
+/* Controles do playbook: campos e botões com raio 12, movimento de 180ms. */
+.botao {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 52px;
+  padding: 14px 18px;
+  border: 0;
+  border-radius: var(--raio-campo);
+  font: 600 16px var(--fonte);
+  cursor: pointer;
+  transition: transform var(--dur-controle) var(--ease), opacity var(--dur-controle) var(--ease);
+}
+.botao:hover { transform: translateY(-2px); }
+.botao:active { transform: scale(.97); transition-duration: 100ms; }
+.botao:disabled { opacity: .5; cursor: default; transform: none; }
+.botao--primario { background: var(--neve); color: var(--grafite); }
+.botao--destaque { background: var(--violeta-escuro); color: #FFFFFF; }
+.botao--fantasma {
+  width: auto;
+  min-height: 40px;
+  padding: 8px 14px;
+  background: transparent;
+  color: var(--texto-2);
+  border: 1px solid var(--borda);
+  font-size: 14px;
+}
+.campo { display: flex; flex-direction: column; gap: 8px; }
+.campo label { font-size: 13px; color: var(--texto-2); }
+.campo input {
+  min-height: 52px;
+  padding: 12px 14px;
+  border-radius: var(--raio-campo);
+  border: 1px solid var(--borda);
+  background: var(--grafite);
+  color: var(--neve);
+  font: 16px var(--fonte);
+}
+.campo input::placeholder { color: var(--cinza-claro); }
+.marca { font-weight: 700; letter-spacing: -.04em; line-height: 1; }
+.marca span { color: var(--violeta); }
+.mono { font-family: var(--fonte-mono); }
+
+@media (prefers-reduced-motion: reduce) {
+  .botao, .botao:hover, .botao:active { transition: none; transform: none; }
+}

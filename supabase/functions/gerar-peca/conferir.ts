@@ -35,6 +35,13 @@ Legenda
 - Emoji conforme a preferência da marca: "nenhum" é nenhum, "pouco" é no máximo dois.
 - Termina com a chamada. Sem hashtags na legenda.
 
+Como escrever bem
+- A primeira linha da legenda é o gancho: uma pergunta, um benefício direto ou uma frase curta que faça parar de rolar. Evite aberturas gastas como "Chegou o dia" quando não forem exatamente o caso.
+- Fale do ganho de quem lê, com detalhes concretos do pedido e da marca. Se a frase serviria para qualquer negócio, reescreva.
+- Título da arte, apoio e legenda se completam; não repita a mesma frase.
+- Post de feed: legenda de 3 a 6 frases curtas, em parágrafos. Story: legenda de 1 ou 2 frases, porque a arte faz o trabalho.
+- Contato (WhatsApp, site, Instagram) só quando a chamada pedir, e escrito como está nos dados fixos.
+
 "hashtags": de 3 a 8, sem repetir, incluindo as fixas da marca.
 
 "modelo": "promo" para oferta, preço ou itens; "aviso" para novidade, comunicado, evento ou horário; "bastidores" para rotina, equipe, processo ou foto do dia a dia.`
@@ -46,7 +53,7 @@ type Perfil = {
   dados: { endereco: string; horario: string; whatsapp: string; instagram: string; site: string; itens: { nome: string; preco: string }[] }
 }
 
-export function montarMensagem(perfil: Perfil, pedido: string, formato: string) {
+export function montarMensagem(perfil: Perfil, pedido: string, formato: string, anterior?: Record<string, unknown> | null, ajuste?: string) {
   const marca = {
     nome: perfil.identidade.nome,
     ramo: perfil.identidade.ramo,
@@ -54,7 +61,15 @@ export function montarMensagem(perfil: Perfil, pedido: string, formato: string) 
     padrao: { tipos: perfil.padrao.tipos, chamada: perfil.padrao.chamada, hashtags_fixas: perfil.padrao.hashtags },
     dados_fixos: perfil.dados,
   }
-  return `<marca>\n${JSON.stringify(marca, null, 2)}\n</marca>\n\n<formato>${formato === 'story' ? 'story (9:16)' : 'post de feed (4:5)'}</formato>\n\n<pedido>\n${pedido}\n</pedido>`
+  let texto = `<marca>\n${JSON.stringify(marca, null, 2)}\n</marca>\n\n<formato>${formato === 'story' ? 'story (9:16)' : 'post de feed (4:5)'}</formato>\n\n<pedido>\n${pedido}\n</pedido>`
+  if (anterior) {
+    const { titulo, apoio, chamada, legenda } = anterior as Record<string, string>
+    texto += `\n\n<versao_anterior>\n${JSON.stringify({ titulo, apoio, chamada, legenda }, null, 2)}\n</versao_anterior>`
+    texto += ajuste
+      ? `\n\n<ajuste>\n${ajuste}\n</ajuste>\n\nO dono gostou da versão anterior e quer só este ajuste. Parta dela e mude apenas o que o ajuste pede; o resto fica igual, palavra por palavra quando der.`
+      : `\n\nO dono pediu outra versão, sem dizer o que mudar. Escreva uma peça nova de verdade: outro ângulo, outro título, outra primeira linha na legenda. Se o pedido mudou, siga o pedido novo.`
+  }
+  return texto
 }
 
 const MARCADORES: Record<string, string> = {

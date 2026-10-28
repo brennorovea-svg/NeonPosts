@@ -41,21 +41,22 @@ Deno.serve(async (req) => {
   const { data: negocio } = await banco.from('negocios').select('id, limite_pecas').eq('dono', conta.user.id).single()
   if (!negocio) return erro('Não achamos o seu negócio.', 404)
 
-  let corpo: { pedido?: string; formato?: string; fotos?: string[]; refazer?: string }
+  let corpo: { pedido?: string; formato?: string; fotos?: string[]; refazer?: string; ajuste?: string }
   try { corpo = await req.json() } catch { return erro('Pedido inválido.', 400) }
 
   let pedido = String(corpo.pedido || '').trim()
   let formato = corpo.formato === 'story' ? 'story' : 'post'
   let fotos = (corpo.fotos || []).filter((f) => typeof f === 'string' && f.startsWith(`${negocio.id}/`)).slice(0, 4)
-  let refeita: { id: string; refeitas: number } | null = null
+  let refeita: { id: string; pedido: string; refeitas: number; roteiro: Record<string, unknown>; versoes: { roteiro: Record<string, unknown> }[]; escolhida: number | null } | null = null
+  const ajuste = String(corpo.ajuste || '').trim().slice(0, 300)
 
   if (corpo.refazer) {
-    const { data } = await banco.from('pecas').select('id, pedido, formato, fotos, refeitas')
+    const { data } = await banco.from('pecas').select('id, pedido, formato, fotos, refeitas, roteiro, versoes, escolhida')
       .eq('id', corpo.refazer).eq('negocio', negocio.id).single()
     if (!data) return erro('Não achamos essa peça.', 404)
     if (data.refeitas >= MAX_REFEITAS) return erro(`Você já refez esta peça ${MAX_REFEITAS} vezes. Escreva um pedido novo.`, 429)
     refeita = data
-    pedido = data.pedido
+    pedido = pedido || data.pedido
     formato = corpo.formato ? formato : data.formato
     fotos = data.fotos
   } else {
@@ -71,19 +72,19 @@ Deno.serve(async (req) => {
 
   const chave = Deno.env.get('ANTHROPIC_API_KEY')
   if (!chave) return erro('A IA ainda não foi ligada. Tente mais tarde.', 503)
-  const ia = new Anthropic({ apiKey: chave, timeout: 60_000, maxRetries: 1 })
+  const ia = new Anthropic({ apiKey: chave, timeout: 90_000, maxRetries: 1 })
 
   let bruto: Record<string, unknown>
   try {
     const msg = await ia.beta.messages.create({
       model: 'claude-opus-5-5',
-      max_tokens: 8000,
+      max_tokens: 16000,
       betas: ['server-side-fallback-2026-07-01'],
       // @ts-ignore: campo novo da API, ainda sem tipo nesta versão do SDK
       fallbacks: 'default',
-      output_config: { effort: 'low', format: { type: 'json_schema', schema: ESQUEMA } },
+      output_config: { effort: 'medium', format: { type: 'json_schema', schema: ESQUEMA } },
       system: INSTRUCOES,
-      messages: [{ role: 'user', content: montarMensagem(perfil, pedido, formato) }],
+      messages: [{ role: 'user', content: montarMensagem(perfil, pedido, formato, refeita && (refeita.versoes?.[refeita.escolhida ?? -1]?.roteiro || refeita.roteiro), ajuste) }],
     })
     if (msg.stop_reason === 'refusal') return erro('A IA não quis escrever esse pedido. Tente com outras palavras.', 422)
     const texto = msg.content.find((b) => b.type === 'text')
@@ -104,7 +105,10 @@ Deno.serve(async (req) => {
     imagem: null,
   }
   const consulta = refeita
-    ? banco.from('pecas').update({ ...linha, refeitas: refeita.refeitas + 1 }).eq('id', refeita.id)
+    ? banco.from('pecas').update({
+      ...linha, pedido, refeitas: refeita.refeitas + 1, escolhida: null,
+      versoes: [...(refeita.versoes || []), { pedido: refeita.pedido, roteiro: refeita.roteiro }],
+    }).eq('id', refeita.id)
     : banco.from('pecas').insert({ ...linha, negocio: negocio.id, pedido, fotos })
   const { data: peca, error } = await consulta.select('*').single()
   if (error) { console.error('banco', error); return erro('Não deu para guardar a peça. Tente de novo.', 500) }

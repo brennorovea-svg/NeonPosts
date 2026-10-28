@@ -2,9 +2,50 @@ import { useEffect, useRef, useState } from 'react'
 import Obturador from '../components/Obturador.jsx'
 import Imagens from '../components/campos/Imagens.jsx'
 import { enderecoDaImagem } from '../lib/perfil.js'
-import { gerarPeca, guardarImagem } from '../lib/pecas.js'
+import { escolherVersao, gerarPeca, guardarImagem } from '../lib/pecas.js'
 import { carregarImagem, desenhar, NOMES_DOS_MODELOS, paraArquivo, prepararFontes } from '../lib/desenhar.js'
 import './Criar.css'
+
+const suave = (t) => 1 - Math.pow(1 - Math.min(1, Math.max(0, t)), 4)
+
+// Enquanto a IA trabalha, a lente fica fechada e respira. Quando a peça chega,
+// a íris abre, dispara o flash e a faísca, e só então a peça aparece.
+function Lente({ pronta, onFim }) {
+  const [q, setQ] = useState({ abertura: 0.08, flash: 0, faisca: 0, escalaFaisca: 0.5 })
+  useEffect(() => {
+    if (!pronta) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { onFim(); return }
+    let id
+    const inicio = performance.now()
+    const passo = (agora) => {
+      const t = (agora - inicio) / 1000
+      const ft = (t - 0.5) / 0.32
+      const kt = (t - 0.5) / 0.45
+      setQ({
+        abertura: 0.08 + suave(t / 0.55) * 0.92,
+        flash: ft < 0 || ft > 1 ? 0 : ft < 0.25 ? ft / 0.25 : 1 - suave((ft - 0.25) / 0.75),
+        faisca: kt < 0 || kt > 1 ? 0 : kt < 0.3 ? kt / 0.3 : 1 - (kt - 0.3) / 0.7,
+        escalaFaisca: 0.5 + 0.5 * suave(kt),
+      })
+      if (t < 1.0) id = requestAnimationFrame(passo)
+      else onFim()
+    }
+    id = requestAnimationFrame(passo)
+    return () => cancelAnimationFrame(id)
+  }, [pronta])
+  return (
+    <div className={pronta ? undefined : 'criar__respira'}>
+      <Obturador tamanho={140} {...q} />
+    </div>
+  )
+}
+
+const EXEMPLOS = [
+  'Promoção do nosso serviço mais pedido só até sexta, para quem ainda não conhece a gente. Chamar no WhatsApp.',
+  'Bastidores: mostrar a equipe preparando os pedidos de hoje, num tom leve e divertido.',
+  'Aviso: no feriado vamos abrir das 10h às 16h. Lembrar que dá para pedir pelo WhatsApp.',
+]
+const AJUSTES = ['Mais curto', 'Mais divertido', 'Mais direto', 'Outro título', 'Sem emoji']
 
 const FORMATOS = [['post', 'Post', '4:5'], ['story', 'Story', '9:16']]
 
@@ -19,11 +60,14 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
   const [pedido, setPedido] = useState('')
   const [formato, setFormato] = useState('post')
   const [foto, setFoto] = useState(null)
-  const [estado, setEstado] = useState(pecaInicial ? 'pronta' : 'pedido') // pedido | gerando | pronta
+  const [estado, setEstado] = useState(pecaInicial ? 'pronta' : 'pedido') // pedido | gerando | revelando | pronta
   const [peca, setPeca] = useState(pecaInicial || null)
   const [restantes, setRestantes] = useState(pecaInicial ? 3 - pecaInicial.refeitas : 3)
   const [erro, setErro] = useState('')
   const [copiou, setCopiou] = useState(false)
+  const [ajustando, setAjustando] = useState(false)
+  const [pedidoNovo, setPedidoNovo] = useState('')
+  const [ajuste, setAjuste] = useState('')
   const [flash, setFlash] = useState(false)
   const [imagens, setImagens] = useState({ logo: null, foto: null, pronto: false })
   const canvas = useRef(null)
@@ -46,7 +90,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
   // Redesenha a cada troca de modelo ou formato e guarda a imagem para o histórico.
   useEffect(() => {
     if (!peca || !canvas.current || estado !== 'pronta' || !imagens.pronto) return
-    desenhar(canvas.current, { formato: peca.formato, modelo: peca.modelo, roteiro: peca.roteiro, cores: perfil.identidade.cores, nome, logo: imagens.logo, foto: imagens.foto })
+    desenhar(canvas.current, { formato: peca.formato, modelo: peca.modelo, roteiro: [...(peca.versoes || []), { roteiro: peca.roteiro }][peca.escolhida ?? (peca.versoes || []).length].roteiro, cores: perfil.identidade.cores, nome, logo: imagens.logo, foto: imagens.foto })
     const t = setTimeout(async () => {
       try { await guardarImagem(peca, negocioId, await paraArquivo(canvas.current, 'peca.png')) } catch { /* o histórico fica sem miniatura */ }
     }, 600)
@@ -58,12 +102,14 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
     setEstado('gerando')
     window.scrollTo({ top: 0 })
     try {
-      const r = await gerarPeca(refazer ? { refazer: peca.id, formato: peca.formato } : { pedido: pedido.trim(), formato, fotos: foto ? [foto] : [] })
+      const r = await gerarPeca(refazer
+        ? { refazer: peca.id, formato: peca.formato, pedido: pedidoNovo.trim(), ajuste: ajuste.trim() }
+        : { pedido: pedido.trim(), formato, fotos: foto ? [foto] : [] })
+      setAjustando(false)
+      setAjuste('')
       setPeca(r.peca)
       setRestantes(r.refeitasRestantes)
-      setFlash(true)
-      setTimeout(() => setFlash(false), 420)
-      setEstado('pronta')
+      setEstado('revelando')
     } catch (falha) {
       setErro(falha.message)
       setEstado(refazer ? 'pronta' : 'pedido')
@@ -83,13 +129,21 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
   }
 
   async function copiar() {
-    const r = peca.roteiro
+    const r = roteiro
     await navigator.clipboard.writeText(`${r.legenda}\n\n${r.hashtags.join(' ')}`)
     setCopiou(true)
     setTimeout(() => setCopiou(false), 1800)
   }
 
   const trocar = (campo, valor) => setPeca((p) => ({ ...p, [campo]: valor }))
+  const versoes = peca ? [...(peca.versoes || []), { pedido: peca.pedido, roteiro: peca.roteiro }] : []
+  const indice = peca ? Math.min(peca.escolhida ?? versoes.length - 1, versoes.length - 1) : 0
+  const roteiro = versoes[indice]?.roteiro
+  function escolher(i) {
+    const valor = i === versoes.length - 1 ? null : i
+    trocar('escolhida', valor)
+    escolherVersao(peca.id, valor).catch(() => {})
+  }
   const comecos = perfil.padrao.tipos.map((t) => [t, COMECOS[t] || `Post de ${t.toLowerCase()} sobre `])
 
   return (
@@ -113,6 +167,14 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
               <div className="fichas criar__comecos">
                 {comecos.map(([tipo, comeco]) => (
                   <button key={tipo} type="button" className="ficha" onClick={() => { setPedido(comeco); area.current?.focus() }}>{tipo}</button>
+                ))}
+              </div>
+            )}
+            {pedido.trim().length < 3 && (
+              <div className="criar__exemplos">
+                <p>Um bom pedido diz <strong>o que</strong> é o post, <strong>para quem</strong>, o que a pessoa deve <strong>fazer depois</strong> e algum detalhe (preço, data, tom). Toque num exemplo para usar como base.</p>
+                {EXEMPLOS.map((e) => (
+                  <button key={e} type="button" className="criar__exemplo" onClick={() => { setPedido(e); area.current?.focus() }}>{e}</button>
                 ))}
               </div>
             )}
@@ -145,11 +207,14 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
         </main>
       )}
 
-      {estado === 'gerando' && (
+      {(estado === 'gerando' || estado === 'revelando') && (
         <main className="criar__gerando" aria-live="polite">
-          <div className="criar__respira"><Obturador tamanho={140} /></div>
-          <p className="criar__gerando-texto">Criando com a cara {nome ? `da ${nome}` : 'da sua marca'}...</p>
-          <p className="criar__gerando-sub mono">Leva uns segundos</p>
+          <Lente
+            pronta={estado === 'revelando'}
+            onFim={() => { setFlash(true); setTimeout(() => setFlash(false), 420); setEstado('pronta') }}
+          />
+          <p className="criar__gerando-texto">{estado === 'revelando' ? 'Pronto.' : `Criando com a cara ${nome ? `da ${nome}` : 'da sua marca'}...`}</p>
+          <p className="criar__gerando-sub mono">{estado === 'revelando' ? '\u00a0' : 'Leva uns segundos'}</p>
         </main>
       )}
 
@@ -157,11 +222,48 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
         <main className="criar__pronta">
           {flash && <div className="criar__flash" aria-hidden="true" />}
           <div className={`criar__previa criar__previa--${peca.formato}`}>
-            <canvas ref={canvas} aria-label={`Prévia: ${peca.roteiro.titulo}`} />
+            <canvas ref={canvas} aria-label={`Prévia: ${roteiro.titulo}`} />
           </div>
 
           <div className="criar__painel">
-            <p className="criar__pedido">“{peca.pedido}”</p>
+            {ajustando ? (
+              <div className="criar__ajustar">
+                <div className="campo">
+                  <label htmlFor="pedido-novo">Seu pedido</label>
+                  <textarea id="pedido-novo" rows={3} maxLength={600} value={pedidoNovo} onChange={(e) => setPedidoNovo(e.target.value)} />
+                </div>
+                <div className="campo">
+                  <label htmlFor="ajuste">O que mudar? (opcional)</label>
+                  <p className="campo__ajuda">Com ajuste, a gente mexe só no que você pedir. Em branco, sai uma versão nova.</p>
+                  <input id="ajuste" maxLength={300} value={ajuste} onChange={(e) => setAjuste(e.target.value)} placeholder="Ex.: mais curto, falar do site, sem emoji" />
+                  <div className="fichas">
+                    {AJUSTES.map((a) => (
+                      <button key={a} type="button" className="ficha" onClick={() => setAjuste((v) => (v ? `${v}, ${a.toLowerCase()}` : a))}>{a}</button>
+                    ))}
+                  </div>
+                </div>
+                <div className="criar__acoes-linha">
+                  <button type="button" className="botao botao--fantasma" onClick={() => setAjustando(false)}>Cancelar</button>
+                  <button type="button" className="botao botao--destaque" disabled={pedidoNovo.trim().length < 3} onClick={() => criar(true)}>Gerar nova versão ({restantes})</button>
+                </div>
+              </div>
+            ) : (
+              <p className="criar__pedido">“{versoes[indice]?.pedido || peca.pedido}”</p>
+            )}
+
+            {versoes.length > 1 && (
+              <div className="campo">
+                <span className="campo__rotulo">Versão que vai para o post</span>
+                <div className="criar__versoes">
+                  {versoes.map((v, i) => (
+                    <button key={i} type="button" className="criar__versao" aria-pressed={indice === i} onClick={() => escolher(i)}>
+                      <span className="mono">{i + 1}</span>
+                      <span>{v.roteiro.titulo}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="campo">
               <span className="campo__rotulo">Modelo</span>
@@ -180,15 +282,15 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
               </div>
             </div>
 
-            {peca.roteiro.avisos?.length > 0 && (
+            {roteiro.avisos?.length > 0 && (
               <ul className="criar__avisos">
-                {peca.roteiro.avisos.map((a) => <li key={a}>{a}</li>)}
+                {roteiro.avisos.map((a) => <li key={a}>{a}</li>)}
               </ul>
             )}
 
             <div className="criar__legenda">
-              <p>{peca.roteiro.legenda}</p>
-              <p className="criar__hashtags">{peca.roteiro.hashtags.join(' ')}</p>
+              <p>{roteiro.legenda}</p>
+              <p className="criar__hashtags">{roteiro.hashtags.join(' ')}</p>
             </div>
 
             {erro && <p className="campo__erro" role="alert">{erro}</p>}
@@ -196,7 +298,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
               <button type="button" className="botao botao--primario" onClick={baixar}>Baixar e postar</button>
               <button type="button" className="botao botao--destaque" onClick={copiar}>{copiou ? 'Legenda copiada' : 'Copiar legenda'}</button>
               <div className="criar__acoes-linha">
-                <button type="button" className="botao botao--fantasma" disabled={restantes <= 0} onClick={() => criar(true)}>
+                <button type="button" className="botao botao--fantasma" disabled={restantes <= 0 || ajustando} onClick={() => { setPedidoNovo(peca.pedido); setAjustando(true) }}>
                   Gerar de novo{restantes > 0 ? ` (${restantes})` : ''}
                 </button>
                 <button type="button" className="botao botao--fantasma" onClick={() => { setPeca(null); setPedido(''); setFoto(null); setEstado('pedido') }}>Criar outro</button>

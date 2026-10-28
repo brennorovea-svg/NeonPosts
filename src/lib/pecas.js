@@ -23,7 +23,7 @@ export function inicioDoMes() {
 
 export async function gerarPeca({ pedido, formato, fotos = [], refazer, ajuste }) {
   if (modoDeTeste()) {
-    await new Promise((ok) => setTimeout(ok, 9000))
+    await new Promise((ok) => setTimeout(ok, 6000))
     const antiga = refazer && pecasDeTeste.find((p) => p.id === refazer)
     const peca = {
       id: antiga?.id || `teste-${Date.now()}`,

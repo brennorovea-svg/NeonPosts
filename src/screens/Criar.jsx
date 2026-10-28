@@ -3,6 +3,7 @@ import Obturador from '../components/Obturador.jsx'
 import Imagens from '../components/campos/Imagens.jsx'
 import Layouts from '../components/Layouts.jsx'
 import { sugerirLayouts, tipoDoPedido } from '../lib/sugerir.js'
+import { DURACAO, gravar, tocar } from '../lib/video.js'
 import { enderecoDaImagem } from '../lib/perfil.js'
 import { acordarIA, escolherVersao, gerarPeca, guardarImagem } from '../lib/pecas.js'
 import { carregarImagem, desenhar, NOMES_DOS_MODELOS, paraArquivo, prepararFontes } from '../lib/desenhar.js'
@@ -75,6 +76,8 @@ const EXEMPLOS = [
 const AJUSTES = ['Mais curto', 'Mais divertido', 'Outro título', 'Outro layout', 'Título maior', 'Fundo claro', 'Fundo escuro']
 
 const FORMATOS = [['post', 'Post', '4:5'], ['story', 'Story', '9:16']]
+// O vídeo é o story animado: a IA escreve igual, o app anima e grava no aparelho.
+const FORMATOS_DE_ESCOLHA = [...FORMATOS, ['video', 'Vídeo', `${DURACAO} s`]]
 
 // Para cada tipo que a marca posta: como o pedido começa, o que ele precisa dizer e exemplos.
 const TIPOS = {
@@ -152,6 +155,9 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
   const [pedido, setPedido] = useState('')
   const [tipo, setTipo] = useState(null)
   const [formato, setFormato] = useState('post')
+  const [video, setVideo] = useState(false)
+  const [gravando, setGravando] = useState(null) // null ou de 0 a 1
+  const [avisoVideo, setAvisoVideo] = useState('')
   const [foto, setFoto] = useState(null)
   const [estado, setEstado] = useState(pecaInicial ? 'pronta' : 'pedido') // pedido | gerando | revelando | pronta
   const [peca, setPeca] = useState(pecaInicial || null)
@@ -200,12 +206,25 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
   // Redesenha a cada troca de modelo ou formato e guarda a imagem para o histórico.
   useEffect(() => {
     if (!peca || !canvas.current || estado !== 'pronta' || !imagens.pronto) return
-    desenhar(canvas.current, { formato: peca.formato, modelo: peca.modelo, roteiro: [...(peca.versoes || []), { roteiro: peca.roteiro }][peca.escolhida ?? (peca.versoes || []).length].roteiro, cores: perfil.identidade.cores, nome, logo: imagens.logo, foto: imagens.foto })
+    const opcoes = opcoesDoDesenho()
+    // A miniatura do histórico é sempre a arte parada, desenhada fora da tela.
+    const quadro = document.createElement('canvas')
+    desenhar(quadro, opcoes)
+    const comVideo = video && peca.formato === 'story'
+    const parado = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    let parar = null
+    if (comVideo && !parado) parar = tocar(canvas.current, opcoes)
+    else desenhar(canvas.current, comVideo ? { ...opcoes, tempo: DURACAO, total: DURACAO } : opcoes)
     const t = setTimeout(async () => {
-      try { await guardarImagem(peca, negocioId, await paraArquivo(canvas.current, 'peca.png')) } catch { /* o histórico fica sem miniatura */ }
+      try { await guardarImagem(peca, negocioId, await paraArquivo(quadro, 'peca.png')) } catch { /* o histórico fica sem miniatura */ }
     }, 600)
-    return () => clearTimeout(t)
-  }, [peca, imagens, estado])
+    return () => { clearTimeout(t); parar?.() }
+  }, [peca, imagens, estado, video])
+
+  function opcoesDoDesenho() {
+    const lista = [...(peca.versoes || []), { roteiro: peca.roteiro }]
+    return { formato: peca.formato, modelo: peca.modelo, roteiro: lista[peca.escolhida ?? (peca.versoes || []).length].roteiro, cores: perfil.identidade.cores, nome, logo: imagens.logo, foto: imagens.foto }
+  }
 
   async function criar(refazer) {
     setErro('')
@@ -227,7 +246,22 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
   }
 
   async function baixar() {
-    const arquivo = await paraArquivo(canvas.current, `${nome || 'post'}-${peca.formato}.png`.replace(/\s+/g, '-').toLowerCase())
+    const base = `${nome || 'post'}-${video ? 'video' : peca.formato}`.replace(/\s+/g, '-').toLowerCase()
+    let arquivo
+    if (video && peca.formato === 'story') {
+      setErro('')
+      setGravando(0)
+      try {
+        const r = await gravar(opcoesDoDesenho(), base, setGravando)
+        arquivo = r.arquivo
+        setAvisoVideo(r.extensao === 'webm' ? 'Este aparelho gravou em WebM. Se o Instagram não aceitar, baixe pelo celular com Chrome ou Safari atualizado.' : '')
+      } catch (falha) {
+        setErro(falha.message)
+        return
+      } finally {
+        setGravando(null)
+      }
+    } else arquivo = await paraArquivo(canvas.current, `${base}.png`)
     if (navigator.canShare?.({ files: [arquivo] })) {
       try { await navigator.share({ files: [arquivo] }); return } catch (e) { if (e.name === 'AbortError') return }
     }
@@ -295,8 +329,8 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
           <div className="campo">
             <span className="campo__rotulo">Formato</span>
             <div className="criar__formatos" role="group" aria-label="Formato">
-              {FORMATOS.map(([valor, rotulo, medida]) => (
-                <button key={valor} type="button" className="criar__formato" aria-pressed={formato === valor} onClick={() => setFormato(valor)}>
+              {FORMATOS_DE_ESCOLHA.map(([valor, rotulo, medida]) => (
+                <button key={valor} type="button" className="criar__formato" aria-pressed={(video ? 'video' : formato) === valor} onClick={() => { setVideo(valor === 'video'); setFormato(valor === 'post' ? 'post' : 'story') }}>
                   <span className={`criar__moldura criar__moldura--${valor}`} aria-hidden="true" />
                   <strong>{rotulo}</strong>
                   <span className="mono">{medida}</span>
@@ -322,7 +356,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
 
           {erro && <p className="campo__erro" role="alert">{erro}</p>}
           <button type="button" className="botao botao--primario" disabled={pedido.trim().length < 3} onClick={() => criar(false)}>
-            Criar {formato === 'story' ? 'story' : 'post'}
+            Criar {video ? 'vídeo' : formato === 'story' ? 'story' : 'post'}
           </button>
           <p className="criar__nota">Preço, endereço e horário saem só dos seus dados fixos. Nada inventado.</p>
         </main>
@@ -397,8 +431,12 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
             <div className="campo">
               <span className="campo__rotulo">Formato</span>
               <div className="fichas">
-                {FORMATOS.map(([valor, rotulo, medida]) => (
-                  <button key={valor} type="button" className="ficha" aria-pressed={peca.formato === valor} onClick={() => trocar('formato', valor)}>{rotulo} · {medida}</button>
+                {FORMATOS_DE_ESCOLHA.map(([valor, rotulo, medida]) => (
+                  <button
+                    key={valor} type="button" className="ficha" disabled={gravando !== null}
+                    aria-pressed={(video && peca.formato === 'story' ? 'video' : peca.formato) === valor}
+                    onClick={() => { setVideo(valor === 'video'); trocar('formato', valor === 'post' ? 'post' : 'story') }}
+                  >{rotulo} · {medida}</button>
                 ))}
               </div>
             </div>
@@ -416,13 +454,20 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
 
             {erro && <p className="campo__erro" role="alert">{erro}</p>}
             <div className="criar__acoes">
-              <button type="button" className="botao botao--primario" onClick={baixar}>Baixar e postar</button>
+              <button type="button" className="botao botao--primario" onClick={baixar} disabled={gravando !== null}>
+                {gravando !== null ? `Gravando o vídeo... ${Math.ceil(DURACAO * (1 - gravando))} s` : video && peca.formato === 'story' ? 'Baixar vídeo e postar' : 'Baixar e postar'}
+              </button>
+              {gravando !== null && (
+                <div className="criar__gravando" aria-hidden="true"><span style={{ transform: `scaleX(${gravando})` }} /></div>
+              )}
+              {gravando !== null && <p className="criar__nota">Deixe esta tela aberta até terminar.</p>}
+              {avisoVideo && <p className="criar__nota criar__nota--aviso">{avisoVideo}</p>}
               <button type="button" className="botao botao--destaque" onClick={copiar}>{copiou ? 'Legenda copiada' : 'Copiar legenda'}</button>
               <div className="criar__acoes-linha">
                 <button type="button" className="botao botao--fantasma" disabled={restantes <= 0 || ajustando} onClick={() => { setPedidoNovo(peca.pedido); setAjustando(true) }}>
                   Gerar de novo{restantes > 0 ? ` (${restantes})` : ''}
                 </button>
-                <button type="button" className="botao botao--fantasma" onClick={() => { setPeca(null); setPedido(''); setTipo(null); setFoto(null); setLayout('ia'); setEstado('pedido') }}>Criar outro</button>
+                <button type="button" className="botao botao--fantasma" onClick={() => { setPeca(null); setPedido(''); setTipo(null); setFoto(null); setLayout('ia'); setAvisoVideo(''); setEstado('pedido') }}>Criar outro</button>
               </div>
               <p className="criar__nota">Gerar de novo não conta como peça nova.</p>
             </div>

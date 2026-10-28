@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
       max_tokens: 16000,
       output_config: { effort: 'medium', format: { type: 'json_schema', schema: ESQUEMA } },
       system: INSTRUCOES,
-      messages: [{ role: 'user' as const, content: montarMensagem(perfil, pedido, formato, refeita && (refeita.versoes?.[refeita.escolhida ?? -1]?.roteiro || refeita.roteiro), ajuste) }],
+      messages: [{ role: 'user' as const, content: montarMensagem(perfil, pedido, formato, refeita && (refeita.versoes?.[refeita.escolhida ?? -1]?.roteiro || refeita.roteiro), ajuste, fotos.length > 0) }],
     }
     const msg = formato === 'story'
       ? await ia.beta.messages.create({
@@ -107,9 +107,9 @@ Deno.serve(async (req) => {
   const roteiro = conferir(bruto, perfil, pedido)
   // Ajuste que a IA não consegue fazer (trocar foto, layout, fonte) volta igual; avisa em vez de parecer que nada aconteceu.
   const base = refeita && (refeita.versoes?.[refeita.escolhida ?? -1]?.roteiro || refeita.roteiro) as Record<string, unknown> | null
-  if (ajuste && base && ['titulo', 'apoio', 'chamada', 'legenda'].every((k) => base[k] === (roteiro as Record<string, unknown>)[k])
-    && JSON.stringify(base.cores || {}) === JSON.stringify(roteiro.cores)) {
-    roteiro.avisos.push('Esse ajuste não mudou nada. Por aqui a IA muda o texto e as cores; para trocar o layout, use Modelo e Formato.')
+  const igual = (k: string) => JSON.stringify(base?.[k] ?? null) === JSON.stringify((roteiro as Record<string, unknown>)[k] ?? null)
+  if (ajuste && base && ['modelo', 'titulo', 'apoio', 'chamada', 'legenda', 'pontos', 'arte', 'cores'].every(igual)) {
+    roteiro.avisos.push('Esse ajuste não mudou nada. Por aqui a IA muda o texto, as cores, o layout e o destaque; trocar a foto ou a fonte ainda não dá.')
   }
   const linha = {
     perfil_versao: perfil.versao,

@@ -1,7 +1,10 @@
 // Parte pura da função gerar-peca: instruções para a IA, formato da resposta e a
 // conferência final, que tira qualquer preço, data, horário ou telefone inventado.
 
-export const MODELOS = ['promo', 'aviso', 'bastidores']
+export const MODELOS = ['promo', 'aviso', 'bastidores', 'manchete', 'lista', 'citacao', 'dividido', 'foto', 'cartao']
+const TAMANHOS = ['normal', 'grande', 'gigante']
+const ALINHAMENTOS = ['esquerda', 'centro']
+const FUNDOS = ['marca', 'escuro', 'claro', 'foto']
 
 export const ESQUEMA = {
   type: 'object',
@@ -13,6 +16,19 @@ export const ESQUEMA = {
     chamada: { type: 'string' },
     legenda: { type: 'string' },
     hashtags: { type: 'array', items: { type: 'string' } },
+    pontos: { type: 'array', items: { type: 'string' } },
+    autor: { type: 'string' },
+    arte: {
+      type: 'object',
+      properties: {
+        destaque: { type: 'string' },
+        tamanho_titulo: { type: 'string', enum: TAMANHOS },
+        alinhamento: { type: 'string', enum: ALINHAMENTOS },
+        fundo: { type: 'string', enum: FUNDOS },
+      },
+      required: ['destaque', 'tamanho_titulo', 'alinhamento', 'fundo'],
+      additionalProperties: false,
+    },
     cores: {
       type: 'object',
       properties: { titulo: { type: 'string' }, texto: { type: 'string' }, destaque: { type: 'string' } },
@@ -20,7 +36,7 @@ export const ESQUEMA = {
       additionalProperties: false,
     },
   },
-  required: ['modelo', 'titulo', 'apoio', 'itens', 'chamada', 'legenda', 'hashtags', 'cores'],
+  required: ['modelo', 'titulo', 'apoio', 'itens', 'chamada', 'legenda', 'hashtags', 'pontos', 'autor', 'arte', 'cores'],
   additionalProperties: false,
 }
 
@@ -52,7 +68,26 @@ Como escrever bem
 
 "cores": o app desenha a arte com as cores da marca. Só preencha quando o pedido ou o ajuste pedir uma cor; senão deixe os três vazios (""). Use código hex de 6 dígitos (ex.: verde "#2ECC71"). "titulo" é a cor do título da arte, "texto" a da frase de apoio, "destaque" a do botão, da moldura e dos detalhes. "Palavras em branco" ou "texto" quer dizer título e apoio. Se a versão anterior tinha cores e o ajuste não fala delas, repita as mesmas.
 
-"modelo": "promo" para oferta, preço ou itens; "aviso" para novidade, comunicado, evento ou horário; "bastidores" para rotina, equipe, processo ou foto do dia a dia.`
+Arte: você também decide como a peça é desenhada, para cada peça ter a sua cara.
+"modelo", o layout:
+- "promo": oferta com itens e preço (usa "itens").
+- "aviso": comunicado curto e centralizado, com moldura (horário, feriado, recado).
+- "bastidores": foto do dia a dia ocupando tudo, texto embaixo. Melhor com foto.
+- "manchete": título enorme como protagonista, para novidade ou frase de impacto.
+- "lista": título e de 2 a 4 pontos numerados em "pontos", para dica, passo a passo ou o que está incluso.
+- "citacao": a fala de um cliente no "titulo", com o nome em "autor", para depoimento.
+- "dividido": foto em cima e texto embaixo, para lançamento, produto ou antes e depois.
+- "foto": foto inteira com um cartão de texto embaixo. Só com foto.
+- "cartao": cartão branco no meio, para convite, evento ou comunicado mais formal.
+Varie: não use sempre o mesmo. Se o pedido diz que tem foto, prefira "bastidores", "dividido" ou "foto".
+"pontos": só no "lista", frases de até 6 palavras; nos outros, lista vazia. "autor": só no "citacao"; nos outros, "".
+"arte":
+- "destaque": 1 a 3 palavras do título, escritas igual a ele, que a arte pinta na cor de destaque (o coração da mensagem). "" para nenhuma.
+- "tamanho_titulo": "normal", "grande" ou "gigante" (título curto e forte pede maior).
+- "alinhamento": "esquerda" ou "centro".
+- "fundo": "marca" (cores da marca), "escuro", "claro" ou "foto" (só se houver foto).
+
+Ajustes sobre o visual: se o ajuste pedir outro layout, mais destaque, título maior, fundo claro ou escuro, mude esses campos. Se pedir algo que esses campos não fazem (trocar a foto, mudar a fonte), mantenha a peça e não invente.`
 
 type Perfil = {
   identidade: { nome: string; ramo: string }
@@ -61,7 +96,7 @@ type Perfil = {
   dados: { endereco: string; horario: string; whatsapp: string; instagram: string; site: string; itens: { nome: string; preco: string }[] }
 }
 
-export function montarMensagem(perfil: Perfil, pedido: string, formato: string, anterior?: Record<string, unknown> | null, ajuste?: string) {
+export function montarMensagem(perfil: Perfil, pedido: string, formato: string, anterior?: Record<string, unknown> | null, ajuste?: string, temFoto = false) {
   const marca = {
     nome: perfil.identidade.nome,
     ramo: perfil.identidade.ramo,
@@ -69,10 +104,10 @@ export function montarMensagem(perfil: Perfil, pedido: string, formato: string, 
     padrao: { tipos: perfil.padrao.tipos, chamada: perfil.padrao.chamada, hashtags_fixas: perfil.padrao.hashtags },
     dados_fixos: perfil.dados,
   }
-  let texto = `<marca>\n${JSON.stringify(marca, null, 2)}\n</marca>\n\n<formato>${formato === 'story' ? 'story (9:16)' : 'post de feed (4:5)'}</formato>\n\n<pedido>\n${pedido}\n</pedido>`
+  let texto = `<marca>\n${JSON.stringify(marca, null, 2)}\n</marca>\n\n<formato>${formato === 'story' ? 'story (9:16)' : 'post de feed (4:5)'}</formato>\n\n<foto>${temFoto ? 'o dono mandou uma foto para esta peça' : 'sem foto: não use o fundo "foto" nem o modelo "foto"'}</foto>\n\n<pedido>\n${pedido}\n</pedido>`
   if (anterior) {
-    const { titulo, apoio, chamada, legenda, cores } = anterior as Record<string, unknown>
-    texto += `\n\n<versao_anterior>\n${JSON.stringify({ titulo, apoio, chamada, legenda, cores: cores || { titulo: '', texto: '', destaque: '' } }, null, 2)}\n</versao_anterior>`
+    const { modelo, titulo, apoio, chamada, legenda, pontos, autor, arte, cores } = anterior as Record<string, unknown>
+    texto += `\n\n<versao_anterior>\n${JSON.stringify({ modelo, titulo, apoio, chamada, legenda, pontos: pontos || [], autor: autor || '', arte: arte || {}, cores: cores || { titulo: '', texto: '', destaque: '' } }, null, 2)}\n</versao_anterior>`
     texto += ajuste
       ? `\n\n<ajuste>\n${ajuste}\n</ajuste>\n\nO dono gostou da versão anterior e quer só este ajuste. Parta dela e mude apenas o que o ajuste pede; o resto fica igual, palavra por palavra quando der.`
       : `\n\nO dono pediu outra versão, sem dizer o que mudar. Escreva uma peça nova de verdade: outro ângulo, outro título, outra primeira linha na legenda. Se o pedido mudou, siga o pedido novo.`
@@ -150,8 +185,20 @@ export function conferir(bruto: Record<string, unknown>, perfil: Perfil, pedido:
     legenda: limpar(bruto.legenda),
     itens: [] as { nome: string; preco: string }[],
     hashtags: [] as string[],
+    pontos: ((bruto.pontos as string[] | undefined) || []).map(limpar).filter(Boolean).slice(0, 4),
+    autor: limpar(bruto.autor),
+    arte: {} as Record<string, string>,
     cores: {} as Record<string, string>,
     avisos,
+  }
+
+  const arte = (bruto.arte || {}) as Record<string, unknown>
+  const escolha = (valor: unknown, opcoes: string[]) => (opcoes.includes(String(valor)) ? String(valor) : '')
+  roteiro.arte = {
+    destaque: String(arte.destaque ?? '').trim().slice(0, 40),
+    tamanho_titulo: escolha(arte.tamanho_titulo, TAMANHOS) || 'normal',
+    alinhamento: escolha(arte.alinhamento, ALINHAMENTOS) || 'esquerda',
+    fundo: escolha(arte.fundo, FUNDOS) || 'marca',
   }
 
   const pedidas = (bruto.cores || {}) as Record<string, unknown>
@@ -177,7 +224,7 @@ export function conferir(bruto: Record<string, unknown>, perfil: Perfil, pedido:
   }
 
   if (trocados.size) avisos.push('A IA tentou escrever um dado que não está na sua marca. Trocamos por um marcador.')
-  const tudo = [roteiro.titulo, roteiro.apoio, roteiro.chamada, roteiro.legenda, ...roteiro.itens.map((i) => i.preco)].join(' ')
+  const tudo = [roteiro.titulo, roteiro.apoio, roteiro.chamada, roteiro.legenda, ...roteiro.pontos, ...roteiro.itens.map((i) => i.preco)].join(' ')
   for (const [marcador, texto] of Object.entries(MARCADORES)) {
     if (tudo.includes(marcador)) avisos.push(`${texto}: troque ${marcador} antes de postar.`)
   }

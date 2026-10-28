@@ -158,6 +158,8 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
   const [video, setVideo] = useState(false)
   const [gravando, setGravando] = useState(null) // null ou de 0 a 1
   const [avisoVideo, setAvisoVideo] = useState('')
+  // Vídeo gravado esperando o segundo toque: o celular só abre o compartilhar logo depois de um toque.
+  const [videoPronto, setVideoPronto] = useState(null)
   const [foto, setFoto] = useState(null)
   const [estado, setEstado] = useState(pecaInicial ? 'pronta' : 'pedido') // pedido | gerando | revelando | pronta
   const [peca, setPeca] = useState(pecaInicial || null)
@@ -218,6 +220,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
     const t = setTimeout(async () => {
       try { await guardarImagem(peca, negocioId, await paraArquivo(quadro, 'peca.png')) } catch { /* o histórico fica sem miniatura */ }
     }, 600)
+    setVideoPronto(null)
     return () => { clearTimeout(t); parar?.() }
   }, [peca, imagens, estado, video])
 
@@ -249,18 +252,21 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
     const base = `${nome || 'post'}-${video ? 'video' : peca.formato}`.replace(/\s+/g, '-').toLowerCase()
     let arquivo
     if (video && peca.formato === 'story') {
-      setErro('')
-      setGravando(0)
-      try {
-        const r = await gravar(opcoesDoDesenho(), base, setGravando)
-        arquivo = r.arquivo
-        setAvisoVideo(r.extensao === 'webm' ? 'Este aparelho gravou em WebM. Se o Instagram não aceitar, baixe pelo celular com Chrome ou Safari atualizado.' : '')
-      } catch (falha) {
-        setErro(falha.message)
+      if (!videoPronto) {
+        setErro('')
+        setGravando(0)
+        try {
+          const r = await gravar(opcoesDoDesenho(), base, setGravando)
+          setVideoPronto(r.arquivo)
+          setAvisoVideo(r.extensao === 'webm' ? 'Este aparelho gravou em WebM. Se o Instagram não aceitar, baixe pelo celular com Chrome ou Safari atualizado.' : '')
+        } catch (falha) {
+          setErro(falha.message)
+        } finally {
+          setGravando(null)
+        }
         return
-      } finally {
-        setGravando(null)
       }
+      arquivo = videoPronto
     } else arquivo = await paraArquivo(canvas.current, `${base}.png`)
     if (navigator.canShare?.({ files: [arquivo] })) {
       try { await navigator.share({ files: [arquivo] }); return } catch (e) { if (e.name === 'AbortError') return }
@@ -455,12 +461,13 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
             {erro && <p className="campo__erro" role="alert">{erro}</p>}
             <div className="criar__acoes">
               <button type="button" className="botao botao--primario" onClick={baixar} disabled={gravando !== null}>
-                {gravando !== null ? `Gravando o vídeo... ${Math.ceil(DURACAO * (1 - gravando))} s` : video && peca.formato === 'story' ? 'Baixar vídeo e postar' : 'Baixar e postar'}
+                {gravando !== null ? `Gravando o vídeo... ${Math.ceil(DURACAO * (1 - gravando))} s` : video && peca.formato === 'story' ? (videoPronto ? 'Salvar vídeo e postar' : 'Gravar vídeo') : 'Baixar e postar'}
               </button>
               {gravando !== null && (
                 <div className="criar__gravando" aria-hidden="true"><span style={{ transform: `scaleX(${gravando})` }} /></div>
               )}
               {gravando !== null && <p className="criar__nota">Deixe esta tela aberta até terminar.</p>}
+              {videoPronto && !avisoVideo && <p className="criar__nota">Vídeo pronto. Toque de novo para salvar.</p>}
               {avisoVideo && <p className="criar__nota criar__nota--aviso">{avisoVideo}</p>}
               <button type="button" className="botao botao--destaque" onClick={copiar}>{copiou ? 'Legenda copiada' : 'Copiar legenda'}</button>
               <div className="criar__acoes-linha">

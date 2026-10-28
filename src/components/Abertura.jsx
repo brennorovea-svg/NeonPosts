@@ -4,9 +4,13 @@ import './Abertura.css'
 
 const ease = (t) => 1 - Math.pow(1 - Math.min(1, Math.max(0, t)), 4)
 
-// Tempos do playbook: abre em 1s, clique de 0,36s em 1,25s com flash e faísca
-// em 1,40s, nome sobe em 1,6s. Total 2,1s.
-function quadro(t) {
+// Primeiro as 6 fatias roxas acendem uma a uma com a lente fechada (0,9 s).
+// Depois os tempos do playbook: abre em 1s, clique de 0,36s em 1,25s com flash e
+// faísca em 1,40s, nome sobe em 1,6s.
+const ACENDER = 0.9
+function quadro(tempo) {
+  const fatias = [0, 1, 2, 3, 4, 5].map((k) => ease((tempo - k * 0.12) / 0.3))
+  const t = tempo - ACENDER
   let o = ease(t / 1.0)
   if (t >= 1.25 && t < 1.61) {
     const q = (t - 1.25) / 0.36
@@ -16,11 +20,11 @@ function quadro(t) {
   const flash = ft < 0 || ft > 1 ? 0 : ft < 0.25 ? ft / 0.25 : 1 - ease((ft - 0.25) / 0.75)
   const kt = (t - 1.4) / 0.45
   const faisca = kt < 0 || kt > 1 ? 0 : kt < 0.3 ? kt / 0.3 : 1 - (kt - 0.3) / 0.7
-  return { abertura: o, flash, faisca, escalaFaisca: 0.5 + 0.5 * ease(kt), nome: ease((t - 1.6) / 0.5) }
+  return { fatias, abertura: o, flash, faisca, escalaFaisca: 0.5 + 0.5 * ease(kt), nome: ease((t - 1.6) / 0.5) }
 }
 
-const PARADO = { abertura: 1, flash: 0, faisca: 0, escalaFaisca: 1, nome: 1 }
-const FIM = 2.2
+const PARADO = { fatias: null, abertura: 1, flash: 0, faisca: 0, escalaFaisca: 1, nome: 1 }
+const FIM = ACENDER + 2.2
 
 export default function Abertura({ onFim }) {
   const reduzido = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -47,7 +51,7 @@ export default function Abertura({ onFim }) {
 
   return (
     <main className="abertura">
-      <Obturador abertura={q.abertura} flash={q.flash} faisca={q.faisca} escalaFaisca={q.escalaFaisca} tamanho={168} />
+      <Obturador fatias={q.fatias} abertura={q.abertura} flash={q.flash} faisca={q.faisca} escalaFaisca={q.escalaFaisca} tamanho={168} />
       <div className="abertura__texto" style={sobe}>
         <h1 className="abertura__nome">Neon<span>posts</span></h1>
         <p className="abertura__frase">Uma frase. Um post pronto. <span>Com a cara da sua marca.</span></p>

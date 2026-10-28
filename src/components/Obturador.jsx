@@ -15,7 +15,20 @@ export function iris(o) {
   return { hex: pts.join(' '), d }
 }
 
-export default function Obturador({ abertura = 1, flash = 0, faisca = 0, escalaFaisca = 1, tamanho = 160 }) {
+// As 6 fatias roxas entre as lâminas, cada uma num caminho próprio para acender sozinha.
+export function fatiasDaIris(o) {
+  const C = 60, R = 34, h = 3 + 15 * o
+  const v = (k) => { const a = (k * 60 * Math.PI) / 180; return [C + h * Math.cos(a), C + h * Math.sin(a)] }
+  const p = (k) => { const b = ((k * 60 + 75 - 15 * o) * Math.PI) / 180; return [C + R * Math.cos(b), C + R * Math.sin(b)] }
+  const f = (n) => n.toFixed(2)
+  return [0, 1, 2, 3, 4, 5].map((k) => {
+    const [ax, ay] = v(k), [bx, by] = p(k), [cx, cy] = p(k + 1), [dx, dy] = v(k + 1)
+    return `M${f(ax)} ${f(ay)}L${f(bx)} ${f(by)}A${R} ${R} 0 0 1 ${f(cx)} ${f(cy)}L${f(dx)} ${f(dy)}Z`
+  })
+}
+
+// `fatias` (opcional): brilho de cada fatia, de 0 a 1. Sem ele, o disco fica inteiro aceso.
+export default function Obturador({ abertura = 1, flash = 0, faisca = 0, escalaFaisca = 1, tamanho = 160, fatias = null }) {
   const { hex, d } = iris(abertura)
   return (
     <svg width={tamanho} height={tamanho} viewBox="0 0 120 120" overflow="visible" aria-hidden="true">
@@ -26,7 +39,19 @@ export default function Obturador({ abertura = 1, flash = 0, faisca = 0, escalaF
           <stop offset="1" stopColor="#FFFFFF" stopOpacity="0" />
         </radialGradient>
       </defs>
-      <circle cx="60" cy="60" r="34" fill="var(--violeta)" />
+      {fatias ? (
+        <>
+          <circle cx="60" cy="60" r="34" fill="var(--violeta)" opacity=".14" />
+          {fatiasDaIris(abertura).map((caminho, k) => (
+            <path
+              key={k} d={caminho} fill="var(--violeta)" opacity={fatias[k]}
+              style={{ transformOrigin: '60px 60px', transform: `scale(${0.9 + 0.1 * fatias[k]})` }}
+            />
+          ))}
+        </>
+      ) : (
+        <circle cx="60" cy="60" r="34" fill="var(--violeta)" />
+      )}
       <path d={d} stroke="var(--grafite)" strokeWidth="3.5" strokeLinecap="round" fill="none" />
       <polygon points={hex} fill="var(--neve)" />
       <circle cx="60" cy="60" r="40" fill="url(#flash)" opacity={flash * 0.9} />

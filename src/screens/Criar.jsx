@@ -10,34 +10,50 @@ const suave = (t) => 1 - Math.pow(1 - Math.min(1, Math.max(0, t)), 4)
 
 // Enquanto a IA trabalha, a lente fica fechada e respira. Quando a peça chega,
 // a íris abre, dispara o flash e a faísca, e só então a peça aparece.
+// Enquanto a IA escreve, as fatias da lente acendem uma a uma (a última espera a peça).
+// Quando a peça chega, a última acende, a lente abre e vem o flash.
+const PASSO_FATIA = 1.5
 function Lente({ pronta, onFim }) {
-  const [q, setQ] = useState({ abertura: 0.08, flash: 0, faisca: 0, escalaFaisca: 0.5 })
+  const [q, setQ] = useState({ abertura: 0.08, flash: 0, faisca: 0, escalaFaisca: 0.5, fatias: [0, 0, 0, 0, 0, 0] })
+  const acesas = useRef([0, 0, 0, 0, 0, 0])
   useEffect(() => {
-    if (!pronta) return
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { onFim(); return }
+    const reduzido = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (pronta && reduzido) { onFim(); return }
     let id
     const inicio = performance.now()
+    const base = [...acesas.current]
     const passo = (agora) => {
       const t = (agora - inicio) / 1000
-      const ft = (t - 0.5) / 0.32
-      const kt = (t - 0.5) / 0.45
+      if (!pronta) {
+        // Cinco fatias acendem no ritmo; a sexta só pulsa fraquinho até a peça chegar.
+        const fatias = base.map((b, k) => {
+          if (k < 5) return Math.max(b, reduzido ? 1 : suave((t - k * PASSO_FATIA) / 0.45))
+          return reduzido ? 0.3 : 0.15 + 0.15 * (0.5 - 0.5 * Math.cos(Math.max(0, t - 5 * PASSO_FATIA) * 3))
+        })
+        acesas.current = fatias
+        setQ((v) => ({ ...v, fatias }))
+        if (!reduzido) id = requestAnimationFrame(passo)
+        return
+      }
+      // Pronta: completa as fatias que faltam (0,35 s), abre a lente e dispara o flash.
+      const fatias = base.map((b) => b + (1 - b) * suave(t / 0.3))
+      const ta = t - 0.4
+      const ft = (ta - 0.5) / 0.32
+      const kt = (ta - 0.5) / 0.45
       setQ({
-        abertura: 0.08 + suave(t / 0.55) * 0.92,
+        fatias,
+        abertura: 0.08 + suave(ta / 0.55) * 0.92,
         flash: ft < 0 || ft > 1 ? 0 : ft < 0.25 ? ft / 0.25 : 1 - suave((ft - 0.25) / 0.75),
         faisca: kt < 0 || kt > 1 ? 0 : kt < 0.3 ? kt / 0.3 : 1 - (kt - 0.3) / 0.7,
         escalaFaisca: 0.5 + 0.5 * suave(kt),
       })
-      if (t < 1.0) id = requestAnimationFrame(passo)
+      if (ta < 1.0) id = requestAnimationFrame(passo)
       else onFim()
     }
     id = requestAnimationFrame(passo)
     return () => cancelAnimationFrame(id)
   }, [pronta])
-  return (
-    <div className={pronta ? undefined : 'criar__respira'}>
-      <Obturador tamanho={140} {...q} />
-    </div>
-  )
+  return <Obturador tamanho={140} {...q} />
 }
 
 const EXEMPLOS = [

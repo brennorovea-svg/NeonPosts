@@ -1,11 +1,25 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase.js'
-import { carregarPerfil, parteFeita, PERFIL_VAZIO } from '../lib/perfil.js'
+import { carregarPerfil, enderecoDaImagem, parteFeita, PERFIL_VAZIO } from '../lib/perfil.js'
+import { listarPecas, pecasDoMes } from '../lib/pecas.js'
 import PerfilMarca, { PARTES } from './PerfilMarca.jsx'
 import ApresentacaoMarca from './ApresentacaoMarca.jsx'
+import Criar from './Criar.jsx'
 import './Area.css'
 
 const NEGOCIO_DE_TESTE = { id: 'teste', nome: null, limite_pecas: 30 }
+
+function Miniatura({ peca, onAbrir }) {
+  const [src, setSrc] = useState(null)
+  useEffect(() => { enderecoDaImagem(peca.imagem).then(setSrc) }, [peca.imagem])
+  return (
+    <li>
+      <button type="button" className={`area__peca area__peca--${peca.formato}`} onClick={onAbrir} aria-label={`Abrir: ${peca.roteiro.titulo}`}>
+        {src ? <img src={src} alt="" /> : <span>{peca.roteiro.titulo}</span>}
+      </button>
+    </li>
+  )
+}
 
 export default function Area({ sessao, teste = false }) {
   const [negocio, setNegocio] = useState(teste ? NEGOCIO_DE_TESTE : null)
@@ -14,6 +28,9 @@ export default function Area({ sessao, teste = false }) {
   const [editando, setEditando] = useState(null) // índice da parte aberta
   const [erro, setErro] = useState('')
   const [apresentou, setApresentou] = useState(false)
+  const [criando, setCriando] = useState(null) // null, 'nova' ou a peça aberta do histórico
+  const [pecas, setPecas] = useState([])
+  const [usadas, setUsadas] = useState(0)
   const usuario = sessao.user
   const primeiroNome = (usuario.user_metadata?.full_name || usuario.user_metadata?.name || '').split(' ')[0]
 
@@ -31,6 +48,25 @@ export default function Area({ sessao, teste = false }) {
   }, [negocio])
 
   useEffect(recarregar, [recarregar])
+
+  const recarregarPecas = useCallback(() => {
+    if (!negocio) return
+    listarPecas(negocio.id).then(setPecas).catch(() => {})
+    pecasDoMes(negocio.id).then(setUsadas).catch(() => {})
+  }, [negocio])
+
+  useEffect(recarregarPecas, [recarregarPecas])
+
+  if (criando && perfil) {
+    return (
+      <Criar
+        negocioId={negocio.id}
+        perfil={perfil}
+        pecaInicial={criando === 'nova' ? null : criando}
+        onSair={(mudou) => { if (mudou) recarregarPecas(); setCriando(null); window.scrollTo({ top: 0 }) }}
+      />
+    )
+  }
 
   if (editando !== null && perfil) {
     return (
@@ -68,7 +104,7 @@ export default function Area({ sessao, teste = false }) {
       <header className="area__topo">
         <p className="marca area__marca">Neon<span>posts</span></p>
         <div className="area__direita">
-          <span className="mono area__contador" title="Peças usadas neste mês">0/{limite} peças</span>
+          <span className="mono area__contador" title="Peças usadas neste mês">{usadas}/{limite} peças</span>
           <button type="button" className="botao botao--fantasma" onClick={() => supabase?.auth.signOut()}>Sair</button>
         </div>
       </header>
@@ -108,11 +144,21 @@ export default function Area({ sessao, teste = false }) {
         {erro && <p className="campo__erro" role="alert">{erro}</p>}
 
         {total === 4 ? (
-          <button type="button" className="botao botao--primario area__cta" disabled>Criar post · em breve</button>
+          <button type="button" className="botao botao--primario area__cta" onClick={() => setCriando('nova')} disabled={usadas >= limite}>
+            {usadas >= limite ? `Você usou as ${limite} peças do mês` : 'Criar post'}
+          </button>
         ) : (
           <button type="button" className="botao botao--primario area__cta" onClick={() => setEditando(proxima)} disabled={!perfil}>
             {total === 0 ? 'Começar' : `Continuar: ${PARTES[proxima].titulo}`}
           </button>
+        )}
+        {pecas.length > 0 && (
+          <section className="area__historico" aria-labelledby="historico">
+            <h2 id="historico" className="area__subtitulo">Suas peças</h2>
+            <ul className="area__pecas">
+              {pecas.map((p) => <Miniatura key={p.id} peca={p} onAbrir={() => setCriando(p)} />)}
+            </ul>
+          </section>
         )}
         <p className="area__email mono">
           {usuario.email}{versao > 0 && ` · marca na versão ${versao}`}

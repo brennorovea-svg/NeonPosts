@@ -35,3 +35,21 @@
 .area__cta { margin-top: 4px; }
 .area__email { margin: 8px 0 0; font-size: 12px; color: var(--cinza-claro); text-align: center; }
 @media (prefers-reduced-motion: reduce) { .area { animation: none; } .area__passo, .area__passo:hover, .area__passo:active { transition: none; transform: none; } }
+
+/* Histórico de peças */
+.area__historico { margin-top: 24px; display: flex; flex-direction: column; gap: 12px; }
+.area__subtitulo { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -.02em; }
+.area__pecas { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; align-items: end; }
+.area__peca {
+  width: 100%; padding: 0; overflow: hidden; cursor: pointer;
+  display: grid; place-items: center;
+  background: var(--painel); border: 1px solid var(--borda); border-radius: 12px;
+  font: 600 13px var(--fonte); color: var(--texto-2); text-align: center;
+  transition: transform var(--dur-controle) var(--ease);
+}
+.area__peca:hover { transform: translateY(-2px); }
+.area__peca--post { aspect-ratio: 4 / 5; }
+.area__peca--story { aspect-ratio: 9 / 16; }
+.area__peca img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.area__peca span { padding: 10px; }
+@media (prefers-reduced-motion: reduce) { .area__peca, .area__peca:hover { transition: none; transform: none; } }

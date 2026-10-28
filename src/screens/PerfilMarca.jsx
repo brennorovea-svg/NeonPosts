@@ -3,6 +3,7 @@ import Fichas from '../components/campos/Fichas.jsx'
 import Cores from '../components/campos/Cores.jsx'
 import Imagens from '../components/campos/Imagens.jsx'
 import Itens from '../components/campos/Itens.jsx'
+import Contador from '../components/campos/Contador.jsx'
 import { salvarPerfil } from '../lib/perfil.js'
 import { coresDaImagem } from '../lib/cores.js'
 import './PerfilMarca.css'
@@ -194,14 +195,14 @@ function Padrao({ v, mudar }) {
       </Grupo>
       <Grupo rotulo="Quantas vezes você publica por semana?" ajuda="Pode ser o que você faz hoje ou a sua meta. A gente usa para sugerir o ritmo das próximas peças.">
         <div className="frequencia">
-          <label className="frequencia__item">
-            <input type="number" min={0} max={21} inputMode="numeric" value={v.feedPorSemana} onChange={(e) => mudar({ feedPorSemana: Number(e.target.value) })} />
+          <div className="frequencia__item">
             <span><strong>Posts no feed</strong>ficam no perfil</span>
-          </label>
-          <label className="frequencia__item">
-            <input type="number" min={0} max={50} inputMode="numeric" value={v.storiesPorSemana} onChange={(e) => mudar({ storiesPorSemana: Number(e.target.value) })} />
+            <Contador rotulo="Posts no feed por semana" valor={v.feedPorSemana} onChange={(feedPorSemana) => mudar({ feedPorSemana })} maximo={21} />
+          </div>
+          <div className="frequencia__item">
             <span><strong>Stories</strong>somem em 24 horas</span>
-          </label>
+            <Contador rotulo="Stories por semana" valor={v.storiesPorSemana} onChange={(storiesPorSemana) => mudar({ storiesPorSemana })} maximo={50} />
+          </div>
         </div>
       </Grupo>
       <Campo id="chamada" rotulo="Chamada para ação" ajuda="O que você pede para o cliente fazer no fim do post.">

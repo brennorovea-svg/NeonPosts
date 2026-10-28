@@ -3,13 +3,13 @@
   "short_name": "Neonposts",
   "description": "Uma frase. Um post pronto. Com a cara da sua marca.",
   "lang": "pt-BR",
-  "start_url": "/",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#101014",
   "theme_color": "#101014",
   "icons": [
-    { "src": "/neonposts-icone-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/neonposts-icone-512.png", "sizes": "512x512", "type": "image/png" },
-    { "src": "/icone.svg", "sizes": "any", "type": "image/svg+xml" }
+    { "src": "neonposts-icone-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "neonposts-icone-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icone.svg", "sizes": "any", "type": "image/svg+xml" }
   ]
 }

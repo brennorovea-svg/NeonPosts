@@ -4,14 +4,99 @@ import Cores from '../components/campos/Cores.jsx'
 import Imagens from '../components/campos/Imagens.jsx'
 import Itens from '../components/campos/Itens.jsx'
 import { salvarPerfil } from '../lib/perfil.js'
+import { coresDaImagem } from '../lib/cores.js'
 import './PerfilMarca.css'
 
 export const PARTES = [
-  { chave: 'identidade', numero: '01', titulo: 'Identidade visual', resumo: 'logo, cores, ramo e fotos' },
-  { chave: 'voz', numero: '02', titulo: 'Como a marca fala', resumo: 'tom, palavras que usa e evita' },
-  { chave: 'padrao', numero: '03', titulo: 'Padrão de postagem', resumo: 'tipos de post e frequência' },
-  { chave: 'dados', numero: '04', titulo: 'Dados fixos', resumo: 'endereço, horário, preços' },
+  {
+    chave: 'identidade', numero: '01', titulo: 'Identidade visual',
+    resumo: 'Para cada post sair com o seu logo e as suas cores.',
+    porque: 'É o que faz o cliente bater o olho no post e saber que é seu, antes mesmo de ler.',
+    sem: 'Um post bonito, mas com cara de modelo pronto da internet.',
+    com: 'O seu logo no canto, as suas cores no fundo e as suas fotos de verdade.',
+  },
+  {
+    chave: 'voz', numero: '02', titulo: 'Como a marca fala',
+    resumo: 'Para o texto soar como você, não como robô.',
+    porque: 'Cada marca tem um jeito de falar. Aqui você mostra o seu, e a IA escreve igual.',
+    sem: '"Confira nossa promoção imperdível! Aproveite já!"',
+    com: '"Saiu quentinho agora. Corre que acaba, viu?"',
+  },
+  {
+    chave: 'padrao', numero: '03', titulo: 'Padrão de postagem',
+    resumo: 'Para sugerir o post certo, no ritmo certo.',
+    porque: 'Conta o que você costuma postar e com que frequência. Assim o app sugere o que falta na semana.',
+    sem: 'Você abre o app sem saber o que postar hoje.',
+    com: '"Faz 5 dias sem bastidor. Que tal mostrar a cozinha?"',
+  },
+  {
+    chave: 'dados', numero: '04', titulo: 'Dados fixos',
+    resumo: 'Para a IA nunca inventar preço, endereço ou horário.',
+    porque: 'Preço, endereço e horário saem só daqui. O que faltar aparece marcado para você completar, nunca inventado.',
+    sem: '"Pão de queijo por R$ 3,00" (e o seu custa R$ 4,50).',
+    com: '"Pão de queijo por R$ 4,50, das 7h às 19h."',
+  },
 ]
+
+// Sugestões de palavras que mudam com o tom e o ramo escolhidos.
+const PALAVRAS_DO_TOM = {
+  'Próximo': ['a gente', 'bora', 'te esperamos', 'pertinho de você'],
+  'Divertido': ['corre que acaba', 'partiu', 'sextou', 'que delícia'],
+  'Direto': ['é só chamar', 'garanta o seu', 'sem enrolação'],
+  'Acolhedor': ['com carinho', 'feito pra você', 'fique à vontade'],
+  'Formal': ['agradecemos', 'à disposição', 'atendimento personalizado'],
+  'Inspirador': ['faça acontecer', 'o seu momento', 'transforme'],
+}
+const PALAVRAS_DO_RAMO = {
+  'Restaurante': ['feito na hora', 'sabor de casa', 'quentinho'],
+  'Café ou padaria': ['saindo do forno', 'cafezinho', 'fresquinho'],
+  'Loja': ['chegou novidade', 'peças únicas', 'últimas unidades'],
+  'Beleza e estética': ['autoestima', 'se sentir bem', 'cuidado'],
+  'Saúde': ['bem-estar', 'cuidado', 'agende o seu horário'],
+  'Academia': ['bora treinar', 'foco', 'evolução'],
+  'Serviços': ['orçamento sem compromisso', 'pontualidade', 'qualidade'],
+  'Agência ou estúdio': ['sob medida', 'do zero ao ar', 'a gente cuida'],
+}
+const PALAVRAS_EVITADAS = ['barato', 'imperdível', 'clique no link', 'promoção relâmpago', 'gíria', 'palavrão', 'termo técnico']
+
+const TRATAMENTOS = {
+  'você': 'Vem experimentar, você vai amar.',
+  'você, com cerimônia': 'Será um prazer receber você.',
+  'o senhor / a senhora': 'Aguardamos a sua visita, senhor(a).',
+  'vocês / pessoal': 'Bora, pessoal! Hoje tem novidade.',
+}
+
+const EXEMPLO_DE_LEGENDA = 'Saiu do forno agora a fornada das 16h.\nO pão de fermentação natural que vocês pedem toda semana voltou.\nCorre que às 17h já era. Chama no WhatsApp para separar o seu.'
+
+// Liga e desliga uma expressão dentro do texto separado por vírgula.
+function alternarPalavra(texto, palavra) {
+  const lista = texto.split(',').map((p) => p.trim()).filter(Boolean)
+  const nova = lista.includes(palavra) ? lista.filter((p) => p !== palavra) : [...lista, palavra]
+  return nova.join(', ')
+}
+
+function Sugestoes({ opcoes, texto, onChange, rotulo }) {
+  const marcadas = texto.split(',').map((p) => p.trim())
+  return (
+    <div className="sugestoes" role="group" aria-label={rotulo}>
+      {opcoes.map((o) => (
+        <button key={o} type="button" className="ficha" aria-pressed={marcadas.includes(o)} onClick={() => onChange(alternarPalavra(texto, o))}>{o}</button>
+      ))}
+    </div>
+  )
+}
+
+function Porque({ parte }) {
+  return (
+    <section className="porque" aria-label="Por que isso importa">
+      <p className="porque__texto">{parte.porque}</p>
+      <div className="porque__exemplo">
+        <p className="porque__lado porque__lado--sem"><small>Sem isso</small>{parte.sem}</p>
+        <p className="porque__lado porque__lado--com"><small>Com isso</small>{parte.com}</p>
+      </div>
+    </section>
+  )
+}
 
 const RAMOS = ['Restaurante', 'Café ou padaria', 'Loja', 'Beleza e estética', 'Saúde', 'Academia', 'Serviços', 'Agência ou estúdio']
 const TONS = ['Próximo', 'Divertido', 'Direto', 'Acolhedor', 'Formal', 'Inspirador']
@@ -38,6 +123,13 @@ function Grupo({ rotulo, ajuda, children }) {
 }
 
 function Identidade({ v, mudar, negocioId }) {
+  const [coresDoLogo, setCoresDoLogo] = useState(false)
+
+  async function lerCoresDoLogo(arquivo) {
+    const cores = await coresDaImagem(arquivo)
+    if (cores.length) { mudar({ cores }); setCoresDoLogo(true) }
+  }
+
   return (
     <>
       <Campo id="nome" rotulo="Nome do negócio">
@@ -47,37 +139,47 @@ function Identidade({ v, mudar, negocioId }) {
         <Fichas rotulo="Ramo" opcoes={RAMOS} valor={v.ramo} onChange={(ramo) => mudar({ ramo })} outra />
       </Grupo>
       <Grupo rotulo="Logo" ajuda="PNG com fundo transparente fica melhor.">
-        <Imagens negocioId={negocioId} valor={v.logo} onChange={(logo) => mudar({ logo })} maximo={1} tipo="logo" texto="Enviar logo" />
+        <Imagens negocioId={negocioId} valor={v.logo} onChange={(logo) => mudar({ logo })} maximo={1} tipo="logo" texto="Enviar logo" onArquivo={lerCoresDoLogo} />
       </Grupo>
-      <Grupo rotulo="Cores da marca" ajuda="Até 3. A primeira é a principal.">
-        <Cores valor={v.cores} onChange={(cores) => mudar({ cores })} />
+      <Grupo rotulo="Cores da marca" ajuda="Até 3. Ao enviar o logo, a gente lê as cores dele. Toque na cor para trocar ou digite o código em HEX ou RGB.">
+        <Cores valor={v.cores} onChange={(cores) => { mudar({ cores }); setCoresDoLogo(false) }} />
+        {coresDoLogo && <p className="cores__aviso" role="status">Cores tiradas do seu logo. Confira e ajuste se precisar.</p>}
       </Grupo>
-      <Grupo rotulo="Fotos do negócio" ajuda="Produto, fachada, equipe. Até 6, entram nos posts.">
+      <Grupo rotulo="Fotos da marca (opcional)" ajuda="O que mostra o seu trabalho: produtos, trabalhos entregues, bastidores, equipe ou o espaço. Até 6, entram nos posts.">
         <Imagens negocioId={negocioId} valor={v.fotos} onChange={(fotos) => mudar({ fotos })} maximo={6} tipo="foto" texto="Enviar fotos" />
       </Grupo>
     </>
   )
 }
 
-function Voz({ v, mudar }) {
+function Voz({ v, mudar, ramo }) {
+  const [verExemplo, setVerExemplo] = useState(false)
+  const sugeridas = [...new Set([...v.tom.flatMap((t) => PALAVRAS_DO_TOM[t] || []), ...(PALAVRAS_DO_RAMO[ramo] || [])])]
   return (
     <>
-      <Grupo rotulo="Tom" ajuda="Escolha até 3.">
+      <Grupo rotulo="Tom" ajuda="Escolha até 3. As sugestões de palavras abaixo mudam conforme o tom.">
         <Fichas rotulo="Tom" opcoes={TONS} valor={v.tom} onChange={(tom) => mudar({ tom: tom.slice(0, 3) })} varias />
       </Grupo>
       <Grupo rotulo="Como trata o cliente">
-        <Fichas rotulo="Tratamento" opcoes={['você', 'vocês', 'tu', 'o senhor / a senhora']} valor={v.tratamento} onChange={(tratamento) => mudar({ tratamento })} />
+        <Fichas rotulo="Tratamento" opcoes={Object.keys(TRATAMENTOS)} valor={v.tratamento} onChange={(tratamento) => mudar({ tratamento })} />
+        {TRATAMENTOS[v.tratamento] && <p className="tratamento-exemplo">Por exemplo: <em>"{TRATAMENTOS[v.tratamento]}"</em></p>}
       </Grupo>
       <Grupo rotulo="Emoji">
         <Fichas rotulo="Emoji" opcoes={['nenhum', 'pouco', 'à vontade']} valor={v.emoji} onChange={(emoji) => mudar({ emoji })} />
       </Grupo>
-      <Campo id="usa" rotulo="Palavras e expressões que a marca usa" ajuda="Separe por vírgula.">
-        <input id="usa" value={v.usa} onChange={(e) => mudar({ usa: e.target.value })} placeholder="quentinho, feito na hora, bora" />
+      <Campo id="usa" rotulo="Palavras e expressões que a marca usa" ajuda={sugeridas.length ? 'Toque para escolher, ou escreva outras separadas por vírgula.' : 'Escolha um tom acima para ver sugestões, ou escreva separado por vírgula.'}>
+        {sugeridas.length > 0 && <Sugestoes rotulo="Sugestões de palavras" opcoes={sugeridas} texto={v.usa} onChange={(usa) => mudar({ usa })} />}
+        <input id="usa" value={v.usa} onChange={(e) => mudar({ usa: e.target.value })} placeholder="Escreva aqui as suas" />
       </Campo>
-      <Campo id="evita" rotulo="Palavras que a marca evita">
-        <input id="evita" value={v.evita} onChange={(e) => mudar({ evita: e.target.value })} placeholder="barato, imperdível" />
+      <Campo id="evita" rotulo="Palavras que a marca evita" ajuda="Toque nas que não combinam com você.">
+        <Sugestoes rotulo="Palavras para evitar" opcoes={PALAVRAS_EVITADAS} texto={v.evita} onChange={(evita) => mudar({ evita })} />
+        <input id="evita" value={v.evita} onChange={(e) => mudar({ evita: e.target.value })} placeholder="Escreva outras, se quiser" />
       </Campo>
-      <Campo id="exemplos" rotulo="Legendas que você gosta" ajuda="Cole 1 a 3 legendas suas, ou de quem você admira. A IA usa como exemplo de jeito, nunca copia.">
+      <Campo id="exemplos" rotulo="Legendas que você gosta (opcional)" ajuda="Não tem? Pode pular. Se tiver, cole 1 a 3 legendas suas ou de quem você admira: a IA aprende o jeito, nunca copia.">
+        <button type="button" className="link-botao" onClick={() => setVerExemplo(!verExemplo)} aria-expanded={verExemplo}>
+          {verExemplo ? 'Esconder o exemplo' : 'Ver um exemplo'}
+        </button>
+        {verExemplo && <p className="exemplo-legenda">{EXEMPLO_DE_LEGENDA}</p>}
         <textarea id="exemplos" rows={5} value={v.exemplos} onChange={(e) => mudar({ exemplos: e.target.value })} />
       </Campo>
     </>
@@ -115,7 +217,7 @@ function Padrao({ v, mudar }) {
 function Dados({ v, mudar }) {
   return (
     <>
-      <p className="perfil__aviso">A IA só usa preço, endereço e horário daqui. O que faltar aparece na peça como <span className="marcador">[SEU PREÇO]</span> para você completar.</p>
+      <p className="perfil__aviso">O que faltar aparece na peça como <span className="marcador">[SEU PREÇO]</span> para você completar.</p>
       <Campo id="endereco" rotulo="Endereço">
         <input id="endereco" value={v.endereco} onChange={(e) => mudar({ endereco: e.target.value })} placeholder="Rua, número, bairro" />
       </Campo>
@@ -180,8 +282,9 @@ export default function PerfilMarca({ negocioId, perfilInicial, parteInicial = 0
       <main className="perfil__conteudo" key={parte.chave}>
         <p className="mono perfil__num">{parte.numero}</p>
         <h1 className="perfil__titulo">{parte.titulo}</h1>
+        <Porque parte={parte} />
         <form className="perfil__form" onSubmit={(e) => { e.preventDefault(); salvar('seguir') }}>
-          <Tela v={perfil[parte.chave]} mudar={mudar} negocioId={negocioId} />
+          <Tela v={perfil[parte.chave]} mudar={mudar} negocioId={negocioId} ramo={perfil.identidade.ramo} />
           {erro && <p className="campo__erro" role="alert">{erro}</p>}
           <div className="perfil__acoes">
             <button type="submit" className="botao botao--destaque" disabled={salvando}>

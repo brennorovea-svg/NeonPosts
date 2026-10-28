@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { carregarPerfil, parteFeita, PERFIL_VAZIO } from '../lib/perfil.js'
 import PerfilMarca, { PARTES } from './PerfilMarca.jsx'
+import ApresentacaoMarca from './ApresentacaoMarca.jsx'
 import './Area.css'
 
 const NEGOCIO_DE_TESTE = { id: 'teste', nome: null, limite_pecas: 30 }
@@ -12,6 +13,7 @@ export default function Area({ sessao, teste = false }) {
   const [versao, setVersao] = useState(0)
   const [editando, setEditando] = useState(null) // índice da parte aberta
   const [erro, setErro] = useState('')
+  const [apresentou, setApresentou] = useState(false)
   const usuario = sessao.user
   const primeiroNome = (usuario.user_metadata?.full_name || usuario.user_metadata?.name || '').split(' ')[0]
 
@@ -45,6 +47,16 @@ export default function Area({ sessao, teste = false }) {
     )
   }
 
+  // Primeira vez (nenhuma versão salva): explica para que serve antes de tudo.
+  if (perfil && versao === 0 && !apresentou) {
+    return (
+      <ApresentacaoMarca
+        onComecar={() => { setApresentou(true); setEditando(0) }}
+        onDepois={() => setApresentou(true)}
+      />
+    )
+  }
+
   const limite = negocio?.limite_pecas ?? 30
   const feitas = perfil ? PARTES.map((p) => parteFeita(perfil, p.chave)) : [false, false, false, false]
   const total = feitas.filter(Boolean).length
@@ -73,7 +85,7 @@ export default function Area({ sessao, teste = false }) {
             <h1 className="area__titulo">Primeiro, conte a sua marca.</h1>
             <p className="area__texto">
               Com isso, cada post já sai com as suas cores, o seu jeito de falar e os seus dados certos.
-              Leva uns 10 minutos e fica guardado.
+              Você configura uma vez e fica guardado.
             </p>
           </>
         )}

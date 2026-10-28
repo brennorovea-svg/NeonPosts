@@ -1,8 +1,8 @@
-# posta.ai
+# Neonposts
 
 **Uma frase. Um post pronto. Com a cara da sua marca.**
 
-Posta.AI, da Neon Scripts: gerador de posts e stories (imagem ou vídeo) para pequenos negócios. O cliente conta a marca uma vez (identidade visual, jeito de falar, padrão de postagem e dados fixos), escreve uma frase e baixa a peça pronta para publicar.
+Neonposts, da Neon Scripts: gerador de posts e stories (imagem ou vídeo) para pequenos negócios. O cliente conta a marca uma vez (identidade visual, jeito de falar, padrão de postagem e dados fixos), escreve uma frase e baixa a peça pronta para publicar.
 
 ## Stack
 - App: React + Vite (PWA), publicado no GitHub Pages.

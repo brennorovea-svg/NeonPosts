@@ -38,6 +38,14 @@ const precoDo = (plano: Plano) => ({
   product_data: { name: `Neonposts ${PLANOS[plano].nome} · ${PLANOS[plano].pecas} peças por mês` },
 })
 
+// Desfaz um cancelamento marcado, venha ele do portal (cancel_at) ou do jeito antigo (cancel_at_period_end).
+async function desfazerCancelamento(assinatura: Stripe.Subscription) {
+  let atual = assinatura
+  if (atual.cancel_at_period_end) atual = await stripe!.subscriptions.update(atual.id, { cancel_at_period_end: false })
+  if (atual.cancel_at) atual = await stripe!.subscriptions.update(atual.id, { cancel_at: '' })
+  return atual
+}
+
 // Assinatura que libera o uso. "past_due" segura o plano enquanto a Stripe tenta cobrar de novo.
 const LIBERA = ['active', 'trialing', 'past_due']
 
@@ -74,7 +82,10 @@ async function avisoDaStripe(req: Request) {
     return erro('Assinatura inválida.', 400)
   }
   if (evento.type.startsWith('customer.subscription.')) {
-    await guardarAssinatura(evento.data.object as Stripe.Subscription)
+    // Os avisos da Stripe podem chegar fora de ordem: busca a assinatura como ela está agora.
+    const recebida = evento.data.object as Stripe.Subscription
+    const agora = evento.type === 'customer.subscription.deleted' ? recebida : await stripe.subscriptions.retrieve(recebida.id)
+    await guardarAssinatura(agora)
   }
   return resposta({ ok: true })
 }
@@ -90,7 +101,7 @@ Deno.serve(async (req) => {
   if (!stripe) return erro('O pagamento ainda não foi ligado. Tente mais tarde.', 503)
 
   const { data: negocio } = await banco.from('negocios')
-    .select('id, plano, stripe_cliente, stripe_assinatura').eq('dono', conta.user.id).single()
+    .select('id, plano, cancela_no_fim, stripe_cliente, stripe_assinatura').eq('dono', conta.user.id).single()
   if (!negocio) return erro('Não achamos o seu negócio.', 404)
 
   let corpo: { acao?: string; plano?: string; volta?: string }
@@ -106,20 +117,23 @@ Deno.serve(async (req) => {
 
     const plano = corpo.plano as Plano
     if (corpo.acao !== 'assinar' || !PAGOS.includes(plano)) return erro('Escolha um plano.', 400)
-    if (plano === negocio.plano) return erro(`Você já está no plano ${PLANOS[plano].nome}.`, 409)
+    if (plano === negocio.plano && !(negocio.stripe_assinatura && negocio.cancela_no_fim)) {
+      return erro(`Você já está no plano ${PLANOS[plano].nome}.`, 409)
+    }
 
-    // Já assina: troca o preço da mesma assinatura. A Stripe acerta a diferença na próxima fatura.
+    // Já assina: reativa e, se for outro plano, troca o preço da mesma assinatura.
+    // A Stripe acerta a diferença na próxima fatura.
     if (negocio.stripe_assinatura) {
-      const atual = await stripe.subscriptions.retrieve(negocio.stripe_assinatura)
-      const novo = await stripe.prices.create(precoDo(plano))
-      const trocada = await stripe.subscriptions.update(atual.id, {
-        items: [{ id: atual.items.data[0].id, price: novo.id }],
-        metadata: { negocio: negocio.id, plano },
-        // Trocar de plano desfaz um cancelamento marcado.
-        ...(atual.cancel_at ? { cancel_at: '' as const } : { cancel_at_period_end: false }),
-        proration_behavior: 'create_prorations',
-      })
-      await guardarAssinatura(trocada)
+      let atual = await desfazerCancelamento(await stripe.subscriptions.retrieve(negocio.stripe_assinatura))
+      if (plano !== negocio.plano) {
+        const novo = await stripe.prices.create(precoDo(plano))
+        atual = await stripe.subscriptions.update(atual.id, {
+          items: [{ id: atual.items.data[0].id, price: novo.id }],
+          metadata: { negocio: negocio.id, plano },
+          proration_behavior: 'create_prorations',
+        })
+      }
+      await guardarAssinatura(atual)
       return resposta({ trocado: true })
     }
 

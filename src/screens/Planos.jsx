@@ -10,9 +10,11 @@ export default function Planos({ negocio, usadas, onSair, onTrocou }) {
   const [erro, setErro] = useState('')
   const atual = negocio?.plano || 'gratis'
   const assinante = PAGOS.includes(atual)
+  const cancelada = assinante && Boolean(negocio?.cancela_no_fim)
 
   async function escolher(plano) {
-    if (assinante && confirmar !== plano) { setConfirmar(plano); return }
+    // Reativar o mesmo plano vai direto; trocar de plano pede um segundo toque.
+    if (assinante && plano !== atual && confirmar !== plano) { setConfirmar(plano); return }
     setErro(''); setEsperando(plano)
     try {
       const resposta = await assinar(plano)
@@ -67,13 +69,14 @@ export default function Planos({ negocio, usadas, onSair, onTrocou }) {
                 <p className="planos__preco"><span>{p.preco}</span> por mês</p>
                 <p className="planos__pecas mono">{p.pecas} peças por mês</p>
                 {p.resumo && <p className="planos__resumo">{p.resumo}</p>}
-                {PAGOS.includes(chave) && !eAtual && (
+                {PAGOS.includes(chave) && (!eAtual || cancelada) && (
                   <button
                     type="button" className={`botao ${chave === 'pro' ? 'botao--destaque' : 'botao--primario'} planos__botao`}
                     onClick={() => escolher(chave)} disabled={esperando !== null}
                   >
                     {esperando === chave ? 'Abrindo...' : confirmar === chave
-                      ? `Confirmar troca para o ${p.nome}`
+                      ? `Confirmar ${cancelada ? 'reativação no' : 'troca para o'} ${p.nome}`
+                      : cancelada ? (eAtual ? `Reativar o ${p.nome}` : `Reativar no ${p.nome}`)
                       : assinante ? `Trocar para o ${p.nome}` : `Assinar o ${p.nome}`}
                   </button>
                 )}
@@ -82,7 +85,9 @@ export default function Planos({ negocio, usadas, onSair, onTrocou }) {
           })}
         </ul>
         {confirmar && (
-          <p className="planos__nota">A troca vale na hora. A diferença entra na próxima fatura.</p>
+          <p className="planos__nota">
+            A troca vale na hora. A diferença entra na próxima fatura.{cancelada && ' A assinatura volta a renovar todo mês.'}
+          </p>
         )}
 
         {erro && <p className="campo__erro" role="alert">{erro}</p>}

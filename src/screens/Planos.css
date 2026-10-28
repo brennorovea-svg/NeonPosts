@@ -1,0 +1,38 @@
+.planos { min-height: 100%; display: flex; flex-direction: column; animation: aparecer 400ms var(--ease) both; }
+.planos__topo {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 16px clamp(16px, 4vw, 40px);
+  border-bottom: 1px solid var(--borda);
+}
+.planos__marca { margin: 0; font-size: 21px; }
+.planos__conteudo {
+  width: 100%; max-width: 720px; margin: 0 auto;
+  display: flex; flex-direction: column; gap: 16px;
+  padding: 40px 16px 56px;
+}
+.planos__sobre { margin: 0; font-size: 13px; letter-spacing: .1em; text-transform: uppercase; color: var(--lilas); }
+.planos__titulo { margin: 0; font-size: clamp(30px, 7vw, 44px); font-weight: 700; line-height: 1.02; letter-spacing: -.04em; }
+.planos__texto { margin: 0; font-size: 16px; line-height: 1.55; color: var(--texto-2); }
+.planos__alerta {
+  margin: 0; padding: 14px 16px; border-radius: var(--raio-cartao);
+  background: rgba(255, 216, 77, .08); border: 1px solid rgba(255, 216, 77, .4);
+  font-size: 14px; color: #FFE69A;
+}
+.planos__lista { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.planos__cartao {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 20px; border-radius: var(--raio-cartao);
+  background: var(--painel); border: 1px solid var(--borda);
+}
+.planos__cartao--atual { border-color: var(--violeta); }
+.planos__cabeca { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.planos__cabeca strong { font-size: 18px; font-weight: 700; }
+.planos__selo { font-size: 11px; color: var(--lilas); }
+.planos__preco { margin: 0; font-size: 14px; color: var(--texto-2); }
+.planos__preco span { font-size: 30px; font-weight: 700; letter-spacing: -.03em; color: var(--neve); }
+.planos__pecas { margin: 0; font-size: 13px; color: var(--lilas); }
+.planos__resumo { margin: 0; font-size: 14px; line-height: 1.45; color: var(--texto-2); }
+.planos__botao { margin-top: auto; }
+.planos__nota { margin: 0; font-size: 13px; line-height: 1.5; color: var(--cinza-claro); text-align: center; }
+@media (max-width: 680px) { .planos__lista { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { .planos { animation: none; } }

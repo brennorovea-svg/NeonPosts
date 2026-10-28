@@ -6,7 +6,21 @@
 }
 .area__marca { margin: 0; font-size: 21px; }
 .area__direita { display: flex; align-items: center; gap: 12px; }
-.area__contador { font-size: 12px; color: var(--texto-2); white-space: nowrap; }
+.area__contador {
+  font-size: 12px; color: var(--texto-2); white-space: nowrap; cursor: pointer;
+  padding: 8px 12px; background: none; border: 1px solid var(--borda); border-radius: 999px;
+  transition: transform var(--dur-controle) var(--ease);
+}
+.area__contador:hover { transform: translateY(-1px); }
+.area__aviso {
+  margin: 0 0 8px; padding: 14px 16px; border-radius: var(--raio-cartao);
+  background: rgba(123, 92, 255, .12); border: 1px solid var(--violeta); font-size: 14px;
+}
+.area__limite {
+  margin-top: 4px; display: flex; flex-direction: column; gap: 12px;
+  padding: 16px; border-radius: var(--raio-cartao); background: var(--painel); border: 1px solid var(--violeta);
+}
+.area__limite p { margin: 0; font-size: 15px; line-height: 1.5; color: var(--texto-2); }
 .area__conteudo {
   width: 100%; max-width: 560px; margin: 0 auto;
   display: flex; flex-direction: column; gap: 16px;
@@ -34,7 +48,7 @@
 .area__num { font-size: 13px; color: var(--violeta); }
 .area__cta { margin-top: 4px; }
 .area__email { margin: 8px 0 0; font-size: 12px; color: var(--cinza-claro); text-align: center; }
-@media (prefers-reduced-motion: reduce) { .area { animation: none; } .area__passo, .area__passo:hover, .area__passo:active { transition: none; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .area { animation: none; } .area__contador, .area__contador:hover, .area__passo, .area__passo:hover, .area__passo:active { transition: none; transform: none; } }
 
 /* Histórico de peças */
 .area__historico { margin-top: 24px; display: flex; flex-direction: column; gap: 12px; }

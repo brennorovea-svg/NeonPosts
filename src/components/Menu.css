@@ -1,0 +1,48 @@
+/* Celular: barra fixa embaixo, só ícone e nome. Computador (>= 1024px): barra lateral. */
+.menu {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
+  display: flex; align-items: stretch;
+  padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+  background: rgba(28, 28, 35, .96); backdrop-filter: blur(12px);
+  border-top: 1px solid var(--borda);
+}
+.menu__marca, .menu__rodape { display: none; }
+.menu__lista { list-style: none; margin: 0; padding: 0; display: flex; flex: 1; gap: 2px; }
+.menu__lista li { flex: 1; min-width: 0; }
+.menu__item {
+  width: 100%; min-height: 50px; padding: 6px 2px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  background: none; border: 0; border-radius: 10px; cursor: pointer;
+  font: 500 11px var(--fonte); color: var(--texto-2);
+  transition: transform var(--dur-controle) var(--ease);
+}
+.menu__item svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.menu__item:active { transform: scale(.96); }
+.menu__item[aria-current="page"] { color: var(--neve); background: rgba(123, 92, 255, .18); }
+
+@media (min-width: 1024px) {
+  .menu {
+    position: sticky; top: 0; bottom: auto; height: 100vh;
+    width: 232px; flex-direction: column; gap: 24px; flex-shrink: 0;
+    padding: 24px 16px; background: var(--painel); backdrop-filter: none;
+    border-top: 0; border-right: 1px solid var(--borda);
+  }
+  .menu__marca { display: block; margin: 0; padding: 0 8px; font-size: 21px; }
+  .menu__lista { flex-direction: column; flex: 0; gap: 4px; }
+  .menu__item {
+    min-height: 44px; padding: 10px 12px; flex-direction: row; justify-content: flex-start; gap: 10px;
+    font-size: 15px; text-align: left;
+  }
+  .menu__item svg { width: 18px; height: 18px; }
+  .menu__item:hover { transform: translateX(2px); }
+  .menu__item[aria-current="page"] { background: var(--violeta); color: var(--neve); font-weight: 600; }
+  .menu__rodape { display: flex; flex-direction: column; gap: 10px; margin-top: auto; }
+  .menu__conta {
+    display: flex; flex-direction: column; gap: 4px; padding: 12px;
+    border-radius: 10px; background: var(--grafite); border: 1px solid var(--borda); font-size: 14px;
+  }
+  .menu__conta-rotulo { font-size: 12px; color: var(--texto-2); }
+  .menu__contador { font-size: 12px; color: var(--texto-2); }
+  .menu__sair { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) { .menu__item, .menu__item:hover, .menu__item:active { transition: none; transform: none; } }

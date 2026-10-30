@@ -1,0 +1,188 @@
+.planner { display: flex; flex-direction: column; gap: 16px; animation: aparecer 400ms var(--ease) both; }
+
+/* Cabeçalho: mês ou semana, setas, legenda das redes e o botão de planejar. */
+.planner__topo { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.planner__navegar { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+.planner__seta {
+  flex-shrink: 0; width: 40px; height: 40px; border-radius: 10px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--painel); border: 1px solid var(--borda); color: var(--neve);
+  transition: transform var(--dur-controle) var(--ease);
+}
+.planner__seta svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.planner__seta:active { transform: scale(.96); }
+.planner__titulo { margin: 0; flex: 1; min-width: 0; font-size: 20px; font-weight: 700; letter-spacing: -.02em; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.planner__hoje { display: none; }
+.planner__direita { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; width: 100%; }
+.planner__legenda { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--texto-2); }
+.planner__legenda li { display: inline-flex; align-items: center; gap: 6px; }
+.planner__ponto { flex-shrink: 0; display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+.planner__forma { flex-shrink: 0; width: 12px; height: 12px; fill: none; stroke: var(--texto-2); stroke-width: 2.4; }
+.planner__visoes { display: flex; padding: 4px; border-radius: 12px; background: var(--painel); border: 1px solid var(--borda); }
+.planner__visao {
+  min-height: 32px; padding: 4px 14px; border: 0; border-radius: 9px; cursor: pointer;
+  background: transparent; color: var(--texto-2); font: 600 13px var(--fonte);
+  transition: transform var(--dur-controle) var(--ease);
+}
+.planner__visao[aria-pressed="true"] { background: var(--violeta); color: var(--neve); }
+.planner__planejar { width: auto; min-height: 44px; padding: 10px 16px; font-size: 15px; margin-left: auto; }
+
+.planner__avisos {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+  padding: 12px 14px; border-radius: var(--raio-cartao); background: rgba(123, 92, 255, .1); border: 1px solid var(--borda);
+}
+.planner__avisos p { margin: 0; flex: 1; min-width: 200px; font-size: 14px; line-height: 1.5; color: var(--texto-2); }
+
+/* Mês */
+.planner__semana-nomes { display: none; }
+.planner__grade { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.planner__dia {
+  min-height: 48px; padding: 6px 4px; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  background: var(--painel); border: 1px solid var(--borda); border-radius: 10px;
+  color: var(--neve); font: inherit; text-align: left;
+  transition: transform var(--dur-controle) var(--ease);
+}
+.planner__dia:active { transform: scale(.97); }
+.planner__dia--fora { background: transparent; color: var(--cinza-claro); }
+.planner__dia--hoje { border-color: var(--violeta); }
+.planner__dia--alvo { border-style: dashed; }
+.planner__numero { font-size: 13px; min-width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; }
+.planner__dia--hoje .planner__numero { background: var(--violeta); }
+.planner__itens { display: none; }
+.planner__pontos { display: flex; flex-wrap: wrap; justify-content: center; gap: 3px; }
+.planner__pontos .planner__item { padding: 0; background: none; border: 0; }
+.planner__dica { display: none; margin: 0; font-size: 12px; color: var(--cinza-claro); }
+
+/* Marcação: ponto da rede, forma do formato, título, hora. */
+.planner__item {
+  display: flex; align-items: center; gap: 6px; min-width: 0;
+  padding: 3px 6px; border-radius: 6px; background: var(--grafite); border: 1px solid var(--borda);
+  font-size: 12px; color: var(--neve);
+}
+.planner__item[draggable="true"] { cursor: grab; }
+.planner__item--postado { opacity: .55; }
+.planner__item-titulo { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.planner__item-hora { flex-shrink: 0; font-size: 11px; color: var(--texto-2); }
+
+/* Semana em lista */
+.planner__lista { display: flex; flex-direction: column; gap: 8px; }
+.planner__dia-linha {
+  display: flex; flex-direction: column; gap: 8px; padding: 12px; cursor: pointer; text-align: left;
+  background: var(--painel); border: 1px solid var(--borda); border-radius: 14px; color: var(--neve); font: inherit;
+  transition: transform var(--dur-controle) var(--ease);
+}
+.planner__dia-linha:active { transform: scale(.98); }
+.planner__dia-linha--hoje, .planner__dia-linha--aberto { border-color: var(--violeta); }
+.planner__dia-linha--aberto { background: rgba(123, 92, 255, .1); }
+.planner__dia-cabeca { display: flex; align-items: baseline; gap: 8px; }
+.planner__dia-numero { font-size: 20px; }
+.planner__dia-linha--hoje .planner__dia-numero { color: var(--lilas); }
+.planner__dia-nome { font-size: 12px; font-weight: 600; color: var(--texto-2); text-transform: uppercase; letter-spacing: .06em; }
+.planner__hoje-rotulo { margin-left: auto; font-size: 11px; font-weight: 600; color: var(--lilas); }
+.planner__dia-itens { display: flex; flex-direction: column; gap: 6px; }
+.planner__dia-itens .planner__item { min-height: 36px; padding: 6px 10px; border-radius: 8px; }
+.planner__nada { font-size: 13px; color: var(--cinza-claro); }
+
+/* Dia aberto */
+.planner__duas { display: flex; flex-direction: column; gap: 16px; }
+.planner--dia .planner__lista { display: none; }
+.planner__painel { display: flex; flex-direction: column; gap: 14px; }
+.planner__painel-topo { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 12px; }
+.planner__painel-topo > div { flex: 1; min-width: 180px; }
+.planner__voltar { width: 100%; order: -1; }
+.planner__painel-titulo { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -.02em; }
+.planner__painel-sub { margin: 4px 0 0; font-size: 13px; color: var(--texto-2); }
+.planner__nova { width: 100%; min-height: 44px; padding: 10px 16px; font-size: 15px; }
+
+.planner__form { display: flex; flex-direction: column; gap: 14px; padding: 16px; border-radius: var(--raio-cartao); background: var(--painel); border: 1px solid var(--borda); }
+.planner__form-linha { display: flex; flex-wrap: wrap; gap: 14px; }
+.planner__form-linha .campo { flex: 1; min-width: 120px; }
+.planner__select, .planner__mudar input {
+  min-height: 44px; padding: 8px 12px; border-radius: var(--raio-campo);
+  border: 1px solid var(--borda); background: var(--grafite); color: var(--neve); font: 14px var(--fonte);
+}
+.planner__acoes-linha { display: flex; gap: 10px; flex-wrap: wrap; }
+.planner__acoes-linha .botao { flex: 1; min-width: 140px; }
+.planner__acoes-linha .botao--fantasma { flex: 0; }
+
+.planner__cartao {
+  display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 14px; padding: 14px;
+  border-radius: var(--raio-cartao); background: var(--painel); border: 1px solid var(--borda);
+}
+.planner__cartao--postado { opacity: .7; }
+.planner__arte { width: 84px; border-radius: 10px; overflow: hidden; background: var(--grafite); border: 1px solid var(--borda); display: grid; place-items: center; }
+.planner__arte--post { aspect-ratio: 4 / 5; }
+.planner__arte--story { aspect-ratio: 9 / 16; }
+.planner__arte--vazia { border-style: dashed; }
+.planner__arte img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.planner__arte .planner__forma { width: 28px; height: 28px; stroke: var(--cinza-claro); stroke-width: 1.6; }
+.planner__cartao-corpo { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.planner__cartao-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; }
+.planner__tag { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 999px; background: var(--grafite); border: 1px solid var(--borda); color: var(--texto-2); }
+.planner__tag--ok { border-color: #2ECC71; color: #8DE8B0; }
+.planner__cartao-hora { font-size: 12px; color: var(--texto-2); }
+.planner__cartao-titulo { margin: 0; font-size: 16px; font-weight: 600; }
+.planner__cartao-texto { margin: 0; font-size: 13px; line-height: 1.5; color: var(--texto-2); }
+.planner__cartao-lembrete { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 12px; color: var(--texto-2); }
+.planner__cartao-lembrete .planner__select { min-height: 36px; font-size: 13px; }
+.planner__cartao-nota { flex-basis: 100%; }
+.planner__cartao-acoes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 2px; }
+.planner__cartao-acoes .botao { width: auto; min-height: 40px; padding: 8px 14px; font-size: 14px; }
+.planner__mudar { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.planner__sugestao {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 14px 16px;
+  border-radius: var(--raio-cartao); border: 1px dashed var(--borda);
+}
+.planner__sugestao > div { flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 4px; }
+.planner__sugestao strong { font-weight: 600; font-size: 15px; }
+.planner__sugestao span { font-size: 13px; color: var(--texto-2); }
+.planner__ok { margin: 0; font-size: 14px; color: #8DE8B0; }
+
+.planner__so-mes--escondido, .planner__so-semana--escondido { display: none; }
+
+/* Computador: calendário grande com as marcações dentro dos dias; dia aberto ao lado da semana. */
+@media (min-width: 1024px) {
+  .planner__titulo { flex: 0 0 auto; min-width: 220px; font-size: 24px; }
+  .planner__hoje { display: inline-flex; }
+  .planner__direita { width: auto; margin-left: auto; }
+  .planner__legenda { font-size: 13px; }
+  .planner__visoes { display: none; }
+  .planner__so-semana { display: none; }
+  .planner__so-mes--escondido { display: block; }
+  .planner__semana-nomes { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; padding: 0 2px; }
+  .planner__semana-nomes span { font-size: 12px; font-weight: 600; color: var(--texto-2); text-transform: uppercase; letter-spacing: .06em; }
+  .planner__mes { display: flex; flex-direction: column; gap: 10px; }
+  .planner__grade { gap: 8px; grid-auto-rows: minmax(112px, auto); }
+  .planner__dia { align-items: stretch; padding: 8px; border-radius: 12px; gap: 6px; }
+  .planner__dia:hover { transform: translateY(-2px); }
+  .planner__numero { align-self: flex-start; }
+  .planner__itens { display: flex; flex-direction: column; gap: 4px; }
+  .planner__pontos { display: none; }
+  .planner__dica { display: block; }
+  .planner__duas { flex-direction: row; align-items: flex-start; gap: 24px; }
+  .planner--dia .planner__lista { display: flex; flex: 0 0 360px; }
+  .planner__dia-linha { flex-direction: row; align-items: center; gap: 12px; padding: 10px 12px; }
+  .planner__dia-cabeca { flex: 0 0 56px; flex-direction: column; align-items: flex-start; gap: 0; line-height: 1.1; }
+  .planner__hoje-rotulo { margin-left: 0; }
+  .planner__dia-itens { flex: 1; flex-direction: row; flex-wrap: wrap; }
+  .planner__dia-itens .planner__item { min-height: 0; padding: 4px 8px; }
+  .planner__dia-itens .planner__item-hora, .planner__dia-itens .planner__forma { display: none; }
+  .planner__painel { flex: 1; min-width: 0; }
+  .planner__voltar { display: none; }
+  .planner__painel-titulo { font-size: 24px; }
+  .planner__nova { width: auto; }
+  .planner__cartao { grid-template-columns: 112px minmax(0, 1fr); }
+  .planner__arte { width: 112px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .planner { animation: none; }
+  .planner__seta, .planner__dia, .planner__dia:hover, .planner__dia:active, .planner__dia-linha, .planner__dia-linha:active, .planner__visao { transition: none; transform: none; }
+}
+
+/* Ajustes do formulário e dos botões repetidos (um "Planejar peça" por tela). */
+.planner__form .ficha { display: inline-flex; align-items: center; gap: 6px; }
+.planner__form .campo--curto { max-width: 160px; }
+@media (max-width: 1023px) { .planner--dia .planner__planejar { display: none; } }
+@media (min-width: 1024px) { .planner__nova { display: none; } }

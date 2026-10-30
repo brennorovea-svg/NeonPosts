@@ -14,3 +14,25 @@
 .entrevista__regra .item__tirar { margin-top: 6px; }
 .entrevista__mais { align-self: flex-start; }
 @media (prefers-reduced-motion: reduce) { .entrevista--montando { animation: none; } }
+
+/* Calibração: 3 peças de teste, uma embaixo da outra no celular, arte ao lado do texto no computador. */
+.calibrar__lista { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 20px; }
+.calibrar__peca {
+  display: grid; grid-template-columns: 1fr; gap: 14px;
+  padding: 14px; background: var(--painel); border: 1px solid var(--borda); border-radius: var(--raio-cartao);
+  animation: aparecer 400ms var(--ease) both;
+}
+.calibrar__peca:nth-child(2) { animation-delay: 60ms; }
+.calibrar__peca:nth-child(3) { animation-delay: 120ms; }
+.calibrar__arte { display: block; width: 100%; height: auto; border-radius: 10px; background: var(--grafite); }
+.calibrar__arte--story { max-width: 260px; justify-self: center; }
+.calibrar__lado { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.calibrar__legenda { margin: 0; font-size: 14px; line-height: 1.5; color: var(--texto-2); white-space: pre-line; }
+.calibrar__soa { align-self: flex-start; }
+.calibrar__lado .nao-marca__abrir { align-self: flex-start; }
+.calibrar__resumo { margin: 4px 0 0; font-size: 14px; color: var(--lilas); }
+@media (min-width: 760px) {
+  .calibrar__peca { grid-template-columns: 240px 1fr; align-items: start; }
+  .calibrar__arte--story { max-width: 180px; justify-self: start; }
+}
+@media (prefers-reduced-motion: reduce) { .calibrar__peca { animation: none; } }

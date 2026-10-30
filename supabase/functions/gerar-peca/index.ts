@@ -13,6 +13,16 @@ const CABECALHOS = {
 }
 const MAX_REFEITAS = 3
 
+// Calibração do guia da marca: 3 pedidos fixos, montados aqui com o ramo e o carro-chefe,
+// para a função não virar um jeito de criar peça sem contar no limite.
+function pedidosDeCalibracao(carroChefe: string) {
+  return [
+    { formato: 'post', pedido: carroChefe ? `Post de promoção do ${carroChefe}` : 'Post de promoção do que mais vende' },
+    { formato: 'story', pedido: 'Story contando onde e quando o cliente encontra a gente' },
+    { formato: 'post', pedido: 'Post de bastidores mostrando como a gente trabalha' },
+  ]
+}
+
 function resposta(corpo: unknown, status = 200) {
   return new Response(JSON.stringify(corpo), { status, headers: { ...CABECALHOS, 'Content-Type': 'application/json' } })
 }
@@ -50,8 +60,9 @@ Deno.serve(async (req) => {
   const { data: negocio } = await banco.from('negocios').select('id, limite_pecas').eq('dono', conta.user.id).single()
   if (!negocio) return erro('Não achamos o seu negócio.', 404)
 
-  let corpo: { pedido?: string; formato?: string; video?: boolean; fotos?: string[]; refazer?: string; ajuste?: string; modelo?: string }
+  let corpo: { pedido?: string; formato?: string; video?: boolean; fotos?: string[]; refazer?: string; ajuste?: string; modelo?: string; calibrar?: boolean; regras?: string[]; carro_chefe?: string }
   try { corpo = await req.json() } catch { return erro('Pedido inválido.', 400) }
+  if (corpo.calibrar) return calibrar(banco, negocio.id, corpo)
 
   let pedido = String(corpo.pedido || '').trim()
   let formato = corpo.formato === 'story' ? 'story' : 'post'
@@ -154,3 +165,42 @@ Deno.serve(async (req) => {
   if (error) { console.error('banco', error); return erro('Não deu para guardar a peça. Tente de novo.', 500) }
   return resposta({ peca, refeitasRestantes: MAX_REFEITAS - peca.refeitas })
 })
+
+// Gera as 3 peças de teste com as regras que o dono ainda está conferindo (não salvas).
+// Não grava nada e não conta no limite: a peça só aparece na tela da entrevista.
+async function calibrar(banco: ReturnType<typeof createClient>, negocioId: string, corpo: { regras?: string[]; carro_chefe?: string }) {
+  const regras = (corpo.regras || []).map((r) => String(r).trim().slice(0, 300)).filter(Boolean).slice(0, 20)
+  if (!regras.length) return erro('Monte o guia antes de testar.', 400)
+  const { data: perfil } = await banco.from('perfis_marca').select('versao, identidade, voz, padrao, dados')
+    .eq('negocio', negocioId).order('versao', { ascending: false }).limit(1).maybeSingle()
+  if (!perfil) return erro('Conte a sua marca antes de testar o guia.', 409)
+  const comGuia = { ...perfil, voz: { ...perfil.voz, guia: { regras } } }
+
+  const chave = Deno.env.get('ANTHROPIC_API_KEY')
+  if (!chave) return erro('A IA ainda não foi ligada. Tente mais tarde.', 503)
+  const ia = new Anthropic({ apiKey: chave, timeout: 90_000, maxRetries: 1 })
+
+  const pedidos = pedidosDeCalibracao(String(corpo.carro_chefe || '').trim().slice(0, 80))
+  try {
+    // As 3 ao mesmo tempo, com as mesmas instruções (em cache) das peças de verdade.
+    const pecas = await Promise.all(pedidos.map(async ({ formato, pedido }) => {
+      const msg = await ia.messages.create({
+        model: 'claude-haiku-5-5',
+        max_tokens: 16000,
+        // @ts-ignore: output_config.format ainda sem tipo nesta versão do SDK
+        output_config: { effort: 'medium', format: { type: 'json_schema', schema: ESQUEMA } },
+        system: [{ type: 'text', text: INSTRUCOES, cache_control: { type: 'ephemeral' } }],
+        messages: [{ role: 'user', content: montarMensagem(comGuia, pedido, formato) }],
+      })
+      const texto = msg.content.find((b) => b.type === 'text')
+      if (msg.stop_reason === 'refusal' || !texto || texto.type !== 'text') throw new Error('sem texto')
+      const roteiro = conferir(JSON.parse(texto.text), comGuia, pedido, '', 0, false)
+      return { formato, pedido, modelo: roteiro.modelo, roteiro }
+    }))
+    return resposta({ pecas })
+  } catch (falha) {
+    console.error('ia', falha)
+    if (falha instanceof Anthropic.RateLimitError) return erro('Muita gente criando agora. Tente de novo em um minuto.', 503)
+    return erro('A IA não respondeu agora. Tente de novo.', 502)
+  }
+}

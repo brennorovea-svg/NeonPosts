@@ -74,11 +74,52 @@ export async function montarGuia(respostas) {
     await new Promise((ok) => setTimeout(ok, 2500))
     return guiaDeTeste(respostas)
   }
-  const { data, error } = await supabase.functions.invoke('entrevista', { body: { respostas } })
+  const data = await chamar('entrevista', { respostas }, 'Não deu para montar o guia agora. Tente de novo.')
+  return data.regras
+}
+
+// Motivos do "Isso não é a minha marca" (os mesmos da função entrevista).
+export const MOTIVOS = ['Não é assim que a gente fala', 'Isso a gente não vende ou não faz', 'O preço não devia aparecer', 'Tem palavra que a gente não usa', 'Prometeu o que a gente não pode']
+
+async function chamar(funcao, corpo, padrao) {
+  const { data, error } = await supabase.functions.invoke(funcao, { body: corpo })
   if (error) {
-    let mensagem = 'Não deu para montar o guia agora. Tente de novo.'
+    let mensagem = padrao
     try { mensagem = (await error.context.json()).erro || mensagem } catch { /* resposta sem corpo */ }
     throw new Error(mensagem)
   }
+  return data
+}
+
+// Calibração: 3 peças de teste com as regras que a pessoa ainda está conferindo. Não contam no limite.
+const CALIBRACAO_DE_TESTE = [
+  { formato: 'post', modelo: 'promo', roteiro: { modelo: 'promo', titulo: 'Seu site novo em 7 dias', apoio: 'Nós entregamos um site rápido e bonito, com resultado garantido.', itens: [], chamada: 'Chama no WhatsApp', legenda: 'Nós da Neon Scripts fazemos o seu site em 7 dias, com resultado garantido. Chama no WhatsApp.', hashtags: ['#NeonScripts'], pontos: [], arte: {}, cores: {}, avisos: [] } },
+  { formato: 'story', modelo: 'aviso', roteiro: { modelo: 'aviso', titulo: 'A gente atende online', apoio: 'De segunda a sexta, do jeito da sua marca.', itens: [], chamada: 'Manda um oi', legenda: 'A gente atende online, de segunda a sexta. Manda um oi no direct.', hashtags: ['#NeonScripts'], pontos: [], arte: {}, cores: {}, avisos: [] } },
+  { formato: 'post', modelo: 'bastidores', roteiro: { modelo: 'bastidores', titulo: 'Por trás de cada site', apoio: 'Café, código e muita conversa com o cliente.', itens: [], chamada: 'Vem conhecer', legenda: 'Por trás de cada site tem muita conversa com quem vai usar. É assim que a gente trabalha.', hashtags: ['#NeonScripts'], pontos: [], arte: {}, cores: {}, avisos: [] } },
+]
+
+export async function calibrar(regras, carroChefe = '') {
+  if (modoDeTeste()) {
+    await new Promise((ok) => setTimeout(ok, 3000))
+    return CALIBRACAO_DE_TESTE
+  }
+  const data = await chamar('gerar-peca', { calibrar: true, regras, carro_chefe: carroChefe }, 'Não deu para gerar as peças de teste agora. Tente de novo.')
+  return data.pecas
+}
+
+// "Isso não é a minha marca": a IA lê a peça e o motivo e propõe 1 ou 2 regras para o guia.
+export async function proporRegra({ peca, motivos, comentario, regras }) {
+  const { titulo, apoio, chamada, legenda, pontos } = peca
+  if (modoDeTeste()) {
+    await new Promise((ok) => setTimeout(ok, 1800))
+    const deTeste = {
+      'Prometeu o que a gente não pode': 'Nunca prometa "resultado garantido" nem prazo que o cliente não combinou.',
+      'Não é assim que a gente fala': 'Diga "a gente", nunca "nós", quando a marca fala de si mesma.',
+    }
+    const lista = motivos.map((m) => deTeste[m]).filter(Boolean)
+    if (!lista.length) lista.push(`Evite o que apareceu nesta peça: ${comentario.trim() || motivos[0]}.`)
+    return lista.slice(0, 2)
+  }
+  const data = await chamar('entrevista', { acao: 'regra', peca: { titulo, apoio, chamada, legenda, pontos }, motivos, comentario, regras }, 'Não deu para propor a regra agora. Tente de novo.')
   return data.regras
 }

@@ -1,0 +1,11 @@
+.redes { display: flex; flex-direction: column; gap: 16px; max-width: 640px; animation: aparecer 400ms var(--ease) both; }
+.redes__titulo { margin: 0; font-size: clamp(28px, 6vw, 36px); font-weight: 700; letter-spacing: -.03em; }
+.redes__texto { margin: 0; font-size: 15px; line-height: 1.55; color: var(--texto-2); }
+.redes__lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.redes__rede { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: var(--raio-cartao); background: var(--painel); border: 1px solid var(--borda); }
+.redes__ponto { width: 10px; height: 10px; border-radius: 50%; }
+.redes__nome { flex: 1; font-weight: 600; }
+.redes__estado { font-size: 12px; color: var(--texto-2); }
+.redes__avisos { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 14px 16px; border-radius: var(--raio-cartao); border: 1px dashed var(--borda); font-size: 14px; }
+.redes__avisos span { color: var(--texto-2); line-height: 1.5; }
+@media (prefers-reduced-motion: reduce) { .redes { animation: none; } }

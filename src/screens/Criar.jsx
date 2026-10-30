@@ -196,10 +196,10 @@ const GERAL = {
   exemplos: EXEMPLOS,
 }
 
-export default function Criar({ negocioId, perfil, pecaInicial, onSair, onPerfil }) {
+export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, onSair, onPerfil, onCriou }) {
   const [pedido, setPedido] = useState('')
   const [tipo, setTipo] = useState(null)
-  const [formato, setFormato] = useState('post')
+  const [formato, setFormato] = useState(formatoInicial === 'story' ? 'story' : 'post')
   const [video, setVideo] = useState(false)
   const [gravando, setGravando] = useState(null) // null ou de 0 a 1
   const [avisoVideo, setAvisoVideo] = useState('')
@@ -291,6 +291,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair, onPerfil
       setPeca(r.peca)
       setRestantes(r.refeitasRestantes)
       setEstado('revelando')
+      if (!refazer) onCriou?.(r.peca)
     } catch (falha) {
       setErro(falha.message)
       setEstado(refazer ? 'pronta' : 'pedido')

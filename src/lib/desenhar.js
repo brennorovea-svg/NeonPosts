@@ -1,6 +1,8 @@
 // Desenha a peça no próprio aparelho, num canvas de 1080 de largura.
-// Post 4:5 (1080x1350) e story 9:16 (1080x1920). Vinte modelos (o vídeo em cenas só no vídeo); a IA escolhe o modelo e o
-// jeito da arte (palavra em destaque, tamanho do título, alinhamento e fundo).
+// Post 4:5 (1080x1350) e story 9:16 (1080x1920). Vinte modelos para post e story, mais o vídeo em cenas e os vinte
+// stories com movimento (historias.js), que só aparecem no vídeo. A IA escolhe o modelo e o jeito da arte
+// (palavra em destaque, tamanho do título, alinhamento e fundo).
+import { criarHistorias, NOMES_DAS_HISTORIAS } from './historias.js'
 
 export const TAMANHOS = { post: [1080, 1350], story: [1080, 1920] }
 export const NOMES_DOS_MODELOS = {
@@ -9,9 +11,10 @@ export const NOMES_DOS_MODELOS = {
   numero: 'Número', cupom: 'Cupom', agenda: 'Agenda', conversa: 'Conversa', mosaico: 'Mosaico', faixas: 'Faixas',
   capa: 'Capa de revista', comparar: 'Antes e depois', tabela: 'Tabela', enquete: 'Enquete',
   cenas: 'Vídeo em cenas',
+  ...NOMES_DAS_HISTORIAS,
 }
 // Só aparece quando o formato é vídeo.
-export const SO_NO_VIDEO = ['cenas']
+export const SO_NO_VIDEO = ['cenas', ...Object.keys(NOMES_DAS_HISTORIAS)]
 import { fonteDa } from './fontes.js'
 
 const FONTE = '"Instrument Sans", system-ui, sans-serif'
@@ -112,6 +115,7 @@ export async function prepararFontes(chave) {
   await Promise.all([
     ...['400', '600', '700'].map((p) => document.fonts.load(`${p} 40px "Instrument Sans"`)),
     document.fonts.load(`${titulo.peso} 40px ${titulo.familia}`),
+    document.fonts.load('600 40px "JetBrains Mono"'),
   ])
 }
 
@@ -1028,7 +1032,7 @@ function lerData(texto) {
   const hoje = new Date()
   let data = new Date(hoje.getFullYear(), mes, dia)
   if (data < new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate())) data = new Date(hoje.getFullYear() + 1, mes, dia)
-  return { dia: String(dia), mes: MESES[mes], semana: DIAS[data.getDay()] }
+  return { dia: String(dia), mes: MESES[mes], semana: DIAS[data.getDay()], quando: data }
 }
 
 // Folha de calendário com o dia, horário ao lado, título embaixo. Bom para evento e aviso com data.
@@ -1641,9 +1645,27 @@ function cenas(ctx, args) {
   }
 }
 
+// Os stories com movimento usam as mesmas peças (texto, botão, selo, cores) e marcam a hora de cada entrada.
+const HISTORIAS = criarHistorias({
+  relogio: () => relogio,
+  // O próximo elemento entra em `s` segundos.
+  aos: (s) => { if (relogio) relogio.ordem = (s - 0.35) / 0.32 },
+  // Desenha parado, mesmo no vídeo (quando o movimento é do grupo todo).
+  semRelogio: (desenho) => {
+    const guardado = relogio
+    relogio = null
+    try { return desenho() } finally { relogio = guardado }
+  },
+  modelos: () => MODELOS,
+  bloco, medir, selo, rotulo, balao, quebrar, espacar, arredondado, pilulaCurta, chamadaEmTexto, placaDaMarca, brilho, lerData,
+  pintarFundo, corPedida, fundoPedido, destaqueSobre, apagado, textoSobre, comAlfa, misturar, legivel, luz, contraste,
+  marca, escala, lado, sobre, fonteDoBloco, FONTE, EMBARALHO, suave, sorteio, acender, confete,
+})
+
 const MODELOS = {
   promo, aviso, bastidores, manchete, lista, citacao, dividido, foto: fotoInteira, cartao,
   numero, cupom, agenda, conversa, mosaico, faixas, capa, comparar, tabela, enquete, cenas,
+  ...HISTORIAS,
 }
 
 export function desenhar(canvas, { formato, modelo, roteiro, cores, logo, foto, fotos, nome, fonte, tempo = null, total = 8 }) {

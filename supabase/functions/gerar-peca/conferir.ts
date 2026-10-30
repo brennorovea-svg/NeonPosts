@@ -1,12 +1,27 @@
 // Parte pura da função gerar-peca: instruções para a IA, formato da resposta e a
 // conferência final, que tira qualquer preço, data, horário ou telefone inventado.
 
+// Stories com movimento (desenho em src/lib/historias.js): só no vídeo.
+export const HISTORIAS = [
+  'direct', 'busca', 'contador', 'painel', 'semana', 'impacto', 'acende', 'revelacao', 'glitch', 'pergunta',
+  'inclui', 'comemoracao', 'pronto', 'movimento', 'estrelas', 'aovivo', 'contagem', 'escolha', 'vitrine', 'local',
+]
 export const MODELOS = [
   'promo', 'aviso', 'bastidores', 'manchete', 'lista', 'citacao', 'dividido', 'foto', 'cartao',
   'numero', 'cupom', 'agenda', 'conversa', 'mosaico', 'faixas', 'capa', 'comparar', 'tabela', 'enquete', 'cenas',
+  ...HISTORIAS,
 ]
 // Só no formato vídeo.
-export const SO_NO_VIDEO = ['cenas']
+export const SO_NO_VIDEO = ['cenas', ...HISTORIAS]
+// Fora do vídeo, cada um vira o layout parado mais parecido.
+const PARECIDO: Record<string, string> = {
+  cenas: 'lista', direct: 'conversa', busca: 'manchete', contador: 'numero', painel: 'numero', semana: 'lista',
+  impacto: 'manchete', acende: 'manchete', revelacao: 'manchete', glitch: 'manchete', pergunta: 'cartao', inclui: 'lista',
+  comemoracao: 'numero', pronto: 'aviso', movimento: 'lista', estrelas: 'citacao', aovivo: 'bastidores', contagem: 'agenda',
+  escolha: 'enquete', vitrine: 'tabela', local: 'aviso',
+}
+// Quantos pontos cada modelo aceita (o padrão é 4).
+const PONTOS_POR_MODELO: Record<string, number> = { semana: 7, painel: 7, inclui: 5 }
 const TAMANHOS = ['normal', 'grande', 'gigante']
 const ALINHAMENTOS = ['esquerda', 'centro', 'direita']
 const FUNDOS = ['marca', 'escuro', 'claro', 'foto']
@@ -104,11 +119,32 @@ Arte: você também decide como a peça é desenhada, para cada peça ter a sua 
 - "tabela": tabela de preços com os itens da marca (usa "itens"), para cardápio ou lista de serviços.
 - "enquete": a pergunta no "titulo" e de 2 a 4 opções em "pontos", para enquete nos stories.
 - "cenas": só quando o formato é vídeo. Vídeo em cenas: abre com o "titulo" e o "apoio", mostra um item da lista ("itens") ou um ponto ("pontos") por cena e fecha com o logo e a "chamada". Bom para cardápio, lançamento de mais de um produto, passo a passo ou várias fotos. Fora do vídeo, nunca use.
-Varie: não use sempre o mesmo. Se o pedido diz que tem foto, prefira "bastidores", "dividido", "foto", "mosaico" ou "capa". No vídeo com 2 ou mais itens, pontos ou fotos, prefira "cenas".
-"pontos": no "cenas" (2 a 4 frases de até 8 palavras, uma por cena, quando a peça não fala de itens da lista), no "lista" (2 a 4 frases de até 6 palavras), "conversa" (1 a 3 perguntas de até 12 palavras, no jeito de um cliente escrever), "faixas" (3 a 5 palavras soltas), "comparar" (2 frases de até 6 palavras) e "enquete" (2 a 4 opções de até 5 palavras); nos outros, lista vazia. "autor": só no "citacao"; nos outros, "".
-"numero": só no "numero" e no "mosaico", o número que é o coração da peça, curto (até 7 caracteres, ex.: "50%", "7 dias", "3x"). Tem de estar no pedido ou nos dados da marca; se não estiver, "" e o app usa o título. Nos outros modelos, "".
+Stories com movimento: só quando o formato é vídeo. Fora do vídeo, nunca use. Cada um tem uma animação própria; escolha pelo que o pedido quer dizer:
+- "direct": 1 a 3 perguntas de cliente em "pontos" chegam como mensagem e a marca responde no "titulo" (até 10 palavras). Dúvida frequente, preço, entrega.
+- "busca": alguém digita uma busca ("pontos" com 1 termo, ex.: "pizzaria perto de mim"), a marca aparece nos resultados com o "apoio" curto embaixo do nome (até 6 palavras) e o "titulo" fecha. Para ser achado no Google e no mapa.
+- "contador": um número real do pedido ou da marca em "numero" conta do zero; o "titulo" explica o número. Resultado, marca, número que impressiona.
+- "painel": gráfico de linha com 3 a 7 números do pedido em "pontos" (só os números, na ordem, ex.: "12", "18", "25"); "apoio" diz o que eles medem, curto. Só se o pedido trouxer os números.
+- "semana": programação da semana em "pontos", de 2 a 7, cada um "SEG: o que tem" (SEG, TER, QUA, QUI, SEX, SÁB, DOM). O dia de hoje acende.
+- "impacto": uma frase da voz da marca, grande, palavra por palavra, no "titulo" (até 10 palavras). Manifesto, promessa.
+- "acende": título curto acendendo como letreiro em fundo escuro. Lançamento, novidade.
+- "revelacao": título curto que aparece embaralhado e se revela, em fundo escuro. Teaser, "em breve".
+- "glitch": "NOVO" com corte de cor e o título embaixo, em fundo escuro. Novidade com cara de tecnologia.
+- "pergunta": a pergunta no "titulo" e a resposta no "apoio" (até 18 palavras), que sobe como cortina. Curiosidade, mito ou verdade.
+- "inclui": o que vem no pacote, combo ou serviço, em "pontos" (2 a 5, até 5 palavras cada), com check que se desenha.
+- "comemoracao": um número em "numero" (anos, clientes, pedidos) conta e solta confete; o "titulo" diz o motivo. Aniversário, meta batida.
+- "pronto": carregando que vira check, com a confirmação no "titulo" (ex.: "Seu pedido saiu"). Pedido pronto, horário confirmado.
+- "movimento": avisos do dia chegando, em "pontos" (2 a 4, cada um "Título · detalhe", ex.: "Encomenda pronta · bolo de pote"), só com o que o pedido conta; o "titulo" chama para ser o próximo.
+- "estrelas": cinco estrelas acendem e o depoimento do cliente entra no "titulo" (até 18 palavras, sem aspas), com o nome em "autor".
+- "aovivo": a foto aproxima devagar, selo de ao vivo e o "apoio" digitado como legenda; o "titulo" fecha. Bastidores, preparo, equipe. Melhor com foto.
+- "contagem": quantos dias faltam até a "data" do pedido (ex.: "29/11"); o "titulo" é o evento. Inauguração, campanha, evento.
+- "escolha": isso ou aquilo, "pontos" com exatamente 2 opções de até 3 palavras; "titulo" com a pergunta curta. Engajamento.
+- "vitrine": os itens da lista ("itens") com preço correndo em duas fitas, "titulo" curto. Sem itens, "pontos" com 3 a 6 nomes curtos. Cardápio, catálogo.
+- "local": mapa com pino caindo e o endereço dos dados fixos digitado; o app escreve o endereço, o "titulo" convida a vir. Como chegar.
+Varie: não use sempre o mesmo. Se o pedido diz que tem foto, prefira "bastidores", "dividido", "foto", "mosaico" ou "capa". No vídeo, prefira o story com movimento que mais combina com o pedido; com 2 ou mais itens, pontos ou fotos para mostrar um a um, "cenas".
+"pontos": nos stories com movimento, como está em cada um acima; no "cenas" (2 a 4 frases de até 8 palavras, uma por cena, quando a peça não fala de itens da lista), no "lista" (2 a 4 frases de até 6 palavras), "conversa" (1 a 3 perguntas de até 12 palavras, no jeito de um cliente escrever), "faixas" (3 a 5 palavras soltas), "comparar" (2 frases de até 6 palavras) e "enquete" (2 a 4 opções de até 5 palavras); nos outros, lista vazia. "autor": só no "citacao" e no "estrelas"; nos outros, "".
+"numero": só no "numero", no "mosaico", no "contador" e no "comemoracao", o número que é o coração da peça, curto (até 7 caracteres, ex.: "50%", "7 dias", "3x"). Tem de estar no pedido ou nos dados da marca; se não estiver, "" e o app usa o título. Nos outros modelos, "".
 "cupom": só no "cupom", o código escrito igual ao pedido. Se o pedido não traz o código, escreva [CUPOM]. Nos outros, "".
-"data" e "horario": no "agenda" e na validade do "cupom". Só do pedido ou dos dados da marca; se a peça precisa e não tem, [DATA] e [HORÁRIO]. "data" curta (ex.: "29/11"), "horario" curto (ex.: "10h às 14h"). Nos outros, "".
+"data" e "horario": no "agenda", na validade do "cupom" e no "contagem" (só "data"). Só do pedido ou dos dados da marca; se a peça precisa e não tem, [DATA] e [HORÁRIO]. "data" curta (ex.: "29/11"), "horario" curto (ex.: "10h às 14h"). Nos outros, "".
 "arte":
 - "destaque": 1 a 3 palavras do título, escritas igual a ele, que a arte pinta na cor de destaque (o coração da mensagem). "" para nenhuma.
 - "tamanho_titulo": "normal", "grande" ou "gigante" (título curto e forte pede maior).
@@ -146,6 +182,26 @@ const DICAS_DO_LAYOUT: Record<string, string> = {
   tabela: 'preencha "itens" com os itens da lista que entram; título curto.',
   enquete: 'a pergunta no "titulo" e 2 a 4 opções curtas em "pontos".',
   cenas: 'título de abertura de até 6 palavras e apoio curto; "itens" com os itens da lista que entram (até 4) ou, sem itens, "pontos" com 2 a 4 frases de até 8 palavras, uma por cena; "chamada" fecha o vídeo.',
+  direct: '"pontos" com 1 a 3 perguntas que um cliente faria, no jeito de escrever no direct; a resposta da marca no "titulo", até 10 palavras; "apoio" vazio.',
+  busca: '"pontos" com 1 termo de busca que o cliente digitaria (ex.: "salão de beleza perto de mim"); "apoio" com até 6 palavras que aparecem sob o nome no resultado, sem inventar horário; título de até 6 palavras.',
+  contador: '"numero" com um número real do pedido ou da marca (ex.: "1.200"); o título explica o número em até 6 palavras. Sem número, deixe "numero" vazio e escreva uma frase forte no título.',
+  painel: '"pontos" com 3 a 7 números do pedido, na ordem (só o número); "apoio" diz o que medem, em até 6 palavras; título de até 6 palavras. Sem números no pedido, "pontos" vazio.',
+  semana: '"pontos" com 2 a 7 dias no formato "SEG: o que tem"; título de até 5 palavras.',
+  impacto: 'uma frase forte da voz da marca no "titulo", até 10 palavras; "apoio" opcional e curto.',
+  acende: 'título curto de lançamento, até 5 palavras; apoio curto.',
+  revelacao: 'título curto, até 5 palavras, que dá vontade de saber mais; apoio com o convite (ex.: ativar o lembrete).',
+  glitch: 'título curto do que é novo, até 6 palavras; apoio curto.',
+  pergunta: 'a pergunta no "titulo", até 10 palavras; a resposta no "apoio", até 18 palavras.',
+  inclui: '"pontos" com 2 a 5 itens do que vem, até 5 palavras cada; título de até 6 palavras.',
+  comemoracao: '"numero" com o número que se comemora (anos, clientes), do pedido ou da marca; título com o motivo, até 6 palavras.',
+  pronto: 'título com a confirmação, até 6 palavras (ex.: "Seu pedido saiu do forno"); apoio curto.',
+  movimento: '"pontos" com 2 a 4 avisos "Título · detalhe" só com o que o pedido conta; título de até 6 palavras chamando para ser o próximo.',
+  estrelas: 'a fala do cliente no "titulo" (até 18 palavras, sem aspas) e o nome em "autor" (vazio se o pedido não tem o nome).',
+  aovivo: '"apoio" é a legenda digitada sobre a foto, até 12 palavras; título curto.',
+  contagem: '"data" do pedido (ou [DATA]); título com o nome do evento, até 6 palavras.',
+  escolha: '"pontos" com exatamente 2 opções de até 3 palavras; título com a pergunta, até 6 palavras.',
+  vitrine: '"itens" com os itens da lista que entram (até 6); sem itens, "pontos" com 3 a 6 nomes curtos; título de até 4 palavras.',
+  local: 'título de até 6 palavras convidando a vir; o endereço o app tira dos dados fixos.',
 }
 
 type Perfil = {
@@ -166,7 +222,7 @@ export function montarMensagem(perfil: Perfil, pedido: string, formato: string, 
     padrao: { tipos: perfil.padrao.tipos, chamada: perfil.padrao.chamada, hashtags_fixas: perfil.padrao.hashtags },
     dados_fixos: perfil.dados,
   }
-  const formatoTexto = video ? 'vídeo vertical (story 9:16 animado, sem som); pode usar o modelo "cenas"' : formato === 'story' ? 'story (9:16); não use o modelo "cenas"' : 'post de feed (4:5); não use o modelo "cenas"'
+  const formatoTexto = video ? 'vídeo vertical (story 9:16 animado, sem som); pode usar o "cenas" e os stories com movimento' : formato === 'story' ? 'story (9:16); não use o "cenas" nem os stories com movimento' : 'post de feed (4:5); não use o "cenas" nem os stories com movimento'
   const fotoTexto = !fotos
     ? 'sem foto: não use o fundo "foto" nem o modelo "foto"; "ordem_fotos" vazia'
     : vistas === fotos
@@ -265,7 +321,7 @@ export function conferir(bruto: Record<string, unknown>, perfil: Perfil, pedido:
     legenda: limpar(bruto.legenda),
     itens: [] as { nome: string; preco: string }[],
     hashtags: [] as string[],
-    pontos: ((bruto.pontos as string[] | undefined) || []).map(limpar).filter(Boolean).slice(0, 4),
+    pontos: ((bruto.pontos as string[] | undefined) || []).map(limpar).filter(Boolean),
     autor: limpar(bruto.autor),
     numero: '',
     cupom: '',
@@ -276,8 +332,16 @@ export function conferir(bruto: Record<string, unknown>, perfil: Perfil, pedido:
     avisos,
   }
 
-  // Vídeo em cenas fora do vídeo vira lista (os pontos continuam servindo).
-  if (!video && SO_NO_VIDEO.includes(roteiro.modelo)) roteiro.modelo = 'lista'
+  // Modelo só de vídeo fora do vídeo vira o layout parado mais parecido (os campos continuam servindo).
+  if (!video && SO_NO_VIDEO.includes(roteiro.modelo)) roteiro.modelo = PARECIDO[roteiro.modelo] || 'lista'
+  roteiro.pontos = roteiro.pontos.slice(0, PONTOS_POR_MODELO[roteiro.modelo] || 4)
+  // O gráfico só com números que vieram do pedido ou dos dados; senão, sem gráfico (o app mostra o título).
+  if (roteiro.modelo === 'painel' && !roteiro.pontos.every((p) => numerosPermitidos(p, fonte))) {
+    roteiro.pontos = []
+    trocados.add('numero')
+  }
+  // O endereço do mapa vem sempre dos dados fixos.
+  if (roteiro.modelo === 'local') roteiro.apoio = String(perfil.dados.endereco || '').trim() || '[ENDEREÇO]'
   // Ordem das fotos: números de 1 até quantas o dono mandou, sem repetir.
   for (const n of (bruto.ordem_fotos as unknown[] | undefined) || []) {
     const i = Number(n)
@@ -286,7 +350,8 @@ export function conferir(bruto: Record<string, unknown>, perfil: Perfil, pedido:
 
   // Número, data e horário só com números que vieram do pedido ou dos dados; senão, sem número ou o marcador.
   const numero = String(bruto.numero ?? '').trim().slice(0, 12)
-  roteiro.numero = numero && numerosPermitidos(numero, fonte) && !/R\$/.test(numero) ? numero : ''
+  // "1.200" vale se o pedido diz 1200 (o número inteiro, sem o ponto).
+  roteiro.numero = numero && (numerosPermitidos(numero, fonte) || /^\D*\d{1,3}(\.\d{3})+\D*$/.test(numero) && permitido(numero, fonte)) && !/R\$/.test(numero) ? numero : ''
   if (numero && !roteiro.numero) trocados.add('numero')
   const data = String(bruto.data ?? '').trim().slice(0, 30)
   roteiro.data = !data || data === '[DATA]' || numerosPermitidos(data, fonte) ? data : (trocados.add('[DATA]'), '[DATA]')

@@ -50,10 +50,12 @@ export function sugerirLayouts(tipo, temFoto, video = false) {
   return temFoto ? lista.foto : lista.sem
 }
 
-// Todos os layouts, com os 3 sugeridos na frente. Os que só servem para vídeo saem fora do vídeo.
+// Todos os layouts, com os 3 sugeridos na frente. No vídeo e no story, os com movimento vêm antes dos parados
+// (Brenno, 30/10); no post, os que só servem para vídeo saem.
 export function todosOsLayouts(sugeridos, todos, soNoVideo = [], video = false) {
   const validos = todos.filter((m) => video || !soNoVideo.includes(m))
-  return [...sugeridos.filter((m) => validos.includes(m)), ...validos.filter((m) => !sugeridos.includes(m))]
+  const resto = validos.filter((m) => !sugeridos.includes(m))
+  return [...sugeridos.filter((m) => validos.includes(m)), ...resto.filter((m) => soNoVideo.includes(m)), ...resto.filter((m) => !soNoVideo.includes(m))]
 }
 
 // Texto de exemplo só para a miniatura mostrar onde cada coisa fica.

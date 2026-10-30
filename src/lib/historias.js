@@ -35,9 +35,22 @@ function tempoDoTitulo(texto) {
 export function criarHistorias(k) {
   const {
     bloco, medir, selo, rotulo, balao, quebrar, espacar, arredondado, pilulaCurta, chamadaEmTexto, placaDaMarca, brilho,
-    pintarFundo, corPedida, fundoPedido, destaqueSobre, apagado, textoSobre, comAlfa, misturar, legivel, luz, contraste,
+    pintarFundo: pintarFundoBase, corPedida, fundoPedido, destaqueSobre, apagado, textoSobre, comAlfa, misturar, legivel, luz, contraste,
     marca, escala, lado, sobre, fonteDoBloco, FONTE, EMBARALHO, suave, sorteio, acender, confete, semRelogio,
   } = k
+
+  // Com foto, ela é o fundo de todo story com movimento (Brenno, 30/10: a foto mandada tem de aparecer).
+  // Nos de letreiro em fundo escuro, a foto fica mais apagada para o texto continuar aceso.
+  function pintarFundo(ctx, o) {
+    if (!o.foto) return pintarFundoBase(ctx, o)
+    const pedido = o.r.arte?.fundo || o.padrao || 'marca'
+    const tinta = pintarFundoBase(ctx, { ...o, r: { ...o.r, arte: { ...o.r.arte, fundo: 'foto' } } })
+    if (pedido === 'escuro') {
+      ctx.fillStyle = 'rgba(8,8,12,.45)'
+      ctx.fillRect(0, 0, o.L, o.A)
+    }
+    return tinta
+  }
 
   const parado = () => !k.relogio()
   const agora = () => (k.relogio() ? k.relogio().t : 1e3)
@@ -540,9 +553,9 @@ export function criarHistorias(k) {
   // ---------------------------------------------------------------- T07 Acende
   // Fundo escuro e o título acendendo como letreiro, com brilho na cor da marca. Pisca de novo perto do fim.
   function acende(ctx, a) {
-    const { L, A, c, r } = a
+    const { L, A, c, r, foto } = a
     const { m, topo, base, larg } = medidas(a)
-    const tinta = pintarFundo(ctx, { L, A, c, foto: null, r: fundoEscuro(r) })
+    const tinta = pintarFundo(ctx, { L, A, c, foto, r: fundoEscuro(r) })
     seloNoTopo(ctx, a, topo, tinta)
     const luzCor = brilhante(c[1])
     const tubo = corPedida(r, 'titulo', misturar(luzCor, '#FFFFFF', 0.62))
@@ -579,9 +592,9 @@ export function criarHistorias(k) {
   // ---------------------------------------------------------------- T08 Revelação
   // Teaser: o título aparece embaralhado e as letras travam uma a uma, em fonte de terminal.
   function revelacao(ctx, a) {
-    const { L, A, c, r } = a
+    const { L, A, c, r, foto } = a
     const { m, topo, base, larg } = medidas(a)
-    const tinta = pintarFundo(ctx, { L, A, c, foto: null, r: fundoEscuro(r) })
+    const tinta = pintarFundo(ctx, { L, A, c, foto, r: fundoEscuro(r) })
     seloNoTopo(ctx, a, topo, tinta)
     const luzCor = brilhante(c[1])
     const texto = String(r.titulo || '').toUpperCase()
@@ -629,9 +642,9 @@ export function criarHistorias(k) {
   // ---------------------------------------------------------------- T09 Glitch
   // "NOVO" enorme com corte de cor duplo (duas cópias deslocadas em faixas), título e botão.
   function glitch(ctx, a) {
-    const { L, A, c, r } = a
+    const { L, A, c, r, foto } = a
     const { m, topo, base, larg } = medidas(a)
-    const tinta = pintarFundo(ctx, { L, A, c, foto: null, r: fundoEscuro(r) })
+    const tinta = pintarFundo(ctx, { L, A, c, foto, r: fundoEscuro(r) })
     seloNoTopo(ctx, a, topo, tinta)
     const palavra = 'NOVO'
     const t = caber(ctx, palavra, larg * 0.92, 330, 160, fonteGrande)

@@ -6,15 +6,26 @@ export const HISTORIAS = [
   'direct', 'busca', 'contador', 'painel', 'semana', 'impacto', 'acende', 'revelacao', 'glitch', 'pergunta',
   'inclui', 'comemoracao', 'pronto', 'movimento', 'estrelas', 'aovivo', 'contagem', 'escolha', 'vitrine', 'local',
 ]
+// Animados feitos para a foto (desenho em src/lib/desenhar.js): só no animado e só com foto.
+export const ANIMADOS_DA_FOTO = ['zoom', 'cortina', 'cardfoto', 'deslize', 'moldura', 'portas', 'foco']
 export const MODELOS = [
   'promo', 'aviso', 'bastidores', 'manchete', 'lista', 'citacao', 'dividido', 'foto', 'cartao',
-  'numero', 'cupom', 'agenda', 'conversa', 'mosaico', 'faixas', 'capa', 'comparar', 'tabela', 'enquete', 'cenas',
-  ...HISTORIAS,
+  'numero', 'cupom', 'agenda', 'conversa', 'mosaico', 'faixas', 'capa', 'comparar', 'tabela', 'enquete', 'polaroid', 'cenas',
+  ...HISTORIAS, ...ANIMADOS_DA_FOTO,
 ]
-// Só no formato vídeo.
-export const SO_NO_VIDEO = ['cenas', ...HISTORIAS]
-// Fora do vídeo, cada um vira o layout parado mais parecido.
+// Só no animado (post 4:5 ou story 9:16 em vídeo).
+export const SO_NO_VIDEO = ['cenas', ...HISTORIAS, ...ANIMADOS_DA_FOTO]
+// Com foto, o parado usa só layouts em que a foto é o centro; os outros viram o mais parecido com foto (Brenno, 30/10).
+const PARADOS_COM_FOTO = ['foto', 'bastidores', 'capa', 'dividido', 'promo', 'mosaico', 'comparar', 'polaroid',
+  'numero', 'conversa', 'citacao', 'enquete', 'agenda', 'cupom', 'lista', 'tabela']
+const COM_FOTO: Record<string, string> = { aviso: 'dividido', manchete: 'foto', cartao: 'foto', faixas: 'mosaico', escolha: 'cardfoto' }
+// Sem foto, os que precisam dela viram o da marca mais parecido.
+const SEM_FOTO: Record<string, string> = {
+  polaroid: 'bastidores', zoom: 'impacto', cortina: 'revelacao', cardfoto: 'impacto', deslize: 'escolha', moldura: 'acende', portas: 'impacto', foco: 'vitrine',
+}
+// Fora do animado, cada um vira o layout parado mais parecido.
 const PARECIDO: Record<string, string> = {
+  zoom: 'foto', cortina: 'foto', cardfoto: 'foto', deslize: 'comparar', moldura: 'polaroid', portas: 'numero', foco: 'promo',
   cenas: 'lista', direct: 'conversa', busca: 'manchete', contador: 'numero', painel: 'numero', semana: 'lista',
   impacto: 'manchete', acende: 'manchete', revelacao: 'manchete', glitch: 'manchete', pergunta: 'cartao', inclui: 'lista',
   comemoracao: 'numero', pronto: 'aviso', movimento: 'lista', estrelas: 'citacao', aovivo: 'bastidores', contagem: 'agenda',
@@ -140,9 +151,18 @@ Stories com movimento: só quando o formato é vídeo. Fora do vídeo, nunca use
 - "escolha": isso ou aquilo, "pontos" com exatamente 2 opções de até 3 palavras; "titulo" com a pergunta curta. Engajamento.
 - "vitrine": os itens da lista ("itens") com preço correndo em duas fitas, "titulo" curto. Sem itens, "pontos" com 3 a 6 nomes curtos. Cardápio, catálogo.
 - "local": mapa com pino caindo e o endereço dos dados fixos digitado; o app escreve o endereço, o "titulo" convida a vir. Como chegar.
-Varie: não use sempre o mesmo. Se o pedido diz que tem foto, prefira "bastidores", "dividido", "foto", "mosaico" ou "capa". No vídeo, prefira o story com movimento que mais combina com o pedido; com 2 ou mais itens, pontos ou fotos para mostrar um a um, "cenas".
+Com foto, o parado também tem "polaroid": a foto em moldura branca, com legenda curta à mão (o "apoio", até 5 palavras), e o título embaixo. Bastidores, agradecimento, momento.
+Animados feitos para a foto (só no vídeo e só com foto; a foto é a primeira coisa que se mexe):
+- "zoom": a foto aproxima devagar e o texto sobe no pé. Bastidores, aviso, depoimento.
+- "cortina": a cor da marca com o nome cobre a foto e sobe, revelando. Novidade, lançamento.
+- "cardfoto": a foto sobe num card sobre a cor da marca; com "numero", ele estala num selo. Novidade, promoção.
+- "deslize": antes e depois; a foto do depois (a 1ª) entra deslizando sobre a do antes (a 2ª). Resultado, reforma.
+- "moldura": a foto num quadro e a borda acende como letreiro. Aviso de horário, abertura, evento.
+- "portas": dois painéis da marca se abrem e mostram a foto e o "numero" da oferta. Promoção, cupom, lançamento.
+- "foco": começa no detalhe e abre para a foto toda; o primeiro dos "itens" aponta o produto com o preço. Produto, cardápio.
+Varie: não use sempre o mesmo. Com foto, a foto é sempre o centro: no parado use "foto", "bastidores", "capa", "dividido", "promo", "mosaico", "comparar", "polaroid", "numero", "conversa", "citacao", "enquete", "agenda", "cupom", "lista" ou "tabela" (com foto, esses ganham a versão com a foto); no vídeo, prefira os animados feitos para a foto ou o "cenas". Sem foto, não use "polaroid" nem os animados feitos para a foto. No vídeo sem foto, prefira o story com movimento que mais combina com o pedido; com 2 ou mais itens ou pontos para mostrar um a um, "cenas".
 "pontos": nos stories com movimento, como está em cada um acima; no "cenas" (2 a 4 frases de até 8 palavras, uma por cena, quando a peça não fala de itens da lista), no "lista" (2 a 4 frases de até 6 palavras), "conversa" (1 a 3 perguntas de até 12 palavras, no jeito de um cliente escrever), "faixas" (3 a 5 palavras soltas), "comparar" (2 frases de até 6 palavras) e "enquete" (2 a 4 opções de até 5 palavras); nos outros, lista vazia. "autor": só no "citacao" e no "estrelas"; nos outros, "".
-"numero": só no "numero", no "mosaico", no "contador" e no "comemoracao", o número que é o coração da peça, curto (até 7 caracteres, ex.: "50%", "7 dias", "3x"). Tem de estar no pedido ou nos dados da marca; se não estiver, "" e o app usa o título. Nos outros modelos, "".
+"numero": só no "numero", no "mosaico", no "contador", no "comemoracao", no "cardfoto" e no "portas", o número que é o coração da peça, curto (até 7 caracteres, ex.: "50%", "7 dias", "3x"). Tem de estar no pedido ou nos dados da marca; se não estiver, "" e o app usa o título. Nos outros modelos, "".
 "cupom": só no "cupom", o código escrito igual ao pedido. Se o pedido não traz o código, escreva [CUPOM]. Nos outros, "".
 "data" e "horario": no "agenda", na validade do "cupom" e no "contagem" (só "data"). Só do pedido ou dos dados da marca; se a peça precisa e não tem, [DATA] e [HORÁRIO]. "data" curta (ex.: "29/11"), "horario" curto (ex.: "10h às 14h"). Nos outros, "".
 "arte":
@@ -202,6 +222,14 @@ const DICAS_DO_LAYOUT: Record<string, string> = {
   escolha: '"pontos" com exatamente 2 opções de até 3 palavras; título com a pergunta, até 6 palavras.',
   vitrine: '"itens" com os itens da lista que entram (até 6); sem itens, "pontos" com 3 a 6 nomes curtos; título de até 4 palavras.',
   local: 'título de até 6 palavras convidando a vir; o endereço o app tira dos dados fixos.',
+  polaroid: 'título curto, até 6 palavras; "apoio" é a legenda à mão da foto, até 5 palavras.',
+  zoom: 'título curto sobre o que a foto mostra, até 7 palavras; apoio curto.',
+  cortina: 'título curto de novidade, até 6 palavras; apoio curto.',
+  cardfoto: 'título curto, até 6 palavras; "numero" com o número do pedido (ex.: "30%"), se houver.',
+  deslize: 'título com o resultado, até 7 palavras; apoio curto.',
+  moldura: 'título curto, até 6 palavras, como um letreiro aceso.',
+  portas: '"numero" com a oferta do pedido (ex.: "2x1", "30%"), se houver; título que completa, até 6 palavras.',
+  foco: '"itens" com o produto da foto, se estiver na lista; título curto, até 6 palavras.',
 }
 
 type Perfil = {
@@ -222,7 +250,7 @@ export function montarMensagem(perfil: Perfil, pedido: string, formato: string, 
     padrao: { tipos: perfil.padrao.tipos, chamada: perfil.padrao.chamada, hashtags_fixas: perfil.padrao.hashtags },
     dados_fixos: perfil.dados,
   }
-  const formatoTexto = video ? 'vídeo vertical (story 9:16 animado, sem som); pode usar o "cenas" e os stories com movimento' : formato === 'story' ? 'story (9:16); não use o "cenas" nem os stories com movimento' : 'post de feed (4:5); não use o "cenas" nem os stories com movimento'
+  const formatoTexto = video ? `vídeo animado, sem som, no formato ${formato === 'story' ? 'story 9:16' : 'post de feed 4:5'}; use um dos animados (os feitos para a foto, o "cenas" ou os stories com movimento)` : formato === 'story' ? 'story (9:16); não use o "cenas", os stories com movimento nem os animados feitos para a foto' : 'post de feed (4:5); não use o "cenas", os stories com movimento nem os animados feitos para a foto'
   const fotoTexto = !fotos
     ? 'sem foto: não use o fundo "foto" nem o modelo "foto"; "ordem_fotos" vazia'
     : vistas === fotos
@@ -333,6 +361,13 @@ export function conferir(bruto: Record<string, unknown>, perfil: Perfil, pedido:
   }
 
   // Modelo só de vídeo fora do vídeo vira o layout parado mais parecido (os campos continuam servindo).
+  if (!video && SO_NO_VIDEO.includes(roteiro.modelo)) roteiro.modelo = PARECIDO[roteiro.modelo] || 'lista'
+  // Com foto, ela é o centro; sem foto, nada que dependa dela.
+  if (fotos && COM_FOTO[roteiro.modelo] && (video || !SO_NO_VIDEO.includes(COM_FOTO[roteiro.modelo]))) roteiro.modelo = COM_FOTO[roteiro.modelo]
+  if (fotos && !video && !PARADOS_COM_FOTO.includes(roteiro.modelo)) roteiro.modelo = 'foto'
+  if (!fotos && SEM_FOTO[roteiro.modelo]) roteiro.modelo = SEM_FOTO[roteiro.modelo]
+  // No animado, só layouts animados (parado e animado são grupos separados).
+  if (video && !SO_NO_VIDEO.includes(roteiro.modelo)) roteiro.modelo = fotos ? 'zoom' : 'impacto'
   if (!video && SO_NO_VIDEO.includes(roteiro.modelo)) roteiro.modelo = PARECIDO[roteiro.modelo] || 'lista'
   roteiro.pontos = roteiro.pontos.slice(0, PONTOS_POR_MODELO[roteiro.modelo] || 4)
   // O gráfico só com números que vieram do pedido ou dos dados; senão, sem gráfico (o app mostra o título).

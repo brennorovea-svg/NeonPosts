@@ -235,22 +235,27 @@ export function criarHistorias(k) {
       ctx.fillRect(m, cy + 84, larg, 2)
     }, { desloca: -16 })
 
-    const perguntas = (r.pontos || []).filter(Boolean).slice(0, 3)
+    // No post 4:5 (mais baixo), cabem duas perguntas e balões menores.
+    const baixo = A < 1500
+    const perguntas = (r.pontos || []).filter(Boolean).slice(0, baixo ? 2 : 3)
     const fundoPergunta = escuro ? 'rgba(255,255,255,.13)' : 'rgba(17,17,20,.07)'
     const fundoResposta = fundoPedido(r, c[0])
-    const tamR = Math.round(62 * escala(r))
+    const tamR = Math.round((baixo ? 48 : 62) * escala(r))
+    const tamP = baixo ? 40 : 50
     const largB = larg * 0.8
     const alturaDe = (t, tam, peso) => {
       ctx.font = `${peso} ${tam}px ${FONTE}`
       return quebrar(ctx, t, largB - 72).slice(0, 4).length * tam * 1.25 + 56
     }
-    const hP = perguntas.map((p) => alturaDe(p, 50, 500))
-    const total = hP.reduce((s, h) => s + h + 24, 0) + 30 + alturaDe(r.titulo || '', tamR, 700)
     const fimLivre = A - base - (r.chamada ? 170 : 20)
-    let y = centralizar(topo + 180, fimLivre, total)
+    // Sem espaço para todas, as últimas perguntas saem (a resposta da marca nunca sai).
+    const somar = () => perguntas.reduce((s, p) => s + alturaDe(p, tamP, 500) + 24, 0) + 30 + alturaDe(r.titulo || '', tamR, 700)
+    while (perguntas.length > 1 && somar() > fimLivre - topo - (baixo ? 150 : 180)) perguntas.pop()
+    const total = somar()
+    let y = centralizar(topo + (baixo ? 150 : 180), fimLivre, total)
     perguntas.forEach((p, i) => {
       aos(0.5 + i * 0.55)
-      y += balao(ctx, p, { x: m, y, largura: largB, tamanho: 50, fundo: fundoPergunta, cor: apagado(tinta, 0.92) }) + 24
+      y += balao(ctx, p, { x: m, y, largura: largB, tamanho: tamP, fundo: fundoPergunta, cor: apagado(tinta, 0.92) }) + 24
     })
     y += 30
     const tResposta = 0.5 + perguntas.length * 0.55 + 1.1
@@ -285,7 +290,9 @@ export function criarHistorias(k) {
     const escuro = tinta === '#FFFFFF'
     seloNoTopo(ctx, a, topo, tinta)
     const termo = String(r.pontos?.[0] || 'perto de mim').toLowerCase()
-    const yb = topo + 190, hb = 124
+    // No post 4:5, tudo um pouco menor para o título caber acima do botão.
+    const baixo = A < 1500
+    const yb = topo + (baixo ? 140 : 190), hb = baixo ? 104 : 124
     surgir(ctx, 0.2, () => {
       ctx.save()
       ctx.shadowColor = 'rgba(0,0,0,.16)'
@@ -309,7 +316,7 @@ export function criarHistorias(k) {
     const iniDig = 0.8
     const dig = digitado(ctx, termo, { x: m + 132, y: yb + hb / 2 - tam * 0.62, largura: larg - 170, fonte: `500 ${tam}px ${FONTE}`, tamanho: tam, cor: '#111114', ini: iniDig, passo: 0.06 })
     // Resultados: dois genéricos e o da marca no meio.
-    const yr = yb + hb + 48, hr = 156, vao = 22
+    const yr = yb + hb + (baixo ? 30 : 48), hr = baixo ? 132 : 156, vao = baixo ? 14 : 22
     const tRes = dig.fim + 0.35
     for (const i of [0, 2]) {
       surgir(ctx, tRes + (i ? 0.07 : 0), () => {
@@ -346,9 +353,9 @@ export function criarHistorias(k) {
       escrever(ctx, r.apoio || '', m + 46, y + 122, { fonte: `400 36px ${FONTE}`, cor: 'rgba(17,17,20,.62)', max: larg - 100 })
     }, { desloca: 10 })
     const tTitulo = tMarca + 1.3
-    const y0 = yr + 3 * hr + 2 * vao + 70
+    const y0 = yr + 3 * hr + 2 * vao + (baixo ? 44 : 70)
     aos(tTitulo)
-    bloco(ctx, r.titulo, { x: m, y: y0, largura: larg, tamanho: Math.round(88 * escala(r)), maxLinhas: 3, entre: 1.02, alinhar: lado(r, 'center'), cor: corPedida(r, 'titulo', tinta), ...marca(r, destaqueSobre(tinta, c)) })
+    bloco(ctx, r.titulo, { x: m, y: y0, largura: larg, tamanho: Math.round((baixo ? 70 : 88) * escala(r)), maxLinhas: baixo ? 2 : 3, entre: 1.02, alinhar: lado(r, 'center'), cor: corPedida(r, 'titulo', tinta), ...marca(r, destaqueSobre(tinta, c)) })
     botao(ctx, r, tTitulo + tempoDoTitulo(r.titulo) + 0.2, A - base - 104, { m, larg, ...corDoBotao(r, tinta, c) })
   }
 
@@ -404,12 +411,12 @@ export function criarHistorias(k) {
     }
     const ultimo = valores[valores.length - 1]
     const q = lerNumero(String(r.pontos[r.pontos.length - 1]).trim()) || { antes: '', n: ultimo, depois: '', milhar: ultimo >= 1000, conta: true }
-    const tN = 200
+    const tN = A > 1500 ? 200 : 150
     const v = parado() ? q.n : Math.round(q.n * suave((agora() - 0.5) / 1.5))
     com(ctx, { a: ir(0.4, 0.3) }, () => escrever(ctx, escreverNumero(q, v), m - 6, y + tN * 0.8, { fonte: fonteGrande(tN), cor: tinta }))
     y += tN * 0.8 + 70
     // Área do gráfico.
-    const hG = A > 1500 ? 520 : 360
+    const hG = A > 1500 ? 520 : 250
     const max = Math.max(...valores), min = Math.min(0, ...valores)
     const pts = valores.map((val, i) => [m + 20 + (i * (larg - 60)) / (valores.length - 1), y + hG - ((val - min) / (max - min || 1)) * (hG - 40)])
     com(ctx, { a: ir(0.3, 0.5) }, () => {
@@ -467,9 +474,11 @@ export function criarHistorias(k) {
       ctx.fillStyle = traco
       ctx.fill()
     }
-    y += hG + 70
+    y += hG + (A > 1500 ? 70 : 50)
     aos(3.2)
-    bloco(ctx, r.titulo, { x: m, y, largura: larg, tamanho: Math.round(80 * escala(r)), maxLinhas: 3, entre: 1.04, cor: corPedida(r, 'titulo', tinta), ...marca(r, traco) })
+    const tOp = { x: m, largura: larg, tamanho: Math.round((A > 1500 ? 80 : 68) * escala(r)), maxLinhas: A > 1500 ? 3 : 2, entre: 1.04 }
+    while (y + medir(ctx, r.titulo, tOp) > A - base - (r.chamada ? 140 : 20) && tOp.tamanho > 44) tOp.tamanho -= 4
+    bloco(ctx, r.titulo, { x: m, y, largura: larg, tamanho: tOp.tamanho, maxLinhas: tOp.maxLinhas, entre: 1.04, cor: corPedida(r, 'titulo', tinta), ...marca(r, traco) })
     botao(ctx, r, 3.2 + tempoDoTitulo(r.titulo) + 0.3, A - base - 104, { m, larg, alinhar: 'left', ...corDoBotao(r, tinta, c) })
   }
 
@@ -857,7 +866,8 @@ export function criarHistorias(k) {
   // Avisos do dia chegando um embaixo do outro, com mola. Depois o título e o botão.
   function movimento(ctx, a) {
     const { L, A, c, r, foto } = a
-    let avisos = (r.pontos || []).filter(Boolean).slice(0, 4).map((p) => {
+    const baixo = A < 1500
+    let avisos = (r.pontos || []).filter(Boolean).slice(0, baixo ? 3 : 4).map((p) => {
       const [titulo, ...resto] = String(p).split(/\s*[·•|]\s*|\s+[-–—]\s+/)
       return { titulo, detalhe: resto.join(' · ') }
     })
@@ -868,9 +878,9 @@ export function criarHistorias(k) {
     seloNoTopo(ctx, a, topo, tinta, 'left')
     aos(0.2)
     rotulo(ctx, 'Hoje por aqui', { x: m, y: topo + 190, tamanho: 28, cor: tinta === '#FFFFFF' ? legivel(brilhante(c[1]), '#FFFFFF') : destaqueSobre(tinta, c) })
-    const hA = 180, vao = 28
+    const hA = baixo ? 140 : 180, vao = baixo ? 18 : 28
     const ponto = fundoPedido(r, c[0])
-    let y = topo + 240
+    let y = topo + (baixo ? 220 : 240)
     avisos.forEach((av, i) => {
       const ini = 0.5 + i * 0.56
       const yl = y
@@ -888,14 +898,18 @@ export function criarHistorias(k) {
         ctx.fillStyle = ponto
         ctx.fill()
         const comDetalhe = Boolean(av.detalhe)
-        escrever(ctx, av.titulo, m + 112, yl + (comDetalhe ? 76 : hA / 2 + 16), { fonte: `700 46px ${FONTE}`, cor: '#111114', max: larg - 150 })
-        if (comDetalhe) escrever(ctx, av.detalhe, m + 112, yl + 132, { fonte: `400 38px ${FONTE}`, cor: 'rgba(17,17,20,.62)', max: larg - 150 })
+        escrever(ctx, av.titulo, m + 112, yl + (comDetalhe ? hA * 0.42 : hA / 2 + 16), { fonte: `700 ${baixo ? 40 : 46}px ${FONTE}`, cor: '#111114', max: larg - 150 })
+        if (comDetalhe) escrever(ctx, av.detalhe, m + 112, yl + hA * 0.73, { fonte: `400 ${baixo ? 32 : 38}px ${FONTE}`, cor: 'rgba(17,17,20,.62)', max: larg - 150 })
       })
       y += hA + vao
     })
     const tT = 0.5 + avisos.length * 0.56 + 0.4
     aos(tT)
-    bloco(ctx, r.titulo, { x: m, y: y + 50, largura: larg, tamanho: Math.round(84 * escala(r)), maxLinhas: 3, entre: 1.04, cor: corPedida(r, 'titulo', tinta), ...marca(r, legivel(brilhante(c[1]), tinta)) })
+    // O título diminui até caber acima do botão.
+    const tOp = { x: m, largura: larg, tamanho: Math.round((baixo ? 68 : 84) * escala(r)), maxLinhas: baixo ? 2 : 3, entre: 1.04 }
+    const limite = A - base - (r.chamada ? 140 : 20)
+    while (y + (baixo ? 30 : 50) + medir(ctx, r.titulo, tOp) > limite && tOp.tamanho > 44) tOp.tamanho -= 4
+    bloco(ctx, r.titulo, { ...tOp, y: y + (baixo ? 30 : 50), cor: corPedida(r, 'titulo', tinta), ...marca(r, legivel(brilhante(c[1]), tinta)) })
     botao(ctx, r, tT + tempoDoTitulo(r.titulo) + 0.3, A - base - 104, { m, larg, alinhar: 'left', ...corDoBotao(r, tinta, c) })
   }
 

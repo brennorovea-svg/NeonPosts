@@ -6,7 +6,7 @@ import DeuProblema from '../components/DeuProblema.jsx'
 import NaoEMinhaMarca from '../components/NaoEMinhaMarca.jsx'
 import { sugerirLayouts, tipoDoPedido } from '../lib/sugerir.js'
 import { DURACAO, duracaoDe, gravar, tocar } from '../lib/video.js'
-import { listaDeNomes, MARCADORES, marcadoresDe, preencher } from '../lib/marcadores.js'
+import { dadosEmTexto, listaDeNomes, MARCADORES, marcadoresDe, perguntasAntes, preencher } from '../lib/marcadores.js'
 import { enderecoDaImagem, salvarPerfil } from '../lib/perfil.js'
 import { acordarIA, escolherVersao, gerarPeca, guardarImagem, salvarTexto } from '../lib/pecas.js'
 import { carregarImagem, desenhar, NOMES_DOS_MODELOS, paraArquivo, prepararFontes, SO_NO_VIDEO } from '../lib/desenhar.js'
@@ -203,6 +203,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
   const [video, setVideo] = useState(false)
   const [gravando, setGravando] = useState(null) // null ou de 0 a 1
   const [avisoVideo, setAvisoVideo] = useState('')
+  const [avisoPost, setAvisoPost] = useState('')
   // Vídeo gravado esperando o segundo toque: o celular só abre o compartilhar logo depois de um toque.
   const [videoPronto, setVideoPronto] = useState(null)
   const [dadosFaltando, setDadosFaltando] = useState({}) // { '[HORÁRIO]': 'sábado, 9h às 13h' }
@@ -304,11 +305,12 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
     try {
       const r = await gerarPeca(refazer
         ? { refazer: peca.id, formato: peca.formato, video: video && peca.formato === 'story', pedido: pedidoNovo.trim(), ajuste: ajuste.trim() }
-        : { pedido: pedido.trim(), formato, video, fotos, modelo: layout === 'ia' ? undefined : layout })
+        : { pedido: pedido.trim() + dadosEmTexto(dadosFaltando), formato, video, fotos, modelo: layout === 'ia' ? undefined : layout })
       setAjustando(false)
       setAjuste('')
       setMexeuNoTexto(false)
       setHashtagsTexto(null)
+      setAvisoPost('')
       setPeca(r.peca)
       setRestantes(r.refeitasRestantes)
       setEstado('revelando')
@@ -339,14 +341,19 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
       }
       arquivo = videoPronto
     } else arquivo = await paraArquivo(canvas.current, `${base}.png`)
+    // Um toque: a legenda vai junto no compartilhar e fica copiada; sem compartilhar, baixa a arte.
+    const legenda = `${roteiro.legenda}\n\n${roteiro.hashtags.join(' ')}`
+    try { await navigator.clipboard.writeText(legenda) } catch { /* sem a área de transferência, a legenda fica na tela */ }
+    setAvisoPost('')
     if (navigator.canShare?.({ files: [arquivo] })) {
-      try { await navigator.share({ files: [arquivo] }); return } catch (e) { if (e.name === 'AbortError') return }
+      try { await navigator.share({ files: [arquivo], text: legenda }); setAvisoPost('Legenda copiada. Se o app não colar sozinho, é só colar.'); return } catch (e) { if (e.name === 'AbortError') return }
     }
     const link = document.createElement('a')
     link.href = URL.createObjectURL(arquivo)
     link.download = arquivo.name
     link.click()
     setTimeout(() => URL.revokeObjectURL(link.href), 4000)
+    setAvisoPost('Arte baixada e legenda copiada. Agora é só postar na rede.')
   }
 
   // "Isso não é a minha marca": a regra entra no guia como versão nova do perfil, e a próxima peça já segue.
@@ -385,6 +392,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
   const comecos = perfil.padrao.tipos.map((t) => [t, TIPOS[t]?.comeco || `Post de ${t.toLowerCase()} sobre `])
   const guia = (tipo && TIPOS[tipo]) || GERAL
   const exemplos = sortear(guia.exemplos, rodada).slice(0, 3)
+  const antes = estado === 'pedido' ? perguntasAntes(pedido, perfil.dados) : []
   const semTexto = pedido.trim().length < 3 || (tipo && pedido.trim() === (TIPOS[tipo]?.comeco || '').trim())
 
   return (
@@ -423,6 +431,22 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
               </div>
             )}
           </div>
+
+          {antes.length > 0 && (
+            <div className="criar__faltando">
+              <p className="criar__faltando-titulo">Esse post pede {listaDeNomes(antes)}. Me conta agora?</p>
+              <p className="criar__faltando-texto">A IA não inventa esse dado. Em branco, ela deixa um marcador para você preencher na peça pronta.</p>
+              {antes.map((m) => (
+                <div className="campo" key={m}>
+                  <label htmlFor={`antes-${m}`}>{MARCADORES[m].pergunta}</label>
+                  <input
+                    id={`antes-${m}`} maxLength={80} value={dadosFaltando[m] || ''} placeholder={MARCADORES[m].exemplo}
+                    onChange={(e) => setDadosFaltando((v) => ({ ...v, [m]: e.target.value }))}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="campo">
             <span className="campo__rotulo">Formato</span>
@@ -596,7 +620,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
             {erro && <p className="campo__erro" role="alert">{erro}</p>}
             <div className="criar__acoes">
               <button type="button" className="botao botao--primario" onClick={baixar} disabled={gravando !== null || semDados.length > 0}>
-                {semDados.length > 0 ? `Preencha ${listaDeNomes(semDados)} para baixar` : gravando !== null ? `Gravando o vídeo... ${Math.ceil(duracaoDe(opcoesDoDesenho()) * (1 - gravando))} s` : video && peca.formato === 'story' ? (videoPronto ? 'Salvar vídeo e postar' : 'Gravar vídeo') : 'Baixar e postar'}
+                {semDados.length > 0 ? `Preencha ${listaDeNomes(semDados)} para baixar` : gravando !== null ? `Gravando o vídeo... ${Math.ceil(duracaoDe(opcoesDoDesenho()) * (1 - gravando))} s` : video && peca.formato === 'story' ? (videoPronto ? 'Postar vídeo' : 'Gravar vídeo') : 'Postar'}
               </button>
               {gravando !== null && (
                 <div className="criar__gravando" aria-hidden="true"><span style={{ transform: `scaleX(${gravando})` }} /></div>
@@ -604,12 +628,13 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
               {gravando !== null && <p className="criar__nota">Deixe esta tela aberta até terminar.</p>}
               {videoPronto && !avisoVideo && <p className="criar__nota">Vídeo pronto. Toque de novo para salvar.</p>}
               {avisoVideo && <p className="criar__nota criar__nota--aviso">{avisoVideo}</p>}
+              {avisoPost && <p className="criar__nota" role="status">{avisoPost}</p>}
               <button type="button" className="botao botao--destaque" onClick={copiar}>{copiou ? 'Legenda copiada' : 'Copiar legenda'}</button>
               <div className="criar__acoes-linha">
                 <button type="button" className="botao botao--fantasma" disabled={restantes <= 0 || ajustando} onClick={() => { setPedidoNovo(peca.pedido); setAjustando(true) }}>
                   Gerar de novo{restantes > 0 ? ` (${restantes})` : ''}
                 </button>
-                <button type="button" className="botao botao--fantasma" onClick={() => { setPeca(null); setPedido(''); setTipo(null); setFotos([]); setLayout('ia'); setAvisoVideo(''); setDadosFaltando({}); setEstado('pedido') }}>Criar outro</button>
+                <button type="button" className="botao botao--fantasma" onClick={() => { setPeca(null); setPedido(''); setTipo(null); setFotos([]); setLayout('ia'); setAvisoVideo(''); setAvisoPost(''); setDadosFaltando({}); setEstado('pedido') }}>Criar outro</button>
               </div>
               <p className="criar__nota">Gerar de novo não conta como peça nova.</p>
               <NaoEMinhaMarca

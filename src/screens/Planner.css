@@ -153,8 +153,10 @@
   .planner__so-mes--escondido { display: block; }
   .planner__semana-nomes { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; padding: 0 2px; }
   .planner__semana-nomes span { font-size: 12px; font-weight: 600; color: var(--texto-2); text-transform: uppercase; letter-spacing: .06em; }
-  .planner__mes { display: flex; flex-direction: column; gap: 10px; }
-  .planner__grade { gap: 8px; grid-auto-rows: minmax(112px, auto); }
+  .planner { min-height: calc(100vh - 56px); }
+  .planner__so-mes, .planner__mes { flex: 1; display: flex; flex-direction: column; }
+  .planner__mes { gap: 10px; }
+  .planner__grade { flex: 1; gap: 8px; grid-auto-rows: minmax(112px, 1fr); }
   .planner__dia { align-items: stretch; padding: 8px; border-radius: 12px; gap: 6px; }
   .planner__dia:hover { transform: translateY(-2px); }
   .planner__numero { align-self: flex-start; }

@@ -46,7 +46,9 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, onAti
   const [visao, setVisao] = useState('mes') // no celular: 'mes' ou 'semana'
   const [dia, setDia] = useState(null) // chave do dia aberto
   const [planejando, setPlanejando] = useState(false)
-  const [novo, setNovo] = useState({ titulo: '', rede: 'instagram', formato: 'post', hora: '12:00', lembrete: 10 })
+  const [novo, setNovo] = useState({ titulo: '', redes: ['instagram'], formatos: ['post'], hora: '12:00', lembrete: 10 })
+  // Liga ou desliga uma opção da lista, sem deixar a lista vazia.
+  const alternar = (chave, valor) => setNovo((n) => ({ ...n, [chave]: n[chave].includes(valor) ? (n[chave].length > 1 ? n[chave].filter((v) => v !== valor) : n[chave]) : [...n[chave], valor] }))
   const [mudandoDia, setMudandoDia] = useState(null) // id do item com o campo de data aberto
   const [erro, setErro] = useState('')
   const [arrastando, setArrastando] = useState(null)
@@ -99,8 +101,13 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, onAti
 
   function planejar() {
     if (!novo.titulo.trim()) { setErro('Dê um nome para a postagem.'); return }
+    // Uma marcação por rede e por formato escolhidos (post e story no Instagram viram duas).
     tentar(async () => {
-      await agendar(negocioId, { titulo: novo.titulo, rede: novo.rede, formato: novo.formato, quando: juntarDiaEHora(dia, novo.hora), lembrete_minutos: novo.lembrete })
+      for (const rede of novo.redes) {
+        for (const formato of novo.formatos) {
+          await agendar(negocioId, { titulo: novo.titulo, rede, formato, quando: juntarDiaEHora(dia, novo.hora), lembrete_minutos: novo.lembrete })
+        }
+      }
       setNovo((n) => ({ ...n, titulo: '' }))
       setPlanejando(false)
     })
@@ -117,7 +124,7 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, onAti
   // Postar agora: baixa a arte, copia a legenda e abre o compartilhar do aparelho.
   async function postar(item) {
     const peca = pecaPorId[item.peca]
-    if (!peca?.imagem) { onAbrirPeca(peca); return }
+    if (!peca?.imagem) { onAbrirPeca(peca, new Date(item.quando)); return }
     setOcupado(item.id)
     setAvisoPost('')
     try {
@@ -271,19 +278,20 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, onAti
             <input id="planner-titulo" maxLength={120} value={novo.titulo} autoFocus onChange={(e) => setNovo((n) => ({ ...n, titulo: e.target.value }))} placeholder="Ex.: promoção do combo de sexta" />
           </div>
           <div className="campo">
-            <span className="campo__rotulo">Rede</span>
+            <span className="campo__rotulo">Onde vai postar</span>
+            <p className="campo__ajuda">Pode marcar mais de uma: cada rede vira uma marcação.</p>
             <div className="fichas">
               {Object.entries(REDES).map(([chave, r]) => (
-                <button key={chave} type="button" className="ficha" aria-pressed={novo.rede === chave} onClick={() => setNovo((n) => ({ ...n, rede: chave }))}><Ponto rede={chave} />{r.nome}</button>
+                <button key={chave} type="button" className="ficha" aria-pressed={novo.redes.includes(chave)} onClick={() => alternar('redes', chave)}><Ponto rede={chave} />{r.nome}</button>
               ))}
             </div>
           </div>
           <div className="planner__form-linha">
             <div className="campo">
-              <span className="campo__rotulo">Formato</span>
+              <span className="campo__rotulo">Formato (um ou os dois)</span>
               <div className="fichas">
                 {[['post', 'Post'], ['story', 'Story']].map(([v, r]) => (
-                  <button key={v} type="button" className="ficha" aria-pressed={novo.formato === v} onClick={() => setNovo((n) => ({ ...n, formato: v }))}>{r}</button>
+                  <button key={v} type="button" className="ficha" aria-pressed={novo.formatos.includes(v)} onClick={() => alternar('formatos', v)}>{r}</button>
                 ))}
               </div>
             </div>
@@ -333,7 +341,7 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, onAti
                 {peca ? (
                   <>
                     {!item.postado_em && <button type="button" className="botao botao--destaque" disabled={ocupado === item.id} onClick={() => postar(item)}>{ocupado === item.id ? 'Abrindo...' : 'Postar agora'}</button>}
-                    <button type="button" className="botao botao--fantasma" onClick={() => onAbrirPeca(peca)}>Abrir a peça</button>
+                    <button type="button" className="botao botao--fantasma" onClick={() => onAbrirPeca(peca, quando)}>Abrir a peça</button>
                   </>
                 ) : (
                   <button type="button" className="botao botao--destaque" onClick={() => onCriar({ agendaId: item.id, titulo: item.titulo, formato: item.formato, quando })}>Criar a peça</button>
@@ -358,7 +366,7 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, onAti
             <strong>Pelo seu padrão, esta semana ainda cabe {[faltam.posts > 0 && `${faltam.posts} ${faltam.posts === 1 ? 'post' : 'posts'}`, faltam.stories > 0 && `${faltam.stories} ${faltam.stories === 1 ? 'story' : 'stories'}`].filter(Boolean).join(' e ')}.</strong>
             <span>Você disse que posta {padrao.posts} no feed e {padrao.stories} stories por semana. Esta semana tem {contagem.posts} e {contagem.stories}.</span>
           </div>
-          <button type="button" className="botao botao--fantasma" onClick={() => { setNovo((n) => ({ ...n, formato: faltam.posts > 0 ? 'post' : 'story' })); setPlanejando(true) }}>Planejar {faltam.posts > 0 ? 'um post' : 'um story'}</button>
+          <button type="button" className="botao botao--fantasma" onClick={() => { setNovo((n) => ({ ...n, formatos: [faltam.posts > 0 ? 'post' : 'story'] })); setPlanejando(true) }}>Planejar {faltam.posts > 0 ? 'um post' : 'um story'}</button>
         </div>
       )}
       {avisoPost && <p className="planner__ok" role="status">{avisoPost}</p>}

@@ -77,6 +77,8 @@
 /* Com o menu: no celular, espaço para a barra de baixo; no computador, menu à esquerda e conteúdo largo. */
 .area__corpo { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .area__conteudo { padding-bottom: 96px; }
+.area__corpo--criar .criar { padding-bottom: 80px; }
+@media (min-width: 1024px) { .area__corpo--criar .criar { padding-bottom: 0; } }
 .area__conteudo--planner, .area__conteudo--pecas, .area__conteudo--redes { max-width: 100%; padding-top: 20px; }
 .area__grade-pecas { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; align-items: end; }
 .area__grade-pecas .area__item { width: auto; }
@@ -84,7 +86,10 @@
   .area { flex-direction: row; align-items: stretch; }
   .area__topo { display: none; }
   .area__conteudo { padding: 28px 32px 56px; }
-  .area__conteudo--planner, .area__conteudo--pecas, .area__conteudo--redes { max-width: 1400px; margin: 0; }
+  .area__conteudo--planner, .area__conteudo--pecas, .area__conteudo--redes { max-width: none; margin: 0; }
+  .area__conteudo--planner { padding-bottom: 28px; }
+  .area__corpo--criar .criar__topo { top: 0; }
   .area__conteudo--marca { margin: 0; }
   .area__grade-pecas { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px; }
 }
+@media (min-width: 1024px) { .area__corpo--criar .criar__marca { display: none; } }

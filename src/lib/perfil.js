@@ -4,7 +4,7 @@ import { supabase } from './supabase.js'
 // No modo de teste local (?tela=area) tudo fica só na memória.
 
 export const PERFIL_VAZIO = {
-  identidade: { nome: '', ramo: '', cores: ['#7B5CFF'], logo: null, fotos: [] },
+  identidade: { nome: '', ramo: '', cores: ['#7B5CFF'], fonte: 'moderna', logo: null, fotos: [] },
   voz: { tom: [], tratamento: 'você', usa: '', evita: '', exemplos: '', emoji: 'pouco' },
   padrao: { tipos: [], feedPorSemana: 3, storiesPorSemana: 5, hashtags: '', chamada: '' },
   dados: { endereco: '', horario: '', whatsapp: '', instagram: '', site: '', itens: [] },
@@ -64,13 +64,32 @@ export async function salvarPerfil(negocioId, perfil) {
 }
 
 // Logo e fotos ficam no storage privado, numa pasta com o id do negócio.
-export async function enviarImagem(negocioId, arquivo, tipo) {
+// Com `previa`, sobe junto uma cópia pequena (768 px, JPEG) que a IA olha antes de escrever.
+export async function enviarImagem(negocioId, arquivo, tipo, { previa = false } = {}) {
   if (memoriaDeTeste) return URL.createObjectURL(arquivo)
   const extensao = arquivo.name.split('.').pop().toLowerCase()
   const caminho = `${negocioId}/${tipo}-${Date.now()}.${extensao}`
   const { error } = await supabase.storage.from('marcas').upload(caminho, arquivo, { contentType: arquivo.type })
   if (error) throw error
+  if (previa) {
+    try {
+      const copia = await copiaPequena(arquivo)
+      if (copia) await supabase.storage.from('marcas').upload(`${caminho}.previa.jpg`, copia, { contentType: 'image/jpeg' })
+    } catch { /* sem a cópia, a IA escreve sem ver a foto */ }
+  }
   return caminho
+}
+
+async function copiaPequena(arquivo, lado = 768) {
+  if (arquivo.type === 'image/svg+xml' || typeof createImageBitmap === 'undefined') return null
+  const bitmap = await createImageBitmap(arquivo)
+  const escala = Math.min(1, lado / Math.max(bitmap.width, bitmap.height))
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.round(bitmap.width * escala)
+  canvas.height = Math.round(bitmap.height * escala)
+  canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+  bitmap.close?.()
+  return new Promise((ok) => canvas.toBlob(ok, 'image/jpeg', 0.8))
 }
 
 export async function enderecoDaImagem(caminho) {

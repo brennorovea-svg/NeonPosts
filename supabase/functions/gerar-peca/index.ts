@@ -2,7 +2,7 @@
 // A chave da IA fica só aqui (segredo ANTHROPIC_API_KEY). A peça é desenhada no aparelho.
 import Anthropic from 'npm:@anthropic-ai/sdk@0.132.1'
 import { createClient } from 'npm:@supabase/supabase-js@2.117.3'
-import { conferir, ESQUEMA, INSTRUCOES, MODELOS, montarMensagem } from './conferir.ts'
+import { conferir, ESQUEMA, INSTRUCOES, MODELOS, montarMensagem, SO_NO_VIDEO } from './conferir.ts'
 
 const CABECALHOS = {
   'Access-Control-Allow-Origin': '*',
@@ -17,6 +17,13 @@ function resposta(corpo: unknown, status = 200) {
   return new Response(JSON.stringify(corpo), { status, headers: { ...CABECALHOS, 'Content-Type': 'application/json' } })
 }
 const erro = (mensagem: string, status: number) => resposta({ erro: mensagem }, status)
+
+// Bytes da imagem em base64, em pedaços (o spread de um arquivo inteiro estoura a pilha).
+function base64(bytes: Uint8Array) {
+  let texto = ''
+  for (let i = 0; i < bytes.length; i += 0x8000) texto += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
+  return btoa(texto)
+}
 
 function chaveDeServico() {
   const antiga = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
@@ -43,11 +50,12 @@ Deno.serve(async (req) => {
   const { data: negocio } = await banco.from('negocios').select('id, limite_pecas').eq('dono', conta.user.id).single()
   if (!negocio) return erro('Não achamos o seu negócio.', 404)
 
-  let corpo: { pedido?: string; formato?: string; fotos?: string[]; refazer?: string; ajuste?: string; modelo?: string }
+  let corpo: { pedido?: string; formato?: string; video?: boolean; fotos?: string[]; refazer?: string; ajuste?: string; modelo?: string }
   try { corpo = await req.json() } catch { return erro('Pedido inválido.', 400) }
 
   let pedido = String(corpo.pedido || '').trim()
   let formato = corpo.formato === 'story' ? 'story' : 'post'
+  const video = corpo.video === true
   let fotos = (corpo.fotos || []).filter((f) => typeof f === 'string' && f.startsWith(`${negocio.id}/`)).slice(0, 4)
   let refeita: { id: string; pedido: string; refeitas: number; roteiro: Record<string, unknown>; versoes: { roteiro: Record<string, unknown> }[]; escolhida: number | null } | null = null
   const ajuste = String(corpo.ajuste || '').trim().slice(0, 300)
@@ -80,6 +88,13 @@ Deno.serve(async (req) => {
 
   if (!perfil) return erro('Conte a sua marca antes de criar um post.', 409)
   if (layout === 'foto' && !fotos.length) layout = ''
+  if (SO_NO_VIDEO.includes(layout) && !(video && formato === 'story')) layout = ''
+
+  // A IA olha a cópia pequena de cada foto (feita no aparelho ao enviar). Sem cópia, escreve sem ver.
+  const imagens = (await Promise.all(fotos.map(async (caminho) => {
+    const { data } = await banco.storage.from('marcas').download(`${caminho}.previa.jpg`)
+    return data && data.size < 1_500_000 ? base64(new Uint8Array(await data.arrayBuffer())) : null
+  }))).filter((d): d is string => Boolean(d))
 
   const chave = Deno.env.get('ANTHROPIC_API_KEY')
   if (!chave) return erro('A IA ainda não foi ligada. Tente mais tarde.', 503)
@@ -97,7 +112,13 @@ Deno.serve(async (req) => {
       // @ts-ignore: output_config.format ainda sem tipo nesta versão do SDK
       output_config: { effort: 'medium', format: { type: 'json_schema', schema: ESQUEMA } },
       system: [{ type: 'text', text: INSTRUCOES, cache_control: { type: 'ephemeral' } }],
-      messages: [{ role: 'user', content: montarMensagem(perfil, pedido, formato, refeita && (refeita.versoes?.[refeita.escolhida ?? -1]?.roteiro || refeita.roteiro), ajuste, fotos.length > 0, layout) }],
+      messages: [{
+        role: 'user',
+        content: [
+          ...imagens.map((data) => ({ type: 'image' as const, source: { type: 'base64' as const, media_type: 'image/jpeg' as const, data } })),
+          { type: 'text' as const, text: montarMensagem(perfil, pedido, formato, refeita && (refeita.versoes?.[refeita.escolhida ?? -1]?.roteiro || refeita.roteiro), ajuste, fotos.length, layout, video && formato === 'story', imagens.length) },
+        ],
+      }],
     })
     if (msg.stop_reason === 'refusal') return erro('A IA não quis escrever esse pedido. Tente com outras palavras.', 422)
     const texto = msg.content.find((b) => b.type === 'text')
@@ -109,12 +130,12 @@ Deno.serve(async (req) => {
     return erro('A IA não respondeu agora. Tente de novo.', 502)
   }
 
-  const roteiro = conferir(bruto, perfil, pedido, layout)
+  const roteiro = conferir(bruto, perfil, pedido, layout, fotos.length, video && formato === 'story')
   // Ajuste que a IA não consegue fazer (trocar foto, layout, fonte) volta igual; avisa em vez de parecer que nada aconteceu.
   const base = refeita && (refeita.versoes?.[refeita.escolhida ?? -1]?.roteiro || refeita.roteiro) as Record<string, unknown> | null
   const igual = (k: string) => JSON.stringify(base?.[k] ?? null) === JSON.stringify((roteiro as Record<string, unknown>)[k] ?? null)
-  if (ajuste && base && ['modelo', 'titulo', 'apoio', 'chamada', 'legenda', 'pontos', 'numero', 'cupom', 'data', 'horario', 'arte', 'cores'].every(igual)) {
-    roteiro.avisos.push('Esse ajuste não mudou nada. Por aqui a IA muda o texto, as cores, o layout e o destaque; trocar a foto ou a fonte ainda não dá.')
+  if (ajuste && base && ['modelo', 'titulo', 'apoio', 'chamada', 'legenda', 'pontos', 'numero', 'cupom', 'data', 'horario', 'arte', 'cores', 'ordem_fotos'].every(igual)) {
+    roteiro.avisos.push('Esse ajuste não mudou nada. Por aqui a IA muda o texto, as cores, o layout, o destaque e a ordem das fotos; trocar a foto ou a fonte ainda não dá (a fonte fica no perfil da marca).')
   }
   const linha = {
     perfil_versao: perfil.versao,

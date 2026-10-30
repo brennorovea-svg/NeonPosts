@@ -32,14 +32,17 @@ export function tipoDoPedido(tipo, pedido) {
   return PISTAS.find(([, r]) => r.test(pedido || ''))?.[0] || null
 }
 
-export function sugerirLayouts(tipo, temFoto) {
+// No vídeo, o vídeo em cenas vem primeiro.
+export function sugerirLayouts(tipo, temFoto, video = false) {
   const lista = POR_TIPO[tipo] || GERAL
-  return temFoto ? lista.foto : lista.sem
+  const base = temFoto ? lista.foto : lista.sem
+  return video ? ['cenas', ...base.slice(0, 2)] : base
 }
 
-// Todos os layouts, com os 3 sugeridos na frente.
-export function todosOsLayouts(sugeridos, todos) {
-  return [...sugeridos, ...todos.filter((m) => !sugeridos.includes(m))]
+// Todos os layouts, com os 3 sugeridos na frente. Os que só servem para vídeo saem fora do vídeo.
+export function todosOsLayouts(sugeridos, todos, soNoVideo = [], video = false) {
+  const validos = todos.filter((m) => video || !soNoVideo.includes(m))
+  return [...sugeridos.filter((m) => validos.includes(m)), ...validos.filter((m) => !sugeridos.includes(m))]
 }
 
 // Texto de exemplo só para a miniatura mostrar onde cada coisa fica.
@@ -62,6 +65,7 @@ export function roteiroDeAmostra(modelo, tipo, perfil, temFoto) {
   const nomes = (perfil.dados.itens || []).map((i) => i.nome).filter(Boolean)
   const PONTOS = {
     lista: ['Primeira dica', 'Segunda dica', 'Terceira dica'],
+    cenas: ['Primeira cena', 'Segunda cena', 'Terceira cena'],
     conversa: ['Vocês atendem no fim de semana?', 'Dá para pedir pelo WhatsApp?'],
     faixas: nomes.length ? nomes.slice(0, 4) : (perfil.padrao.tipos || []).slice(0, 4),
     comparar: ['Como era antes', 'Como ficou depois'],

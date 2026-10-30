@@ -3,8 +3,10 @@
 
 export const MODELOS = [
   'promo', 'aviso', 'bastidores', 'manchete', 'lista', 'citacao', 'dividido', 'foto', 'cartao',
-  'numero', 'cupom', 'agenda', 'conversa', 'mosaico', 'faixas', 'capa', 'comparar', 'tabela', 'enquete',
+  'numero', 'cupom', 'agenda', 'conversa', 'mosaico', 'faixas', 'capa', 'comparar', 'tabela', 'enquete', 'cenas',
 ]
+// Só no formato vídeo.
+export const SO_NO_VIDEO = ['cenas']
 const TAMANHOS = ['normal', 'grande', 'gigante']
 const ALINHAMENTOS = ['esquerda', 'centro', 'direita']
 const FUNDOS = ['marca', 'escuro', 'claro', 'foto']
@@ -42,9 +44,10 @@ export const ESQUEMA = {
       required: ['titulo', 'texto', 'destaque'],
       additionalProperties: false,
     },
+    ordem_fotos: { type: 'array', items: { type: 'integer' } },
     nao_deu: { type: 'array', items: { type: 'string' } },
   },
-  required: ['modelo', 'titulo', 'apoio', 'itens', 'chamada', 'legenda', 'hashtags', 'pontos', 'autor', 'numero', 'cupom', 'data', 'horario', 'arte', 'cores', 'nao_deu'],
+  required: ['modelo', 'titulo', 'apoio', 'itens', 'chamada', 'legenda', 'hashtags', 'pontos', 'autor', 'numero', 'cupom', 'data', 'horario', 'arte', 'cores', 'ordem_fotos', 'nao_deu'],
   additionalProperties: false,
 }
 
@@ -97,8 +100,9 @@ Arte: você também decide como a peça é desenhada, para cada peça ter a sua 
 - "comparar": antes e depois em texto, lado a lado: "pontos" com exatamente 2 frases, a primeira o antes e a segunda o depois.
 - "tabela": tabela de preços com os itens da marca (usa "itens"), para cardápio ou lista de serviços.
 - "enquete": a pergunta no "titulo" e de 2 a 4 opções em "pontos", para enquete nos stories.
-Varie: não use sempre o mesmo. Se o pedido diz que tem foto, prefira "bastidores", "dividido", "foto", "mosaico" ou "capa".
-"pontos": no "lista" (2 a 4 frases de até 6 palavras), "conversa" (1 a 3 perguntas de até 12 palavras, no jeito de um cliente escrever), "faixas" (3 a 5 palavras soltas), "comparar" (2 frases de até 6 palavras) e "enquete" (2 a 4 opções de até 5 palavras); nos outros, lista vazia. "autor": só no "citacao"; nos outros, "".
+- "cenas": só quando o formato é vídeo. Vídeo em cenas: abre com o "titulo" e o "apoio", mostra um item da lista ("itens") ou um ponto ("pontos") por cena e fecha com o logo e a "chamada". Bom para cardápio, lançamento de mais de um produto, passo a passo ou várias fotos. Fora do vídeo, nunca use.
+Varie: não use sempre o mesmo. Se o pedido diz que tem foto, prefira "bastidores", "dividido", "foto", "mosaico" ou "capa". No vídeo com 2 ou mais itens, pontos ou fotos, prefira "cenas".
+"pontos": no "cenas" (2 a 4 frases de até 8 palavras, uma por cena, quando a peça não fala de itens da lista), no "lista" (2 a 4 frases de até 6 palavras), "conversa" (1 a 3 perguntas de até 12 palavras, no jeito de um cliente escrever), "faixas" (3 a 5 palavras soltas), "comparar" (2 frases de até 6 palavras) e "enquete" (2 a 4 opções de até 5 palavras); nos outros, lista vazia. "autor": só no "citacao"; nos outros, "".
 "numero": só no "numero" e no "mosaico", o número que é o coração da peça, curto (até 7 caracteres, ex.: "50%", "7 dias", "3x"). Tem de estar no pedido ou nos dados da marca; se não estiver, "" e o app usa o título. Nos outros modelos, "".
 "cupom": só no "cupom", o código escrito igual ao pedido. Se o pedido não traz o código, escreva [CUPOM]. Nos outros, "".
 "data" e "horario": no "agenda" e na validade do "cupom". Só do pedido ou dos dados da marca; se a peça precisa e não tem, [DATA] e [HORÁRIO]. "data" curta (ex.: "29/11"), "horario" curto (ex.: "10h às 14h"). Nos outros, "".
@@ -107,6 +111,12 @@ Varie: não use sempre o mesmo. Se o pedido diz que tem foto, prefira "bastidore
 - "tamanho_titulo": "normal", "grande" ou "gigante" (título curto e forte pede maior).
 - "alinhamento": "esquerda", "centro" ou "direita". Se o pedido ou o ajuste pedir um alinhamento, use exatamente esse. "aviso" e "cartao" são sempre centralizados: se o pedido quiser texto à esquerda ou à direita, escolha outro modelo (se o dono já escolheu um desses dois layouts, mantenha centralizado e ponha o alinhamento em "nao_deu").
 - "fundo": "marca" (cores da marca), "escuro", "claro" ou "foto" (só se houver foto).
+
+Fotos
+- Quando o dono manda fotos, elas vêm antes do texto, na ordem 1, 2, 3... Olhe cada uma antes de escrever.
+- Escreva sobre o que aparece de verdade (o produto, o prato, o serviço, o lugar, as pessoas), com detalhe concreto. Não diga que a foto mostra algo que não está nela, e não descreva a foto quando ela não tem relação com o pedido.
+- Nunca leia preço, data, horário, telefone ou endereço de dentro da foto: esses dados continuam vindo só do pedido e da marca.
+- "ordem_fotos": os números das fotos na ordem em que devem aparecer, a primeira é a que abre a peça (a mais bonita e mais ligada ao pedido). Sem fotos, lista vazia.
 
 Pedidos sobre o visual: no pedido ou no ajuste, a pessoa pode pedir layout, destaque, tamanho do título, alinhamento, fundo claro ou escuro e cores. Atenda mudando esses campos. Esses pedidos são instrução para a arte: não escreva sobre eles no texto da peça.
 "nao_deu": cada coisa que o pedido ou o ajuste pediu sobre o visual e esses campos não fazem (trocar a foto, mudar a fonte, texto em itálico, mover o logo), em frase curta começando pelo verbo, por exemplo "trocar a fonte". Lista vazia quando deu para atender tudo. Nunca invente o que não dá.`
@@ -132,6 +142,7 @@ const DICAS_DO_LAYOUT: Record<string, string> = {
   comparar: '"pontos" com exatamente 2 frases de até 6 palavras: antes e depois.',
   tabela: 'preencha "itens" com os itens da lista que entram; título curto.',
   enquete: 'a pergunta no "titulo" e 2 a 4 opções curtas em "pontos".',
+  cenas: 'título de abertura de até 6 palavras e apoio curto; "itens" com os itens da lista que entram (até 4) ou, sem itens, "pontos" com 2 a 4 frases de até 8 palavras, uma por cena; "chamada" fecha o vídeo.',
 }
 
 type Perfil = {
@@ -141,7 +152,8 @@ type Perfil = {
   dados: { endereco: string; horario: string; whatsapp: string; instagram: string; site: string; itens: { nome: string; preco: string }[] }
 }
 
-export function montarMensagem(perfil: Perfil, pedido: string, formato: string, anterior?: Record<string, unknown> | null, ajuste?: string, temFoto = false, layout = '') {
+// `fotos`: quantas o dono mandou; `vistas`: quantas a IA recebe como imagem (as que têm cópia pequena).
+export function montarMensagem(perfil: Perfil, pedido: string, formato: string, anterior?: Record<string, unknown> | null, ajuste?: string, fotos = 0, layout = '', video = false, vistas = 0) {
   const marca = {
     nome: perfil.identidade.nome,
     ramo: perfil.identidade.ramo,
@@ -149,13 +161,21 @@ export function montarMensagem(perfil: Perfil, pedido: string, formato: string, 
     padrao: { tipos: perfil.padrao.tipos, chamada: perfil.padrao.chamada, hashtags_fixas: perfil.padrao.hashtags },
     dados_fixos: perfil.dados,
   }
-  let texto = `<marca>\n${JSON.stringify(marca, null, 2)}\n</marca>\n\n<formato>${formato === 'story' ? 'story (9:16)' : 'post de feed (4:5)'}</formato>\n\n<foto>${temFoto ? 'o dono mandou uma foto para esta peça' : 'sem foto: não use o fundo "foto" nem o modelo "foto"'}</foto>\n\n<pedido>\n${pedido}\n</pedido>`
+  const formatoTexto = video ? 'vídeo vertical (story 9:16 animado, sem som); pode usar o modelo "cenas"' : formato === 'story' ? 'story (9:16); não use o modelo "cenas"' : 'post de feed (4:5); não use o modelo "cenas"'
+  const fotoTexto = !fotos
+    ? 'sem foto: não use o fundo "foto" nem o modelo "foto"; "ordem_fotos" vazia'
+    : vistas === fotos
+      ? `o dono mandou ${fotos === 1 ? '1 foto' : `${fotos} fotos`} para esta peça, que vêm antes deste texto`
+      : vistas
+        ? `o dono mandou ${fotos} fotos; você vê as ${vistas} primeiras, antes deste texto`
+        : `o dono mandou ${fotos === 1 ? '1 foto' : `${fotos} fotos`}, mas você não consegue vê-las: não descreva o que aparece nelas`
+  let texto = `<marca>\n${JSON.stringify(marca, null, 2)}\n</marca>\n\n<formato>${formatoTexto}</formato>\n\n<foto>${fotoTexto}</foto>\n\n<pedido>\n${pedido}\n</pedido>`
   if (layout) {
     texto += `\n\n<layout>${layout}</layout>\n\nO dono já escolheu o layout. Use "modelo": "${layout}" e escreva pensando nele: ${DICAS_DO_LAYOUT[layout] || ''} Você continua decidindo o destaque, o tamanho do título, o alinhamento e o fundo.`
   }
   if (anterior) {
-    const { modelo, titulo, apoio, chamada, legenda, pontos, autor, numero, cupom, data, horario, arte, cores } = anterior as Record<string, unknown>
-    texto += `\n\n<versao_anterior>\n${JSON.stringify({ modelo, titulo, apoio, chamada, legenda, pontos: pontos || [], autor: autor || '', numero: numero || '', cupom: cupom || '', data: data || '', horario: horario || '', arte: arte || {}, cores: cores || { titulo: '', texto: '', destaque: '' } }, null, 2)}\n</versao_anterior>`
+    const { modelo, titulo, apoio, chamada, legenda, pontos, autor, numero, cupom, data, horario, arte, cores, ordem_fotos } = anterior as Record<string, unknown>
+    texto += `\n\n<versao_anterior>\n${JSON.stringify({ modelo, titulo, apoio, chamada, legenda, pontos: pontos || [], autor: autor || '', numero: numero || '', cupom: cupom || '', data: data || '', horario: horario || '', arte: arte || {}, cores: cores || { titulo: '', texto: '', destaque: '' }, ordem_fotos: ordem_fotos || [] }, null, 2)}\n</versao_anterior>`
     texto += ajuste
       ? `\n\n<ajuste>\n${ajuste}\n</ajuste>\n\nO dono gostou da versão anterior e quer só este ajuste. Parta dela e mude apenas o que o ajuste pede; o resto fica igual, palavra por palavra quando der.`
       : `\n\nO dono pediu outra versão, sem dizer o que mudar. Escreva uma peça nova de verdade: outro ângulo, outro título, outra primeira linha na legenda. Se o pedido mudou, siga o pedido novo.`
@@ -214,7 +234,7 @@ export function formatarPreco(preco: string) {
   return /^r\$/i.test(limpo) ? limpo : `R$ ${limpo}`
 }
 
-export function conferir(bruto: Record<string, unknown>, perfil: Perfil, pedido: string, layout = '') {
+export function conferir(bruto: Record<string, unknown>, perfil: Perfil, pedido: string, layout = '', fotos = 0, video = false) {
   const fonte = numerosDaFonte(pedido + ' ' + JSON.stringify(perfil.dados))
   const avisos: string[] = []
   const trocados = new Set<string>()
@@ -233,6 +253,7 @@ export function conferir(bruto: Record<string, unknown>, perfil: Perfil, pedido:
 
   const roteiro = {
     modelo: MODELOS.includes(layout) ? layout : MODELOS.includes(bruto.modelo as string) ? bruto.modelo as string : 'aviso',
+    ordem_fotos: [] as number[],
     titulo: limpar(bruto.titulo),
     apoio: limpar(bruto.apoio),
     chamada: limpar(bruto.chamada),
@@ -248,6 +269,14 @@ export function conferir(bruto: Record<string, unknown>, perfil: Perfil, pedido:
     arte: {} as Record<string, string>,
     cores: {} as Record<string, string>,
     avisos,
+  }
+
+  // Vídeo em cenas fora do vídeo vira lista (os pontos continuam servindo).
+  if (!video && SO_NO_VIDEO.includes(roteiro.modelo)) roteiro.modelo = 'lista'
+  // Ordem das fotos: números de 1 até quantas o dono mandou, sem repetir.
+  for (const n of (bruto.ordem_fotos as unknown[] | undefined) || []) {
+    const i = Number(n)
+    if (Number.isInteger(i) && i >= 1 && i <= fotos && !roteiro.ordem_fotos.includes(i)) roteiro.ordem_fotos.push(i)
   }
 
   // Número, data e horário só com números que vieram do pedido ou dos dados; senão, sem número ou o marcador.
@@ -298,7 +327,7 @@ export function conferir(bruto: Record<string, unknown>, perfil: Perfil, pedido:
   }
 
   const naoDeu = ((bruto.nao_deu as string[] | undefined) || []).map((t) => String(t).trim().replace(/\.$/, '')).filter(Boolean).slice(0, 3)
-  if (naoDeu.length) avisos.push(`Por aqui ainda não dá para ${naoDeu.join(', ')}. O resto do pedido foi atendido.`)
+  if (naoDeu.length) avisos.push(`Por aqui ainda não dá para ${naoDeu.join(', ')}. O resto do pedido foi atendido.${naoDeu.some((t) => /fonte|letra/i.test(t)) ? ' A fonte dos títulos você troca no perfil da marca.' : ''}`)
   if (trocados.size) avisos.push('A IA tentou escrever um dado que não está na sua marca. Trocamos por um marcador.')
   const tudo = [roteiro.titulo, roteiro.apoio, roteiro.chamada, roteiro.legenda, roteiro.numero, roteiro.cupom, roteiro.data, roteiro.horario, ...roteiro.pontos, ...roteiro.itens.map((i) => i.preco)].join(' ')
   for (const [marcador, texto] of Object.entries(MARCADORES)) {

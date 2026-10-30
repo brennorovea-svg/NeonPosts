@@ -1,5 +1,5 @@
 // Desenha a peça no próprio aparelho, num canvas de 1080 de largura.
-// Post 4:5 (1080x1350) e story 9:16 (1080x1920). Dezenove modelos; a IA escolhe o modelo e o
+// Post 4:5 (1080x1350) e story 9:16 (1080x1920). Vinte modelos (o vídeo em cenas só no vídeo); a IA escolhe o modelo e o
 // jeito da arte (palavra em destaque, tamanho do título, alinhamento e fundo).
 
 export const TAMANHOS = { post: [1080, 1350], story: [1080, 1920] }
@@ -8,8 +8,19 @@ export const NOMES_DOS_MODELOS = {
   citacao: 'Citação', dividido: 'Dividido', foto: 'Foto inteira', cartao: 'Cartão',
   numero: 'Número', cupom: 'Cupom', agenda: 'Agenda', conversa: 'Conversa', mosaico: 'Mosaico', faixas: 'Faixas',
   capa: 'Capa de revista', comparar: 'Antes e depois', tabela: 'Tabela', enquete: 'Enquete',
+  cenas: 'Vídeo em cenas',
 }
+// Só aparece quando o formato é vídeo.
+export const SO_NO_VIDEO = ['cenas']
+import { fonteDa } from './fontes.js'
+
 const FONTE = '"Instrument Sans", system-ui, sans-serif'
+// Fonte dos títulos da marca (perfil > identidade > fonte). Vale para texto em 700 a partir de 64 px.
+let fonteTitulo = fonteDa()
+function fonteDoBloco(peso, t, tamanho) {
+  if (peso < 700 || tamanho < 64) return `${peso} ${t}px ${FONTE}`
+  return `${fonteTitulo.peso} ${Math.round(t * fonteTitulo.escala)}px ${fonteTitulo.familia}, ${FONTE}`
+}
 
 // Vídeo: quando há relógio, cada elemento entra na ordem em que é desenhado.
 // Só opacidade, deslocamento e escala, no easing da marca. Sem relógio, a arte sai parada.
@@ -49,8 +60,12 @@ function piscada(inicio) {
   return [[0.0, 0.08], [0.16, 0.22], [2.6, 2.66]].some(([a, b]) => t >= a && t < b) ? 0.25 : 1
 }
 
-export async function prepararFontes() {
-  await Promise.all(['400', '600', '700'].map((p) => document.fonts.load(`${p} 40px "Instrument Sans"`)))
+export async function prepararFontes(chave) {
+  const titulo = fonteDa(chave)
+  await Promise.all([
+    ...['400', '600', '700'].map((p) => document.fonts.load(`${p} 40px "Instrument Sans"`)),
+    document.fonts.load(`${titulo.peso} 40px ${titulo.familia}`),
+  ])
 }
 
 export function carregarImagem(src) {
@@ -122,7 +137,7 @@ function bloco(ctx, texto, { x, y, largura, tamanho, minimo = 36, peso = 700, ma
   if (!texto) return y
   let t = tamanho, linhas
   do {
-    ctx.font = `${peso} ${t}px ${FONTE}`
+    ctx.font = fonteDoBloco(peso, t, tamanho)
     linhas = peso >= 600 ? equilibrar(ctx, texto, largura) : quebrar(ctx, texto, largura)
     t -= 4
   } while (linhas.length > maxLinhas && t >= Math.min(minimo, tamanho * 0.7))
@@ -1338,12 +1353,161 @@ function enquete(ctx, { L, A, story, c, r, logo, foto, nome }) {
   chamadaEmTexto(ctx, r, { x: m, y: A - base, largura: L - m * 2, alinhar: 'left', cor: corPedida(r, 'texto', tinta), tamanho: 36 })
 }
 
-const MODELOS = {
-  promo, aviso, bastidores, manchete, lista, citacao, dividido, foto: fotoInteira, cartao,
-  numero, cupom, agenda, conversa, mosaico, faixas, capa, comparar, tabela, enquete,
+// Vídeo em cenas: abertura com o título, um item ou ponto por cena e o fechamento com o logo.
+// Cada cena tem o seu próprio relógio (as entradas recomeçam), e a próxima entra deslizando da direita.
+// Parado (miniatura, histórico, menos movimento), vira uma capa de story com o título e a chamada.
+const CENA = { abertura: 3.2, item: 2.8, fim: 3.4 }
+const TROCA = 0.5
+function listaDeCenas(r) {
+  const meio = r.itens?.length
+    ? r.itens.slice(0, 4).map((i) => ({ texto: i.nome, preco: i.preco }))
+    : (r.pontos || []).filter(Boolean).slice(0, 4).map((p) => ({ texto: p }))
+  if (!meio.length && r.apoio) meio.push({ texto: r.apoio, sozinho: true })
+  return [
+    { tipo: 'abertura', dur: CENA.abertura },
+    ...meio.map((m, i) => ({ ...m, tipo: 'item', dur: CENA.item, i, n: meio.length })),
+    { tipo: 'fim', dur: CENA.fim },
+  ]
+}
+export const duracaoDasCenas = (r) => listaDeCenas(r || {}).reduce((t, c) => t + c.dur, 0)
+
+const fundoSemFoto = (r) => (['claro', 'escuro'].includes(r.arte?.fundo) ? r.arte.fundo : 'marca')
+
+function escurecerFoto(ctx, L, A, de = 0.3, ate = 0.88) {
+  const g = ctx.createLinearGradient(0, 0, 0, A)
+  g.addColorStop(0, `rgba(8,8,12,${de})`)
+  g.addColorStop(1, `rgba(8,8,12,${ate})`)
+  ctx.fillStyle = g
+  ctx.fillRect(0, 0, L, A)
+  sobre('#1A1A20')
 }
 
-export function desenhar(canvas, { formato, modelo, roteiro, cores, logo, foto, nome, tempo = null, total = 8 }) {
+function aberturaDasCenas(ctx, { L, A, story, c, r, logo, fotos, nome }, parado) {
+  const foto = fotos[0]
+  let tinta = '#FFFFFF'
+  if (foto) { cobrir(ctx, foto, 0, 0, L, A); escurecerFoto(ctx, L, A, 0.25, 0.9) } else tinta = pintarFundo(ctx, { L, A, c, foto: null, r: { arte: { fundo: fundoSemFoto(r) } } })
+  const m = 70, topo = story ? 240 : 70, base = story ? 360 : 90
+  selo(ctx, { logo, nome, x: L / 2, y: topo, altura: 84, alinhar: 'center' })
+  const tOp = { x: m, largura: L - m * 2, tamanho: Math.round(120 * escala(r)), maxLinhas: 4, entre: 1.0, alinhar: 'center' }
+  const aOp = { x: m + 30, largura: L - m * 2 - 60, tamanho: 44, peso: 500, maxLinhas: 3, entre: 1.25, alinhar: 'center' }
+  const pil = parado && r.chamada ? 170 : 0
+  const altura = medir(ctx, r.titulo, tOp) + 34 + medir(ctx, r.apoio, aOp) + pil
+  let y = Math.max(topo + 220, A - base - altura)
+  y = bloco(ctx, r.titulo, { ...tOp, y, cor: corPedida(r, 'titulo', tinta), ...marca(r, tinta === '#FFFFFF' ? legivel(c[1], '#FFFFFF') : destaqueSobre(tinta, c)) })
+  y = bloco(ctx, r.apoio, { ...aOp, y: y + 34, cor: corPedida(r, 'texto', apagado(tinta, 0.86)) })
+  if (pil) {
+    const fundo = fundoPedido(r, tinta === '#FFFFFF' ? '#FFFFFF' : c[0])
+    pilulaCurta(ctx, r, { x: m, y: y + 60, largura: L - m * 2, alinhar: 'center', fundo, cor: textoSobre(fundo) })
+  }
+}
+
+function itemDasCenas(ctx, { L, A, story, c, r, fotos }, cena) {
+  const m = 60, base = story ? 330 : 70
+  const com = fotos.length > 0
+  if (com) {
+    // Com várias fotos, cada cena usa a seguinte (a primeira abriu o vídeo); com uma só, um pedaço diferente dela.
+    if (fotos.length > 1) cobrir(ctx, fotos[(cena.i + 1) % fotos.length], 0, 0, L, A)
+    else recorte(ctx, fotos[0], 0, 0, L, A, 1.35, cena.i % 2 ? 0.7 : 0.3, cena.i % 2 ? 0.35 : 0.65)
+    escurecerFoto(ctx, L, A, 0.05, 0.55)
+  } else {
+    const cor = c[cena.i % 3]
+    placaDaMarca(ctx, 0, 0, L, A, cor, misturar(cor, '#000000', 0.45), c[(cena.i + 1) % 3])
+    sobre(misturar(cor, '#000000', 0.2))
+    // Número da cena enorme e apagado ao fundo, na fonte dos títulos.
+    if (!cena.sozinho) {
+      ctx.save()
+      ctx.font = fonteDoBloco(700, 560, 560)
+      ctx.fillStyle = comAlfa(textoSobre(cor), 0.12)
+      ctx.textAlign = 'right'
+      ctx.textBaseline = 'alphabetic'
+      ctx.fillText(String(cena.i + 1).padStart(2, '0'), L - 30, (story ? 760 : 560))
+      ctx.restore()
+    }
+  }
+  const claro = com
+  const tinta = claro ? '#111114' : textoSobre(c[cena.i % 3])
+  const dentro = L - m * 2 - 100
+  const tOp = { x: m + 50, largura: dentro, tamanho: cena.sozinho ? 64 : com ? 84 : 112, maxLinhas: 4, entre: 1.04 }
+  const precoAlto = cena.preco ? 120 : 0
+  const contador = cena.sozinho ? 0 : 70
+  const h = 60 + contador + medir(ctx, cena.texto, tOp) + precoAlto + 56
+  const y0 = com ? A - base - h : Math.round((A - h) / 2)
+  // O cartão vem junto com a cena, que já entra deslizando.
+  if (claro) {
+    arredondado(ctx, m, y0, L - m * 2, h, 36)
+    ctx.fillStyle = 'rgba(255,255,255,.95)'
+    ctx.fill()
+    sobre('#FFFFFF')
+  }
+  const destaque = claro ? destaqueSobre('#111114', c) : legivel(c[(cena.i + 1) % 3], tinta)
+  let y = y0 + 60
+  if (contador) {
+    rotulo(ctx, `${String(cena.i + 1).padStart(2, '0')} / ${String(cena.n).padStart(2, '0')}`, { x: m + 50, y: y + 30, tamanho: 30, cor: destaque, espaco: 4 })
+    y += contador
+  }
+  y = bloco(ctx, cena.texto, { ...tOp, y, cor: corPedida(r, 'titulo', tinta) })
+  if (cena.preco) {
+    const fundo = fundoPedido(r, claro ? c[0] : '#FFFFFF')
+    ctx.font = `700 46px ${FONTE}`
+    const w = ctx.measureText(cena.preco).width + 90
+    pilula(ctx, cena.preco, { x: m + 50, y: y + 24, largura: w, altura: 92, tamanho: 46, fundo, cor: textoSobre(fundo) })
+  }
+}
+
+function fimDasCenas(ctx, { L, A, story, c, r, logo, nome }) {
+  const tinta = pintarFundo(ctx, { L, A, c, foto: null, r: { arte: { fundo: fundoSemFoto(r) } } })
+  const m = 70
+  let y = A * (story ? 0.3 : 0.2)
+  if (logo) {
+    selo(ctx, { logo, nome, x: L / 2, y, altura: 260, alinhar: 'center' })
+    y += 260 + 36 + 70
+  }
+  // Nome da marca na fonte dos títulos.
+  y = bloco(ctx, nome, { x: m, y, largura: L - m * 2, tamanho: 104, maxLinhas: 2, entre: 1.0, alinhar: 'center', cor: corPedida(r, 'titulo', tinta) })
+  if (r.chamada) {
+    const fundo = fundoPedido(r, tinta === '#FFFFFF' ? legivel(c[0], '#FFFFFF') : c[0])
+    pilulaCurta(ctx, r, { x: m, y: y + 70, largura: L - m * 2, alinhar: 'center', fundo, cor: textoSobre(fundo), altura: 120, tamanho: 46 })
+  }
+}
+
+function desenharCena(ctx, args, cena, parado) {
+  if (cena.tipo === 'abertura') aberturaDasCenas(ctx, args, parado)
+  else if (cena.tipo === 'item') itemDasCenas(ctx, args, cena)
+  else fimDasCenas(ctx, args)
+}
+
+function cenas(ctx, args) {
+  const lista = listaDeCenas(args.r)
+  if (!relogio) { desenharCena(ctx, args, lista[0], true); return }
+  const geral = relogio
+  let inicio = 0, k = 0
+  while (k < lista.length - 1 && geral.t >= inicio + lista[k].dur) { inicio += lista[k].dur; k++ }
+  const local = geral.t - inicio
+  const cena = (i, t, dx) => {
+    ctx.save()
+    ctx.translate(dx, 0)
+    // Começa em -1: dentro da cena as entradas são mais cedo, para dar tempo de ler.
+    relogio = { t, total: lista[i].dur, ordem: -1 }
+    desenharCena(ctx, args, lista[i], false)
+    ctx.restore()
+  }
+  try {
+    if (k > 0 && local < TROCA) {
+      const p = suave(local / TROCA)
+      cena(k - 1, lista[k - 1].dur, -p * args.L * 0.35)
+      cena(k, local, (1 - p) * args.L)
+    } else cena(k, local, 0)
+  } finally {
+    relogio = geral
+  }
+}
+
+const MODELOS = {
+  promo, aviso, bastidores, manchete, lista, citacao, dividido, foto: fotoInteira, cartao,
+  numero, cupom, agenda, conversa, mosaico, faixas, capa, comparar, tabela, enquete, cenas,
+}
+
+export function desenhar(canvas, { formato, modelo, roteiro, cores, logo, foto, fotos, nome, fonte, tempo = null, total = 8 }) {
   const [L, A] = TAMANHOS[formato] || TAMANHOS.post
   canvas.width = L
   canvas.height = A
@@ -1352,10 +1516,13 @@ export function desenhar(canvas, { formato, modelo, roteiro, cores, logo, foto, 
   const c = [fundoPedido(roteiro, base[0]), base[1], base[2]]
   ctx.clearRect(0, 0, L, A)
   relogio = tempo === null ? null : { t: tempo, total, ordem: 0 }
+  fonteTitulo = fonteDa(fonte)
+  const todas = fotos?.length ? fotos : foto ? [foto] : []
   try {
-    ;(MODELOS[modelo] || aviso)(ctx, { L, A, story: formato === 'story', c, r: roteiro, logo, foto, nome })
+    ;(MODELOS[modelo] || aviso)(ctx, { L, A, story: formato === 'story', c, r: roteiro, logo, foto: todas[0] || null, fotos: todas, nome })
   } finally {
     relogio = null
+    fonteTitulo = fonteDa()
   }
 }
 

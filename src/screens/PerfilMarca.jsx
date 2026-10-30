@@ -6,6 +6,7 @@ import Itens from '../components/campos/Itens.jsx'
 import Contador from '../components/campos/Contador.jsx'
 import { salvarPerfil } from '../lib/perfil.js'
 import { coresDaImagem } from '../lib/cores.js'
+import { FONTES } from '../lib/fontes.js'
 import './PerfilMarca.css'
 
 export const PARTES = [
@@ -145,6 +146,19 @@ function Identidade({ v, mudar, negocioId }) {
       <Grupo rotulo="Cores da marca" ajuda="Até 3. Ao enviar o logo, a gente lê as cores dele. Toque na cor para trocar ou digite o código em HEX ou RGB.">
         <Cores valor={v.cores} onChange={(cores) => { mudar({ cores }); setCoresDoLogo(false) }} />
         {coresDoLogo && <p className="cores__aviso" role="status">Cores tiradas do seu logo. Confira e ajuste se precisar.</p>}
+      </Grupo>
+      <Grupo rotulo="Fonte dos títulos" ajuda="É a letra do título grande das peças. O resto do texto fica na fonte de leitura.">
+        <div className="fontes" role="radiogroup" aria-label="Fonte dos títulos">
+          {Object.entries(FONTES).map(([chave, f]) => (
+            <button
+              key={chave} type="button" role="radio" aria-checked={(v.fonte || 'moderna') === chave}
+              className="fonte" onClick={() => mudar({ fonte: chave })}
+            >
+              <span className="fonte__amostra" style={{ fontFamily: `${f.familia}, var(--fonte)`, fontWeight: f.peso, fontSize: `${Math.round(28 * f.escala)}px` }}>{v.nome.trim().split(/\s+/)[0] || 'Sua marca'}</span>
+              <span className="fonte__nome">{f.nome}</span>
+            </button>
+          ))}
+        </div>
       </Grupo>
       <Grupo rotulo="Fotos da marca (opcional)" ajuda="O que mostra o seu trabalho: produtos, trabalhos entregues, bastidores, equipe ou o espaço. Até 6, entram nos posts.">
         <Imagens negocioId={negocioId} valor={v.fotos} onChange={(fotos) => mudar({ fotos })} maximo={6} tipo="foto" texto="Enviar fotos" />

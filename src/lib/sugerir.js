@@ -37,6 +37,11 @@ export function sugerirLayouts(tipo, temFoto) {
   return temFoto ? lista.foto : lista.sem
 }
 
+// Todos os layouts, com os 3 sugeridos na frente.
+export function todosOsLayouts(sugeridos, todos) {
+  return [...sugeridos, ...todos.filter((m) => !sugeridos.includes(m))]
+}
+
 // Texto de exemplo só para a miniatura mostrar onde cada coisa fica.
 const AMOSTRA = {
   Promoção: { titulo: 'Oferta da semana', apoio: 'Só até domingo, para quem ainda não conhece a gente.', destaque: 'semana' },

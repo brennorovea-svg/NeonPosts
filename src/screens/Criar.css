@@ -140,7 +140,7 @@
 .criar__versao[aria-pressed="true"] { border-color: var(--violeta); background: rgba(123, 92, 255, .14); color: var(--neve); }
 @media (prefers-reduced-motion: reduce) { .criar__versao { transition: none; } }
 
-/* Layout: a IA escolhe ou a pessoa toca numa das 3 miniaturas desenhadas com a marca. */
+/* Layout: a IA escolhe ou a pessoa toca numa das miniaturas desenhadas com a marca (sugeridas na frente). */
 .layouts { display: flex; flex-direction: column; gap: 10px; }
 .layouts__ia {
   display: flex; align-items: center; gap: 14px;
@@ -153,7 +153,12 @@
 .layouts__ajuda { display: block; font-size: 13px; color: var(--texto-2); margin-top: 2px; }
 .layouts__icone { display: grid; place-items: center; width: 36px; height: 36px; flex: none; }
 .layouts__ia[aria-checked="true"] { border-color: var(--violeta); background: rgba(123, 92, 255, .12); }
-.layouts__grade { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.layouts__carrossel .layouts__opcao { width: calc((100% - 20px) / 2.6); }
+.layouts__carrossel--story .layouts__opcao { width: calc((100% - 30px) / 3.4); }
+.layouts__selo {
+  position: absolute; left: 8px; top: 8px; padding: 4px 8px; border-radius: 999px;
+  font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: #FFFFFF; background: rgba(91, 63, 224, .92);
+}
 .layouts__opcao {
   display: flex; flex-direction: column; gap: 8px; padding: 0; cursor: pointer;
   font: inherit; color: var(--texto-2); background: none; border: 0; text-align: center;
@@ -170,7 +175,6 @@
 .layouts__opcao[aria-checked="true"] .layouts__miniatura { outline-color: var(--violeta); }
 .layouts__opcao[aria-checked="true"] .layouts__nome { color: var(--neve); }
 .layouts__nome { font-size: 13px; font-weight: 600; }
-.layouts__grade--story { max-width: 420px; }
 @keyframes miniatura { from { opacity: 0; transform: translateY(8px) scale(.97); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) {
   .layouts__opcao { animation: none; }

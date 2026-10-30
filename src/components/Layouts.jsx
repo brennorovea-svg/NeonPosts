@@ -1,9 +1,10 @@
 import { useEffect, useRef } from 'react'
 import Obturador from './Obturador.jsx'
 import { desenhar, NOMES_DOS_MODELOS, prepararFontes } from '../lib/desenhar.js'
-import { roteiroDeAmostra } from '../lib/sugerir.js'
+import { roteiroDeAmostra, todosOsLayouts } from '../lib/sugerir.js'
+import Carrossel from './Carrossel.jsx'
 
-// Três miniaturas de layout desenhadas com as cores e o logo da marca, mais a opção de
+// Todos os layouts em miniatura (os 3 sugeridos na frente) desenhadas com as cores e o logo da marca, mais a opção de
 // deixar a IA escolher. A escolha vai junto com o pedido e a IA escreve dentro dela.
 function Miniatura({ modelo, tipo, perfil, formato, logo, foto, fotoDaMarca }) {
   const canvas = useRef(null)
@@ -32,19 +33,20 @@ export default function Layouts({ sugeridos, escolhido, onEscolher, tipo, perfil
           <span className="layouts__ajuda">Ela olha o seu pedido e decide a arte.</span>
         </span>
       </button>
-      <div className={`layouts__grade layouts__grade--${formato}`}>
-        {sugeridos.map((modelo, i) => (
+      <Carrossel rotulo="Layouts" className={`layouts__carrossel layouts__carrossel--${formato}`}>
+        {todosOsLayouts(sugeridos, Object.keys(NOMES_DOS_MODELOS)).map((modelo, i) => (
           <button
             key={`${modelo}-${formato}`} type="button" role="radio" aria-checked={escolhido === modelo}
-            className="layouts__opcao" style={{ animationDelay: `${i * 60}ms` }} onClick={() => onEscolher(modelo)}
+            className="layouts__opcao" style={{ animationDelay: `${Math.min(i, 5) * 50}ms` }} onClick={() => onEscolher(modelo)}
           >
             <span className="layouts__miniatura">
               <Miniatura modelo={modelo} tipo={tipo} perfil={perfil} formato={formato} logo={logo} foto={foto} fotoDaMarca={fotoDaMarca} />
+              {sugeridos.includes(modelo) && <span className="mono layouts__selo">Sugerido</span>}
             </span>
             <span className="layouts__nome">{NOMES_DOS_MODELOS[modelo]}</span>
           </button>
         ))}
-      </div>
+      </Carrossel>
     </div>
   )
 }

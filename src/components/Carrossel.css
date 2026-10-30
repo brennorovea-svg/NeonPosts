@@ -1,0 +1,23 @@
+.carrossel { position: relative; }
+.carrossel__trilho {
+  display: flex; gap: 10px; overflow-x: auto; overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory; scroll-padding: 0 2px; padding: 4px 2px 8px;
+  scrollbar-width: none;
+}
+.carrossel__trilho::-webkit-scrollbar { display: none; }
+.carrossel__trilho > * { flex: none; scroll-snap-align: start; }
+.carrossel__seta {
+  position: absolute; top: calc(50% - 26px); width: 44px; height: 44px; border-radius: 50%;
+  display: none; place-items: center; cursor: pointer;
+  font: 600 26px/1 var(--fonte); color: var(--neve);
+  background: rgba(28, 28, 35, .92); border: 1px solid var(--borda);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .45);
+  transition: transform var(--dur-controle) var(--ease), opacity var(--dur-controle) var(--ease);
+}
+.carrossel__seta:hover { transform: scale(1.06); }
+.carrossel__seta:active { transform: scale(.94); }
+.carrossel__seta--antes { left: -14px; }
+.carrossel__seta--depois { right: -14px; }
+/* Setas só onde tem mouse; no celular o dedo arrasta. */
+@media (hover: hover) and (pointer: fine) { .carrossel__seta { display: grid; } }
+@media (prefers-reduced-motion: reduce) { .carrossel__seta, .carrossel__seta:hover, .carrossel__seta:active { transition: none; transform: none; } }

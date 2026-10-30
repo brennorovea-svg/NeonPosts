@@ -7,6 +7,7 @@ import ApresentacaoMarca from './ApresentacaoMarca.jsx'
 import Criar from './Criar.jsx'
 import Planos from './Planos.jsx'
 import PainelMarca from '../components/PainelMarca.jsx'
+import Carrossel from '../components/Carrossel.jsx'
 import { PLANOS, voltouDoPagamento } from '../lib/planos.js'
 import './Area.css'
 
@@ -19,11 +20,11 @@ function Miniatura({ peca, onAbrir }) {
   const [src, setSrc] = useState(null)
   useEffect(() => { enderecoDaImagem(peca.imagem).then(setSrc) }, [peca.imagem])
   return (
-    <li>
+    <div className="area__item">
       <button type="button" className={`area__peca area__peca--${peca.formato}`} onClick={onAbrir} aria-label={`Abrir: ${peca.roteiro.titulo}`}>
         {src ? <img src={src} alt="" /> : <span>{peca.roteiro.titulo}</span>}
       </button>
-    </li>
+    </div>
   )
 }
 
@@ -218,9 +219,9 @@ export default function Area({ sessao, teste = false }) {
         {pecas.length > 0 && (
           <section className="area__historico" aria-labelledby="historico">
             <h2 id="historico" className="area__subtitulo">Suas peças</h2>
-            <ul className="area__pecas">
+            <Carrossel rotulo="Suas peças" className="area__pecas">
               {pecas.map((p) => <Miniatura key={p.id} peca={p} onAbrir={() => setCriando(p)} />)}
-            </ul>
+            </Carrossel>
           </section>
         )}
         <p className="area__email mono">

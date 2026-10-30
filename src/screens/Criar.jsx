@@ -196,7 +196,20 @@ const GERAL = {
   exemplos: EXEMPLOS,
 }
 
-export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, onSair, onPerfil, onCriou }) {
+// Sugestões de quando postar: hoje às 18h (se ainda der), amanhã ao meio-dia, ou escolher.
+function sugestoesDeQuando() {
+  const agora = new Date()
+  const hoje = new Date(agora); hoje.setHours(18, 0, 0, 0)
+  const amanha = new Date(agora); amanha.setDate(amanha.getDate() + 1); amanha.setHours(12, 0, 0, 0)
+  const lista = []
+  if (hoje > agora) lista.push(['Hoje às 18h', hoje])
+  lista.push(['Amanhã ao meio-dia', amanha])
+  return lista
+}
+const paraInput = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+const quandoPorExtenso = (d) => d.toLocaleString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
+
+export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, onSair, onPerfil, onCriou, onAgendar, noPlanner = false }) {
   const [pedido, setPedido] = useState('')
   const [tipo, setTipo] = useState(null)
   const [formato, setFormato] = useState(formatoInicial === 'story' ? 'story' : 'post')
@@ -204,6 +217,9 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
   const [gravando, setGravando] = useState(null) // null ou de 0 a 1
   const [avisoVideo, setAvisoVideo] = useState('')
   const [avisoPost, setAvisoPost] = useState('')
+  const [agendado, setAgendado] = useState(null) // Date quando a peça já entrou no planner, 'depois' se dispensou
+  const [escolhendoQuando, setEscolhendoQuando] = useState(false)
+  const [quandoEscolhido, setQuandoEscolhido] = useState(() => paraInput(sugestoesDeQuando().at(-1)[1]))
   // Vídeo gravado esperando o segundo toque: o celular só abre o compartilhar logo depois de um toque.
   const [videoPronto, setVideoPronto] = useState(null)
   const [dadosFaltando, setDadosFaltando] = useState({}) // { '[HORÁRIO]': 'sábado, 9h às 13h' }
@@ -311,6 +327,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
       setMexeuNoTexto(false)
       setHashtagsTexto(null)
       setAvisoPost('')
+      if (!refazer) { setAgendado(null); setEscolhendoQuando(false) }
       setPeca(r.peca)
       setRestantes(r.refeitasRestantes)
       setEstado('revelando')
@@ -366,6 +383,17 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
       throw new Error('Não deu para salvar agora. Confira a internet e tente de novo.')
     }
     onPerfil?.(novo)
+  }
+
+  async function marcarQuando(data) {
+    setErro('')
+    try {
+      await onAgendar(peca, data)
+      setAgendado(data)
+      setEscolhendoQuando(false)
+    } catch {
+      setErro('Não deu para marcar no planner agora. Tente de novo.')
+    }
   }
 
   async function copiar() {
@@ -604,6 +632,32 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
               <ul className="criar__avisos">
                 {roteiro.avisos.map((a) => <li key={a}>{a}</li>)}
               </ul>
+            )}
+
+            {onAgendar && !noPlanner && !pecaInicial && agendado !== 'depois' && (
+              <div className="criar__quando">
+                {agendado ? (
+                  <p className="criar__quando-titulo">No planner: {quandoPorExtenso(agendado)}. A gente avisa na hora.</p>
+                ) : (
+                  <>
+                    <p className="criar__quando-titulo">Quando vai postar?</p>
+                    <p className="criar__quando-texto">A peça entra no planner e você recebe o lembrete na hora.</p>
+                    <div className="fichas">
+                      {sugestoesDeQuando().map(([rotulo, data]) => (
+                        <button key={rotulo} type="button" className="ficha" onClick={() => marcarQuando(data)}>{rotulo}</button>
+                      ))}
+                      <button type="button" className="ficha" aria-pressed={escolhendoQuando} onClick={() => setEscolhendoQuando((v) => !v)}>Escolher</button>
+                      <button type="button" className="ficha ficha--apagada" onClick={() => setAgendado('depois')}>Depois</button>
+                    </div>
+                    {escolhendoQuando && (
+                      <div className="criar__quando-escolher">
+                        <input type="datetime-local" aria-label="Dia e hora" value={quandoEscolhido} onChange={(e) => setQuandoEscolhido(e.target.value)} />
+                        <button type="button" className="botao botao--destaque" disabled={!quandoEscolhido} onClick={() => marcarQuando(new Date(quandoEscolhido))}>Marcar</button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
             )}
 
             <div className="criar__legenda">

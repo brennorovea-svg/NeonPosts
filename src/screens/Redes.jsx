@@ -8,7 +8,7 @@ export default function Redes({ avisos, onAtivarAvisos }) {
     <section className="redes">
       <h1 className="redes__titulo">Suas redes</h1>
       <p className="redes__texto">
-        Hoje o Neonposts planeja e prepara a peça; quem publica é você. Na hora marcada, a gente avisa, abre o compartilhar
+        Hoje o Neonposts planeja e prepara o post; quem publica é você. Na hora marcada, a gente avisa, abre o compartilhar
         do aparelho e já deixa a legenda copiada. Postar direto daqui, sem passar pelo celular, vem numa próxima versão.
       </p>
       <ul className="redes__lista">

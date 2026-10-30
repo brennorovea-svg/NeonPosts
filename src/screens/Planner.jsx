@@ -159,7 +159,7 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, onAti
       // Só vira "Postada" quando a pessoa confirma: o compartilhar abrir não quer dizer que postou (Brenno, 30/10).
       setConfirmando(item.id)
     } catch {
-      setErro('Não deu para abrir a peça agora. Tente de novo.')
+      setErro('Não deu para abrir o post agora. Tente de novo.')
     } finally {
       setOcupado(null)
     }
@@ -196,7 +196,7 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, onAti
             <button type="button" className="planner__visao" aria-pressed={visao === 'semana'} onClick={() => setVisao('semana')}>Semana</button>
           </div>
         )}
-        <button type="button" className="botao botao--destaque planner__planejar" onClick={() => abrirDia(dia || chaveDoDia(hoje), true)}>Planejar peça</button>
+        <button type="button" className="botao botao--destaque planner__planejar" onClick={() => abrirDia(dia || chaveDoDia(hoje), true)}>Planejar post</button>
       </div>
     </header>
   )
@@ -241,7 +241,7 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, onAti
           </button>
         ))}
       </div>
-      <p className="planner__dica">Arraste uma peça para outro dia para mudar a data. O ponto é a rede; o quadrado é post, o retângulo alto é story.</p>
+      <p className="planner__dica">Arraste um post para outro dia para mudar a data. O ponto é a rede; o quadrado é post, o retângulo alto é story.</p>
     </div>
   )
 
@@ -278,9 +278,9 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, onAti
         <button type="button" className="botao botao--fantasma planner__voltar" onClick={() => { setDia(null); setPlanejando(false) }}>Voltar</button>
         <div>
           <h2 className="planner__painel-titulo">{comMaiuscula(porExtenso(juntarDiaEHora(dia, '12:00'), { weekday: 'long', day: 'numeric', month: 'long' }))}</h2>
-          <p className="planner__painel-sub">{doDiaAberto.length === 0 ? 'Nada planejado ainda.' : `${doDiaAberto.length} ${doDiaAberto.length === 1 ? 'peça planejada' : 'peças planejadas'}.`}</p>
+          <p className="planner__painel-sub">{doDiaAberto.length === 0 ? 'Nada planejado ainda.' : `${doDiaAberto.length} ${doDiaAberto.length === 1 ? 'post planejado' : 'posts planejados'}.`}</p>
         </div>
-        {!planejando && <button type="button" className="botao botao--destaque planner__nova" onClick={() => setPlanejando(true)}>Planejar peça</button>}
+        {!planejando && <button type="button" className="botao botao--destaque planner__nova" onClick={() => setPlanejando(true)}>Planejar post</button>}
       </header>
 
       {planejando && (
@@ -339,7 +339,7 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, onAti
                 {item.postado_em && <span className="planner__tag planner__tag--ok">Postada</span>}
               </div>
               <h3 className="planner__cartao-titulo">{item.titulo}</h3>
-              {peca ? <p className="planner__cartao-texto">{legendaDe(peca).split('\n')[0]}</p> : <p className="planner__cartao-texto">A peça ainda não foi criada. Crie quando quiser; ela já entra neste dia.</p>}
+              {peca ? <p className="planner__cartao-texto">{legendaDe(peca).split('\n')[0]}</p> : <p className="planner__cartao-texto">O post ainda não foi criado. Crie quando quiser; ele já entra neste dia.</p>}
               {!item.postado_em && (
                 <div className="planner__cartao-lembrete">
                   <label htmlFor={`lembrete-${item.id}`}>Avisar</label>
@@ -360,14 +360,13 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, onAti
                 </div>
               )}
               <div className="planner__cartao-acoes">
-                {item.postado_em && <button type="button" className="botao botao--fantasma" onClick={() => tentar(() => mudarAgenda(item.id, { postado_em: null }))}>Não postei</button>}
                 {peca ? (
                   <>
                     {!item.postado_em && <button type="button" className="botao botao--destaque" disabled={ocupado === item.id} onClick={() => postar(item)}>{ocupado === item.id ? 'Abrindo...' : 'Postar agora'}</button>}
-                    <button type="button" className="botao botao--fantasma" onClick={() => onAbrirPeca(peca, quando)}>Abrir a peça</button>
+                    <button type="button" className="botao botao--fantasma" onClick={() => onAbrirPeca(peca, quando)}>Abrir o post</button>
                   </>
                 ) : (
-                  <button type="button" className="botao botao--destaque" onClick={() => onCriar({ agendaId: item.id, titulo: item.titulo, formato: item.formato, quando })}>Criar a peça</button>
+                  <button type="button" className="botao botao--destaque" onClick={() => onCriar({ agendaId: item.id, titulo: item.titulo, formato: item.formato, quando })}>Criar o post</button>
                 )}
                 <button type="button" className="botao botao--fantasma" aria-expanded={editando?.id === item.id} onClick={() => setEditando(editando?.id === item.id ? null : { id: item.id, titulo: item.titulo, rede: item.rede, formato: item.formato, dia: chaveDoDia(quando), hora: horaDe(quando) })}>Editar</button>
                 <button type="button" className="botao botao--fantasma" onClick={() => tentar(() => tirarDaAgenda(item.id))}>Tirar</button>

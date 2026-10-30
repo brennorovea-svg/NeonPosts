@@ -35,7 +35,7 @@ const precoDo = (plano: Plano) => ({
   currency: 'brl',
   unit_amount: PLANOS[plano].centavos,
   recurring: { interval: 'month' as const },
-  product_data: { name: `Neonposts ${PLANOS[plano].nome} · ${PLANOS[plano].pecas} peças por mês` },
+  product_data: { name: `Neonposts ${PLANOS[plano].nome} · ${PLANOS[plano].pecas} posts por mês` },
 })
 
 // Desfaz um cancelamento marcado, venha ele do portal (cancel_at) ou do jeito antigo (cancel_at_period_end).

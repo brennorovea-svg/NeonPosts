@@ -54,7 +54,7 @@ function PecaDeTeste({ peca, perfil }) {
     })
     return () => { vivo = false }
   }, [peca])
-  return <canvas ref={canvas} className={`calibrar__arte calibrar__arte--${peca.formato}`} aria-label={`Peça de teste: ${peca.roteiro.titulo}`} />
+  return <canvas ref={canvas} className={`calibrar__arte calibrar__arte--${peca.formato}`} aria-label={`Post de teste: ${peca.roteiro.titulo}`} />
 }
 
 export default function Entrevista({ negocioId, perfil, revisar = false, onSair }) {
@@ -144,7 +144,7 @@ export default function Entrevista({ negocioId, perfil, revisar = false, onSair 
     return (
       <main className="entrevista entrevista--montando" aria-busy="true">
         <Obturador abertura={0.6} tamanho={72} />
-        <h1 className="perfil__titulo">{etapa === 'montando' ? 'Montando o guia da sua marca...' : 'Criando 3 peças de teste...'}</h1>
+        <h1 className="perfil__titulo">{etapa === 'montando' ? 'Montando o guia da sua marca...' : 'Criando 3 posts de teste...'}</h1>
         <p className="campo__ajuda">
           {etapa === 'montando'
             ? 'A IA está transformando as suas respostas em regras curtas. Leva uns segundos.'
@@ -166,7 +166,7 @@ export default function Entrevista({ negocioId, perfil, revisar = false, onSair 
           <p className="mono perfil__num">Guia da marca · teste</p>
           <h1 className="perfil__titulo">Isso soa como a sua marca?</h1>
           <p className="entrevista__intro">
-            A IA criou 3 peças seguindo o guia. Se alguma não soar como você, toque em "Isso não é a minha marca" e conte o porquê. Cada correção vira uma regra nova.
+            A IA criou 3 posts seguindo o guia. Se alguma não soar como você, toque em "Isso não é a minha marca" e conte o porquê. Cada correção vira uma regra nova.
           </p>
           <ol className="calibrar__lista">
             {teste.map((p, i) => (
@@ -188,7 +188,7 @@ export default function Entrevista({ negocioId, perfil, revisar = false, onSair 
             <button type="button" className="botao botao--destaque" onClick={() => onSair(atual)}>
               {conferidas === teste.length ? 'Pronto, é a minha marca' : 'Concluir'}
             </button>
-            <button type="button" className="perfil__depois" onClick={() => testar()}>Gerar outras 3 peças</button>
+            <button type="button" className="perfil__depois" onClick={() => testar()}>Gerar outros 3 posts</button>
           </div>
         </main>
       </div>
@@ -248,7 +248,7 @@ export default function Entrevista({ negocioId, perfil, revisar = false, onSair 
           {erro && <p className="campo__erro" role="alert">{erro}</p>}
           <div className="perfil__acoes">
             <button type="button" className="botao botao--destaque" onClick={() => salvar(true)} disabled={salvando || !regras.some((r) => r.trim())}>
-              {salvando ? 'Salvando...' : 'Salvar e testar com 3 peças'}
+              {salvando ? 'Salvando...' : 'Salvar e testar com 3 posts'}
             </button>
             <button type="button" className="botao botao--fantasma" onClick={() => salvar(false)} disabled={salvando || !regras.some((r) => r.trim())}>Salvar sem testar</button>
             <button type="button" className="perfil__depois" onClick={() => { setEtapa(0); rolarParaCima() }}>Refazer a entrevista</button>

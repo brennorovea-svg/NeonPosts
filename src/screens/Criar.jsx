@@ -467,7 +467,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
           {antes.length > 0 && (
             <div className="criar__faltando">
               <p className="criar__faltando-titulo">Esse post pede {listaDeNomes(antes)}. Me conta agora?</p>
-              <p className="criar__faltando-texto">A IA não inventa esse dado. Em branco, ela deixa um marcador para você preencher na peça pronta.</p>
+              <p className="criar__faltando-texto">A IA não inventa esse dado. Em branco, ela deixa um marcador para você preencher no post pronto.</p>
               {antes.map((m) => (
                 <div className="campo" key={m}>
                   <label htmlFor={`antes-${m}`}>{MARCADORES[m].pergunta}</label>
@@ -503,7 +503,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
               <div id="mais-opcoes" className="criar__mais-corpo">
               <div className="campo">
                 <span className="campo__rotulo">Fotos (opcional)</span>
-                <p className="campo__ajuda">Até 4 fotos do produto, do serviço ou do dia a dia. A IA olha cada uma e escolhe qual abre a peça{video ? '; no vídeo em cenas, entram todas' : ''}.</p>
+                <p className="campo__ajuda">Até 4 fotos do produto, do serviço ou do dia a dia. A IA olha cada uma e escolhe qual abre o post{video ? '; no vídeo em cenas, entram todas' : ''}.</p>
                 <Imagens negocioId={negocioId} valor={fotos} onChange={setFotos} maximo={4} tipo="peca-foto" texto="Adicionar foto" previa />
               </div>
 
@@ -587,7 +587,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
             )}
 
             <div className="criar__texto">
-              <span className="campo__rotulo">Texto da peça</span>
+              <span className="campo__rotulo">Texto do post</span>
               <p className="campo__ajuda">Mexa à vontade. A arte muda enquanto você digita.</p>
               <div className="campo">
                 <label htmlFor="texto-titulo">Título</label>
@@ -609,11 +609,13 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
 
             <div className="campo">
               <span className="campo__rotulo">Modelo</span>
-              <div className="fichas">
-                {Object.entries(NOMES_DOS_MODELOS).filter(([valor]) => video || !SO_NO_VIDEO.includes(valor)).map(([valor, rotulo]) => (
-                  <button key={valor} type="button" className="ficha" aria-pressed={peca.modelo === valor} onClick={() => trocar('modelo', valor)}>{rotulo}</button>
-                ))}
-              </div>
+              <p className="campo__ajuda">Toque num para ver o seu texto nele. Os com movimento viram vídeo.</p>
+              <Layouts
+                sugeridos={sugerirLayouts(tipoDoPedido(null, versoes[indice]?.pedido), imagens.fotos.length > 0, video || peca.formato === 'story')}
+                escolhido={peca.modelo} onEscolher={(m) => { trocar('modelo', m); if (SO_NO_VIDEO.includes(m)) setVideo(true) }}
+                tipo={tipoDoPedido(null, versoes[indice]?.pedido)} perfil={perfil} formato={peca.formato} video={video || peca.formato === 'story'}
+                roteiro={roteiro} logo={imagens.logo} foto={imagens.fotos[0] || null} fotoDaMarca={miniaturas.fotoDaMarca}
+              />
             </div>
             <div className="campo">
               <span className="campo__rotulo">Formato</span>
@@ -656,7 +658,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
                 ) : (
                   <>
                     <p className="criar__quando-titulo">Quando vai postar?</p>
-                    <p className="criar__quando-texto">A peça entra no planner e você recebe o lembrete na hora.</p>
+                    <p className="criar__quando-texto">O post entra no planner e você recebe o lembrete na hora.</p>
                     <div className="fichas">
                       {sugestoesDeQuando().map(([rotulo, data]) => (
                         <button key={rotulo} type="button" className="ficha" onClick={() => marcarQuando(data)}>{rotulo}</button>
@@ -720,7 +722,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
                 </button>
                 <button type="button" className="botao botao--fantasma" onClick={() => { setPeca(null); setPedido(''); setTipo(null); setFotos([]); setLayout('ia'); setAvisoVideo(''); setAvisoPost(''); setDadosFaltando({}); setEstado('pedido') }}>Criar outro</button>
               </div>
-              <p className="criar__nota">Gerar de novo não conta como peça nova.</p>
+              <p className="criar__nota">Gerar de novo não conta como post novo.</p>
               <NaoEMinhaMarca
                 key={`${peca.id}-${peca.refeitas}-${indice}`}
                 roteiro={roteiro} regras={perfil.voz.guia?.regras || []} onSalvar={juntarAoGuia}
@@ -731,7 +733,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
                 )}
               />
               <DeuProblema
-                contexto={{ Negócio: nome, Pedido: versoes[indice]?.pedido, Formato: video && peca.formato === 'story' ? 'vídeo' : peca.formato, Modelo: NOMES_DOS_MODELOS[peca.modelo] || peca.modelo, Peça: peca.id, Erro: erro }}
+                contexto={{ Negócio: nome, Pedido: versoes[indice]?.pedido, Formato: video && peca.formato === 'story' ? 'vídeo' : peca.formato, Modelo: NOMES_DOS_MODELOS[peca.modelo] || peca.modelo, Post: peca.id, Erro: erro }}
                 imagem={() => paraArquivo(canvas.current, 'deu-problema.png')}
               />
             </div>

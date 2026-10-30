@@ -76,7 +76,7 @@ export default function Area({ sessao, teste = false }) {
       const { data } = await supabase.from('negocios').select(COLUNAS).maybeSingle()
       if (data?.plano === pagou) {
         setNegocio(data)
-        setAviso(`Pronto, você está no plano ${PLANOS[pagou].nome}: ${data.limite_pecas} peças por mês.`)
+        setAviso(`Pronto, você está no plano ${PLANOS[pagou].nome}: ${data.limite_pecas} posts por mês.`)
         clearInterval(id)
       } else if (tentativas >= 15) {
         setAviso('O pagamento foi feito, mas o plano ainda não apareceu. Atualize a página em um minuto.')
@@ -155,8 +155,8 @@ export default function Area({ sessao, teste = false }) {
         onTrocou={(plano) => {
           setNegocio((n) => ({ ...n, plano, limite_pecas: PLANOS[plano].pecas, cancela_no_fim: false }))
           setAviso(negocio?.cancela_no_fim
-            ? `Pronto, sua assinatura voltou no plano ${PLANOS[plano].nome}: ${PLANOS[plano].pecas} peças por mês.`
-            : `Pronto, você está no plano ${PLANOS[plano].nome}: ${PLANOS[plano].pecas} peças por mês.`)
+            ? `Pronto, sua assinatura voltou no plano ${PLANOS[plano].nome}: ${PLANOS[plano].pecas} posts por mês.`
+            : `Pronto, você está no plano ${PLANOS[plano].nome}: ${PLANOS[plano].pecas} posts por mês.`)
           setVendoPlanos(false)
           window.scrollTo({ top: 0 })
         }}
@@ -251,7 +251,7 @@ export default function Area({ sessao, teste = false }) {
               <span className="area__barra"><span style={{ transform: `scaleX(${total / 4})` }} /></span>
               <span className="mono area__progresso-num">{total} de 4</span>
             </div>
-            <p className="area__texto">Você já pode criar. Cada parte que completar deixa as peças mais com a sua cara.</p>
+            <p className="area__texto">Você já pode criar. Cada parte que completar deixa os posts mais com a sua cara.</p>
           </>
         ) : (
           <>
@@ -286,7 +286,7 @@ export default function Area({ sessao, teste = false }) {
       {podeCriar ? (
         usadas >= limite ? (
           <div className="area__limite">
-            <p>Você usou as {limite} peças deste mês. Suba de plano para continuar criando agora, ou espere o contador zerar no dia 1.</p>
+            <p>Você usou os {limite} posts deste mês. Suba de plano para continuar criando agora, ou espere o contador zerar no dia 1.</p>
             <button type="button" className="botao botao--destaque" onClick={() => setVendoPlanos(true)}>Ver planos</button>
           </div>
         ) : (
@@ -308,9 +308,9 @@ export default function Area({ sessao, teste = false }) {
 
   const minhasPecas = (
     <section className="area__historico" aria-labelledby="historico">
-      <h2 id="historico" className="area__subtitulo">Suas peças</h2>
+      <h2 id="historico" className="area__subtitulo">Seus posts</h2>
       {pecas.length === 0 ? (
-        <p className="area__texto">Nenhuma peça ainda. A primeira sai em segundos.</p>
+        <p className="area__texto">Nenhum post ainda. O primeiro sai em segundos.</p>
       ) : (
         <div className="area__grade-pecas">
           {pecas.map((p) => <Miniatura key={p.id} peca={p} onAbrir={() => abrirPeca(p)} />)}
@@ -327,7 +327,7 @@ export default function Area({ sessao, teste = false }) {
         <header className="area__topo">
           <p className="marca area__marca">Neon<span>posts</span></p>
           <div className="area__direita">
-            <button type="button" className="mono area__contador" title="Peças usadas neste mês. Toque para ver os planos." onClick={() => setVendoPlanos(true)}>{usadas}/{limite} peças</button>
+            <button type="button" className="mono area__contador" title="Posts usados neste mês. Toque para ver os planos." onClick={() => setVendoPlanos(true)}>{usadas}/{limite} posts</button>
             <button type="button" className="botao botao--fantasma" onClick={() => supabase?.auth.signOut()}>Sair</button>
           </div>
         </header>
@@ -365,8 +365,8 @@ export default function Area({ sessao, teste = false }) {
           {negocio?.cancela_no_fim && negocio.renova_em && (
             <div className="area__aviso area__aviso--fim" role="status">
               <p>
-                Sua assinatura do {PLANOS[negocio.plano]?.nome} foi cancelada. Você continua com {negocio.limite_pecas} peças por mês
-                até {new Date(negocio.renova_em).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' })}. Depois, a conta volta para o Grátis ({PLANOS.gratis.pecas} peças).
+                Sua assinatura do {PLANOS[negocio.plano]?.nome} foi cancelada. Você continua com {negocio.limite_pecas} posts por mês
+                até {new Date(negocio.renova_em).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' })}. Depois, a conta volta para o Grátis ({PLANOS.gratis.pecas} posts).
               </p>
               <button type="button" className="botao botao--fantasma" onClick={() => setVendoPlanos(true)}>Ver planos</button>
             </div>

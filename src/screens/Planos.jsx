@@ -46,9 +46,9 @@ export default function Planos({ negocio, usadas, onSair, onTrocou }) {
 
       <main className="planos__conteudo">
         <p className="mono planos__sobre">Seu plano</p>
-        <h1 className="planos__titulo">{assinante ? `Você está no ${PLANOS[atual].nome}.` : 'Escolha quantas peças por mês.'}</h1>
+        <h1 className="planos__titulo">{assinante ? `Você está no ${PLANOS[atual].nome}.` : 'Escolha quantos posts por mês.'}</h1>
         <p className="planos__texto">
-          Você usou {usadas} de {negocio?.limite_pecas ?? PLANOS[atual].pecas} peças este mês. O contador zera todo dia 1.
+          Você usou {usadas} de {negocio?.limite_pecas ?? PLANOS[atual].pecas} posts este mês. O contador zera todo dia 1.
           {assinante && negocio?.renova_em && (negocio.cancela_no_fim
             ? ` A assinatura termina em ${data(negocio.renova_em)} e volta para o Grátis.`
             : ` Renova em ${data(negocio.renova_em)}.`)}
@@ -67,7 +67,7 @@ export default function Planos({ negocio, usadas, onSair, onTrocou }) {
                   {eAtual && <span className="mono planos__selo">Seu plano</span>}
                 </div>
                 <p className="planos__preco"><span>{p.preco}</span> por mês</p>
-                <p className="planos__pecas mono">{p.pecas} peças por mês</p>
+                <p className="planos__pecas mono">{p.pecas} posts por mês</p>
                 {p.resumo && <p className="planos__resumo">{p.resumo}</p>}
                 {PAGOS.includes(chave) && (!eAtual || cancelada) && (
                   <button

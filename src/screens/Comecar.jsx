@@ -117,7 +117,7 @@ export default function Comecar({ negocioId, perfil, onSalvo, onDepois, onPeca }
     return (
       <main className="comecar comecar--gerando" aria-live="polite">
         <Obturador tamanho={140} abertura={abertura} />
-        <p className="comecar__gerando">Criando a primeira peça com a cara da {salvo.identidade.nome}...</p>
+        <p className="comecar__gerando">Criando o primeiro post com a cara da {salvo.identidade.nome}...</p>
         <p className="mono comecar__sub">Leva uns segundos</p>
       </main>
     )
@@ -154,7 +154,7 @@ export default function Comecar({ negocioId, perfil, onSalvo, onDepois, onPeca }
         <p className="marca comecar__marca">Neon<span>posts</span></p>
         <span className="mono comecar__passo">passo 1 de 1</span>
       </header>
-      <h1 className="comecar__titulo">Três coisas e a sua primeira peça sai agora.</h1>
+      <h1 className="comecar__titulo">Três coisas e o seu primeiro post sai agora.</h1>
       <p className="comecar__texto">O resto da marca a gente completa depois, com calma. Dá para mudar tudo.</p>
 
       <div className="campo">
@@ -188,8 +188,8 @@ export default function Comecar({ negocioId, perfil, onSalvo, onDepois, onPeca }
 
       {erro && <p className="campo__erro" role="alert">{erro}</p>}
       <div className="comecar__acoes">
-        <button type="button" className="botao botao--primario" disabled={!pronto || salvando} onClick={verVitrine}>{salvando ? 'Guardando...' : 'Ver minha primeira peça'}</button>
-        <p className="comecar__nota">Leva uns 10 segundos. Não gasta peça do seu plano.</p>
+        <button type="button" className="botao botao--primario" disabled={!pronto || salvando} onClick={verVitrine}>{salvando ? 'Guardando...' : 'Ver meu primeiro post'}</button>
+        <p className="comecar__nota">Leva uns 10 segundos. Não gasta post do seu plano.</p>
         <button type="button" className="perfil__depois" onClick={onDepois}>Agora não</button>
       </div>
     </main>

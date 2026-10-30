@@ -5,6 +5,7 @@ import './PainelMarca.css'
 
 // A marca do jeito que fica guardada, em cartões. Cada cartão abre a edição da parte dele.
 const MOSTRAR_ITENS = 8
+const MOSTRAR_REGRAS = 6
 
 function Imagem({ caminho, className, alt = '' }) {
   const [src, setSrc] = useState(null)
@@ -43,11 +44,12 @@ const reais = (preco) => {
   return Number.isFinite(n) && n > 0 ? n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: n % 1 ? 2 : 0 }) : preco
 }
 
-export default function PainelMarca({ perfil, versao, dicas = [], onEditar }) {
+export default function PainelMarca({ perfil, versao, dicas = [], onEditar, onGuia }) {
   const { identidade: i, voz: v, padrao: p, dados: d } = perfil
   // Dicas por cartão; as de itens contam no cartão de itens, as outras de dados no de dados fixos.
   const contar = (parte, itensDoCartao) => dicas.filter((x) => x.parte === parte && (parte !== 3 || (x.campo === 'itens') === itensDoCartao)).length
   const itens = d.itens.filter((x) => x.nome)
+  const regras = v.guia?.regras || []
   return (
     <section className="painel" aria-labelledby="painel-titulo">
       <h2 id="painel-titulo" className="painel__titulo">Sua marca</h2>
@@ -105,6 +107,17 @@ export default function PainelMarca({ perfil, versao, dicas = [], onEditar }) {
             {itens.length > MOSTRAR_ITENS && <span className="painel__mais">e mais {itens.length - MOSTRAR_ITENS}</span>}
           </Cartao>
         )}
+
+        <Cartao numero="05" titulo="Guia da marca" onEditar={onGuia} largo>
+          {regras.length ? (
+            <ol className="painel__regras">
+              {regras.slice(0, MOSTRAR_REGRAS).map((r, k) => <li key={k}>{r}</li>)}
+            </ol>
+          ) : (
+            <span className="painel__falta">Ainda sem guia. Faça a entrevista da marca: 12 perguntas e a IA passa a seguir as suas regras em todo post.</span>
+          )}
+          {regras.length > MOSTRAR_REGRAS && <span className="painel__mais">e mais {regras.length - MOSTRAR_REGRAS}</span>}
+        </Cartao>
       </div>
     </section>
   )

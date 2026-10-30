@@ -1,0 +1,16 @@
+.entrevista__intro { margin: 0 0 8px; font-size: 15px; line-height: 1.55; color: var(--texto-2); }
+.entrevista--montando {
+  min-height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 16px; padding: 48px 24px; text-align: center;
+  animation: aparecer 400ms var(--ease) both;
+}
+.entrevista--montando .perfil__titulo { max-width: 420px; }
+.entrevista__regras { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.entrevista__regras.campo { gap: 10px; }
+.entrevista__regra { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: start; }
+.entrevista__num { padding-top: 14px; font-size: 12px; color: var(--violeta); }
+/* Cresce com o texto onde o navegador deixa; nos outros, 3 linhas. */
+.entrevista__regra textarea { min-height: 0; resize: vertical; field-sizing: content; }
+.entrevista__regra .item__tirar { margin-top: 6px; }
+.entrevista__mais { align-self: flex-start; }
+@media (prefers-reduced-motion: reduce) { .entrevista--montando { animation: none; } }

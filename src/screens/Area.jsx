@@ -5,6 +5,7 @@ import { listarPecas, pecasDoMes } from '../lib/pecas.js'
 import PerfilMarca, { PARTES } from './PerfilMarca.jsx'
 import ApresentacaoMarca from './ApresentacaoMarca.jsx'
 import Criar from './Criar.jsx'
+import Entrevista from './Entrevista.jsx'
 import Planos from './Planos.jsx'
 import PainelMarca from '../components/PainelMarca.jsx'
 import DicasMarca from '../components/DicasMarca.jsx'
@@ -35,6 +36,7 @@ export default function Area({ sessao, teste = false }) {
   const [perfil, setPerfil] = useState(null)
   const [versao, setVersao] = useState(0)
   const [editando, setEditando] = useState(null) // índice da parte aberta
+  const [entrevista, setEntrevista] = useState(null) // null, 'nova' ou 'revisar'
   const [dica, setDica] = useState(null) // dica que abriu a edição: o campo dela já vem em foco
   const [erro, setErro] = useState('')
   const [apresentou, setApresentou] = useState(false)
@@ -113,6 +115,21 @@ export default function Area({ sessao, teste = false }) {
         perfil={perfil}
         pecaInicial={criando === 'nova' ? null : criando}
         onSair={(mudou) => { if (mudou) recarregarPecas(); setCriando(null); window.scrollTo({ top: 0 }) }}
+      />
+    )
+  }
+
+  if (entrevista && perfil) {
+    return (
+      <Entrevista
+        negocioId={negocio.id}
+        perfil={perfil}
+        revisar={entrevista === 'revisar'}
+        onSair={(salvo) => {
+          if (salvo) { setPerfil(salvo); recarregar() }
+          setEntrevista(null)
+          window.scrollTo({ top: 0 })
+        }}
       />
     )
   }
@@ -221,8 +238,8 @@ export default function Area({ sessao, teste = false }) {
             {total === 0 ? 'Começar' : `Continuar: ${PARTES[proxima].titulo}`}
           </button>
         )}
-        {total === 4 && <DicasMarca dicas={dicas} forca={forca} onAbrir={(d) => { setDica(d); setEditando(d.parte) }} />}
-        {total === 4 && <PainelMarca perfil={perfil} versao={versao} dicas={dicas} onEditar={setEditando} />}
+        {total === 4 && <DicasMarca dicas={dicas} forca={forca} onAbrir={(d) => { if (d.id === 'entrevista') return setEntrevista('nova'); setDica(d); setEditando(d.parte) }} />}
+        {total === 4 && <PainelMarca perfil={perfil} versao={versao} dicas={dicas} onEditar={setEditando} onGuia={() => setEntrevista(perfil.voz.guia?.regras?.length ? 'revisar' : 'nova')} />}
         {pecas.length > 0 && (
           <section className="area__historico" aria-labelledby="historico">
             <h2 id="historico" className="area__subtitulo">Suas peças</h2>

@@ -53,6 +53,9 @@ export const ESQUEMA = {
 
 export const INSTRUCOES = `Você escreve posts e stories de Instagram para pequenos negócios brasileiros, sempre na voz da marca descrita pelo dono. Recebe um pedido curto e devolve o roteiro de uma peça.
 
+Guia da marca
+- Se a marca tiver "voz.guia.regras", siga cada regra em todos os campos da peça. O guia vale acima das outras orientações de estilo daqui, mas nunca libera inventar dado.
+
 Dados que não podem ser inventados
 - Preço, endereço, data, horário e telefone só podem vir dos dados fixos da marca ou do próprio pedido.
 - Se a peça precisar de um desses e ele não existir, escreva exatamente o marcador: [SEU PREÇO], [ENDEREÇO], [DATA], [HORÁRIO] ou [TELEFONE]. O dono troca antes de postar.
@@ -154,10 +157,12 @@ type Perfil = {
 
 // `fotos`: quantas o dono mandou; `vistas`: quantas a IA recebe como imagem (as que têm cópia pequena).
 export function montarMensagem(perfil: Perfil, pedido: string, formato: string, anterior?: Record<string, unknown> | null, ajuste?: string, fotos = 0, layout = '', video = false, vistas = 0) {
+  // Do guia da marca vão só as regras; as respostas da entrevista ficam no perfil.
+  const guia = (perfil.voz as { guia?: { regras?: string[] } }).guia
   const marca = {
     nome: perfil.identidade.nome,
     ramo: perfil.identidade.ramo,
-    voz: perfil.voz,
+    voz: { ...perfil.voz, guia: guia?.regras?.length ? { regras: guia.regras } : undefined },
     padrao: { tipos: perfil.padrao.tipos, chamada: perfil.padrao.chamada, hashtags_fixas: perfil.padrao.hashtags },
     dados_fixos: perfil.dados,
   }

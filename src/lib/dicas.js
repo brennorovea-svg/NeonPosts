@@ -7,6 +7,12 @@ const lista = (t) => String(t ?? '').split(',').map((p) => p.trim()).filter(Bool
 
 const REGRAS = [
   {
+    id: 'entrevista', parte: 'entrevista', campo: null, peso: 3,
+    falta: (m) => !m.voz.guia?.regras?.length,
+    titulo: 'Faça a entrevista da marca',
+    porque: '12 perguntas rápidas sobre como a marca fala, o que nunca diz e quando mostra preço. Vira um guia que a IA segue em todo post.',
+  },
+  {
     id: 'exemplos', parte: 1, campo: 'exemplos', peso: 3,
     falta: (m) => !temTexto(m.voz.exemplos),
     titulo: 'Cole 1 a 3 legendas suas',

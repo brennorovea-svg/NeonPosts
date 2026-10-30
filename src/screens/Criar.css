@@ -77,13 +77,15 @@
   background: rgba(255, 216, 77, .1); border: 1px solid rgba(255, 216, 77, .35);
   font-size: 14px; line-height: 1.5; color: #FFE69A;
 }
+.criar__texto { display: flex; flex-direction: column; gap: 12px; }
+.criar__texto .campo__ajuda { margin-top: -8px; }
 .criar__legenda {
+  display: flex; flex-direction: column; gap: 12px;
   padding: 16px; border-radius: var(--raio-cartao);
   background: var(--painel); border: 1px solid var(--borda);
-  font-size: 15px; line-height: 1.55; white-space: pre-line;
 }
-.criar__legenda p { margin: 0; }
-.criar__hashtags { margin-top: 10px !important; color: var(--lilas); }
+.criar__legenda textarea { font-size: 15px; line-height: 1.55; }
+.criar__legenda .criar__hashtags { color: var(--lilas); }
 .criar__acoes { display: flex; flex-direction: column; gap: 10px; }
 .criar__acoes-linha { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .criar__acoes-linha .botao { width: 100%; min-height: 48px; }

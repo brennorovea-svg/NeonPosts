@@ -87,3 +87,9 @@ export async function escolherVersao(pecaId, indice) {
   if (modoDeTeste()) return
   await supabase.from('pecas').update({ escolhida: indice }).eq('id', pecaId)
 }
+
+// O dono mexeu no texto da peça pronta: o roteiro (e as versões antigas) ficam como ele deixou.
+export async function salvarTexto(pecaId, { roteiro, versoes }) {
+  if (modoDeTeste()) return
+  await supabase.from('pecas').update({ roteiro, versoes }).eq('id', pecaId)
+}

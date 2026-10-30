@@ -8,7 +8,7 @@ import { sugerirLayouts, tipoDoPedido } from '../lib/sugerir.js'
 import { DURACAO, duracaoDe, gravar, tocar } from '../lib/video.js'
 import { listaDeNomes, MARCADORES, marcadoresDe, preencher } from '../lib/marcadores.js'
 import { enderecoDaImagem, salvarPerfil } from '../lib/perfil.js'
-import { acordarIA, escolherVersao, gerarPeca, guardarImagem } from '../lib/pecas.js'
+import { acordarIA, escolherVersao, gerarPeca, guardarImagem, salvarTexto } from '../lib/pecas.js'
 import { carregarImagem, desenhar, NOMES_DOS_MODELOS, paraArquivo, prepararFontes, SO_NO_VIDEO } from '../lib/desenhar.js'
 import './Criar.css'
 
@@ -278,6 +278,25 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
     return { formato: peca.formato, modelo: peca.modelo, roteiro, cores: perfil.identidade.cores, nome, fonte, logo: imagens.logo, fotos: imagens.fotos }
   }
 
+  // Texto editado pelo dono: a arte redesenha a cada tecla e o banco recebe um pouco depois.
+  const [mexeuNoTexto, setMexeuNoTexto] = useState(false)
+  const [hashtagsTexto, setHashtagsTexto] = useState(null) // o que a pessoa digitou, com espaços e tudo
+  useEffect(() => {
+    if (!peca || !mexeuNoTexto) return
+    const t = setTimeout(() => { salvarTexto(peca.id, { roteiro: peca.roteiro, versoes: peca.versoes || [] }).catch(() => {}) }, 800)
+    return () => clearTimeout(t)
+  }, [peca?.roteiro, peca?.versoes, mexeuNoTexto])
+  function editarTexto(campo, valor) {
+    setMexeuNoTexto(true)
+    setPeca((p) => {
+      const lista = [...(p.versoes || [])]
+      const i = Math.min(p.escolhida ?? lista.length, lista.length)
+      if (i === lista.length) return { ...p, roteiro: { ...p.roteiro, [campo]: valor } }
+      lista[i] = { ...lista[i], roteiro: { ...lista[i].roteiro, [campo]: valor } }
+      return { ...p, versoes: lista }
+    })
+  }
+
   async function criar(refazer) {
     setErro('')
     setEstado('gerando')
@@ -288,6 +307,8 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
         : { pedido: pedido.trim(), formato, video, fotos, modelo: layout === 'ia' ? undefined : layout })
       setAjustando(false)
       setAjuste('')
+      setMexeuNoTexto(false)
+      setHashtagsTexto(null)
       setPeca(r.peca)
       setRestantes(r.refeitasRestantes)
       setEstado('revelando')
@@ -357,6 +378,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
   const semDados = faltando.filter((m) => !(dadosFaltando[m] || '').trim())
   function escolher(i) {
     const valor = i === versoes.length - 1 ? null : i
+    setHashtagsTexto(null)
     trocar('escolhida', valor)
     escolherVersao(peca.id, valor).catch(() => {})
   }
@@ -497,6 +519,27 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
               </div>
             )}
 
+            <div className="criar__texto">
+              <span className="campo__rotulo">Texto da peça</span>
+              <p className="campo__ajuda">Mexa à vontade. A arte muda enquanto você digita.</p>
+              <div className="campo">
+                <label htmlFor="texto-titulo">Título</label>
+                <input id="texto-titulo" maxLength={80} value={roteiroDaIA.titulo || ''} onChange={(e) => editarTexto('titulo', e.target.value)} />
+              </div>
+              {'apoio' in roteiroDaIA && (
+                <div className="campo">
+                  <label htmlFor="texto-apoio">Apoio</label>
+                  <textarea id="texto-apoio" rows={2} maxLength={200} value={roteiroDaIA.apoio || ''} onChange={(e) => editarTexto('apoio', e.target.value)} />
+                </div>
+              )}
+              {'chamada' in roteiroDaIA && (
+                <div className="campo">
+                  <label htmlFor="texto-chamada">Chamada</label>
+                  <input id="texto-chamada" maxLength={60} value={roteiroDaIA.chamada || ''} onChange={(e) => editarTexto('chamada', e.target.value)} />
+                </div>
+              )}
+            </div>
+
             <div className="campo">
               <span className="campo__rotulo">Modelo</span>
               <div className="fichas">
@@ -540,8 +583,14 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
             )}
 
             <div className="criar__legenda">
-              <p>{roteiro.legenda}</p>
-              <p className="criar__hashtags">{roteiro.hashtags.join(' ')}</p>
+              <div className="campo">
+                <label htmlFor="texto-legenda">Legenda</label>
+                <textarea id="texto-legenda" rows={5} maxLength={2200} value={roteiroDaIA.legenda || ''} onChange={(e) => editarTexto('legenda', e.target.value)} />
+              </div>
+              <div className="campo">
+                <label htmlFor="texto-hashtags">Hashtags</label>
+                <input id="texto-hashtags" className="criar__hashtags" maxLength={300} value={hashtagsTexto ?? (roteiroDaIA.hashtags || []).join(' ')} onChange={(e) => { setHashtagsTexto(e.target.value); editarTexto('hashtags', e.target.value.split(/\s+/).filter(Boolean)) }} />
+              </div>
             </div>
 
             {erro && <p className="campo__erro" role="alert">{erro}</p>}

@@ -6,7 +6,7 @@ import Carrossel from './Carrossel.jsx'
 
 // Os layouts do grupo em miniatura (os 3 sugeridos na frente), desenhados com as cores e o logo da marca, mais a opção de
 // deixar a IA escolher. A escolha vai junto com o pedido e a IA escreve dentro dela.
-// Grupo (Brenno, 30/10): com foto ou da marca, parado ou animado. O selo no topo diz em qual a pessoa está.
+// Grupo (Brenno, 30/10): com foto ou da marca, parado ou animado. Uma frase no topo diz em qual a pessoa está.
 function Miniatura({ modelo, tipo, perfil, formato, logo, foto, fotoDaMarca, roteiro = null }) {
   const canvas = useRef(null)
   useEffect(() => {
@@ -30,9 +30,7 @@ export default function Layouts({ sugeridos, escolhido, onEscolher, tipo, perfil
   return (
     <div className="layouts" role="radiogroup" aria-label="Layout">
       <p className="layouts__grupo">
-        <span className={`mono layouts__chip layouts__chip--${animado ? 'animado' : 'parado'}`}>{animado ? 'Animado' : 'Parado'}</span>
-        <span className="mono layouts__chip">{foto ? 'Com a sua foto' : 'Da sua marca'}</span>
-        <span className="layouts__conta">{grupo.length} layouts</span>
+        Layouts {animado ? 'animados' : 'parados'} {foto ? 'com a sua foto' : 'com as cores e o logo da sua marca'} <span className="layouts__conta">· {grupo.length}</span>
       </p>
       {!roteiro && <button type="button" role="radio" aria-checked={escolhido === 'ia'} className="layouts__ia" onClick={() => onEscolher('ia')}>
         <span className="layouts__icone"><Obturador tamanho={36} abertura={0.55} /></span>

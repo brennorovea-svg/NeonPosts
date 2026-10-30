@@ -178,14 +178,8 @@
 .layouts__ia[aria-checked="true"] { border-color: var(--violeta); background: rgba(123, 92, 255, .12); }
 .layouts__carrossel .layouts__opcao { width: calc((100% - 20px) / 2.6); }
 .layouts__carrossel--story .layouts__opcao { width: calc((100% - 30px) / 3.4); }
-.layouts__grupo { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 10px; font-size: 13px; color: var(--texto-2); }
-.layouts__chip {
-  padding: 4px 9px; border-radius: 999px; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase;
-  color: var(--neve); border: 1px solid rgba(255, 255, 255, .18);
-}
-.layouts__chip--parado { background: rgba(255, 255, 255, .08); }
-.layouts__chip--animado { background: rgba(91, 63, 224, .92); border-color: transparent; }
-.layouts__conta { margin-left: 2px; }
+.layouts__grupo { margin: 0 0 10px; font-size: 14px; font-weight: 600; color: var(--neve); }
+.layouts__conta { font-weight: 400; color: var(--texto-2); }
 .layouts__selo {
   display: inline-block; margin-left: 6px; vertical-align: 1px; padding: 3px 7px; border-radius: 999px;
   font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: #FFFFFF; background: rgba(91, 63, 224, .92);

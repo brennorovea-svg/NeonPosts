@@ -111,6 +111,12 @@
   transition: transform var(--dur-controle) var(--ease);
 }
 .criar__exemplo:active { transform: scale(.98); }
+.criar__mais-exemplos {
+  align-self: flex-start; min-height: 40px; padding: 8px 2px; border: 0; background: transparent; cursor: pointer;
+  font: 600 14px var(--fonte); color: var(--lilas);
+  transition: opacity var(--dur-controle) var(--ease);
+}
+.criar__mais-exemplos:hover { opacity: .75; }
 
 /* Ajustar antes de gerar de novo */
 .criar__ajustar {
@@ -119,7 +125,7 @@
   animation: aparecer 300ms var(--ease) both;
 }
 .criar__ajustar .fichas { margin-top: 2px; }
-@media (prefers-reduced-motion: reduce) { .criar__exemplos, .criar__ajustar { animation: none; } .criar__exemplo { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .criar__exemplos, .criar__ajustar { animation: none; } .criar__exemplo, .criar__mais-exemplos { transition: none; } }
 
 /* Versões */
 .criar__versoes { display: flex; flex-direction: column; gap: 6px; }

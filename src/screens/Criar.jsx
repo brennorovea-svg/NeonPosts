@@ -74,6 +74,10 @@ const EXEMPLOS = [
   'Promoção do nosso serviço mais pedido só até sexta, para quem ainda não conhece a gente. Chamar no WhatsApp.',
   'Bastidores: mostrar a equipe preparando os pedidos de hoje, num tom leve e divertido.',
   'Aviso: no feriado vamos abrir das 10h às 16h. Lembrar que dá para pedir pelo WhatsApp.',
+  'Sorteio para comemorar 1.000 seguidores: seguir o perfil, curtir e marcar dois amigos. Resultado na sexta.',
+  'Post de boas-vindas para quem chegou agora no perfil: quem somos, o que fazemos e como falar com a gente.',
+  'Dia das Mães chegando: sugestões de presente e lembrar que a gente embrulha para presente sem custo.',
+  'Agradecer os clientes pelo mês incrível e contar uma meta que a gente bateu junto com eles.',
 ]
 const AJUSTES = ['Mais curto', 'Mais divertido', 'Outro título', 'Outro layout', 'Título maior', 'Fundo claro', 'Fundo escuro']
 
@@ -89,6 +93,8 @@ const TIPOS = {
     exemplos: [
       'Promoção do nosso serviço mais pedido só até sexta, com 20% de desconto. Chamar no WhatsApp.',
       'Combo da semana para quem ainda não conhece a gente, preço especial até domingo. Tom animado.',
+      'Promoção de aniversário da loja: 15% em tudo até domingo para quem mostrar este post no caixa.',
+      'Promoção de começo de semana: segunda e terça o atendimento sai mais barato. Chamar para agendar pelo WhatsApp.',
     ],
   },
   Novidade: {
@@ -97,6 +103,8 @@ const TIPOS = {
     exemplos: [
       'Conta a novidade: agora a gente atende também aos sábados, para quem não consegue vir durante a semana.',
       'Lançamos um produto novo no cardápio. Contar o que tem de especial e chamar para provar.',
+      'Conta a novidade: chegou a coleção nova. Mostrar as peças em destaque e chamar para conhecer de perto.',
+      'Conta a novidade: agora dá para agendar pelo link da bio, em um minuto, sem precisar ligar.',
     ],
   },
   Bastidores: {
@@ -105,6 +113,8 @@ const TIPOS = {
     exemplos: [
       'Mostra os bastidores da equipe preparando os pedidos de hoje, num tom leve e divertido.',
       'Bastidores do cuidado que a gente tem em cada detalhe antes de entregar. Tom caloroso.',
+      'Mostra os bastidores do nosso dia começando cedo, com a primeira fornada saindo do forno. Tom acolhedor.',
+      'Mostra os bastidores de como a gente limpa e esteriliza tudo antes de cada atendimento. Passar confiança.',
     ],
   },
   Dica: {
@@ -113,6 +123,8 @@ const TIPOS = {
     exemplos: [
       'Uma dica sobre como escolher o produto certo para o dia a dia, para quem está começando.',
       'Três erros comuns que nossos clientes cometiam antes de falar com a gente, e como evitar.',
+      'Uma dica sobre como guardar o bolo na geladeira sem ressecar, para quem levou para o fim de semana.',
+      'Uma dica sobre alongamento rápido para quem passa o dia sentado. Convidar para uma aula experimental.',
     ],
   },
   'Cardápio ou catálogo': {
@@ -121,6 +133,8 @@ const TIPOS = {
     exemplos: [
       'Post do cardápio com os três itens mais pedidos da semana, para quem vai pedir hoje à noite.',
       'Mostrar os serviços do nosso pacote básico, para quem quer começar gastando pouco.',
+      'Post do cardápio com os pratos do almoço desta semana, para quem trabalha aqui perto.',
+      'Mostrar os três pacotes de banho e tosa, do mais simples ao completo, para quem tem cachorro de pelo longo.',
     ],
   },
   Depoimento: {
@@ -129,6 +143,8 @@ const TIPOS = {
     exemplos: [
       'Post com o depoimento da Ana: "Atendimento rápido e resultado lindo, recomendo de olhos fechados." Ela fez o serviço completo.',
       'Depoimento de um cliente que voltou pela terceira vez. Agradecer e chamar quem ainda não conhece.',
+      'Post com o depoimento do Carlos: "Achei meu apartamento em duas semanas, atendimento nota dez." Agradecer a confiança.',
+      'Depoimento de uma aluna que completou um ano treinando com a gente. Celebrar a constância e chamar quem quer começar.',
     ],
   },
   'Aviso de horário': {
@@ -137,6 +153,8 @@ const TIPOS = {
     exemplos: [
       'Aviso: no feriado vamos abrir das 10h às 16h. Lembrar que dá para pedir pelo WhatsApp.',
       'Aviso: na próxima segunda vamos fechar para manutenção e voltamos na terça no horário normal.',
+      'Aviso: em dezembro vamos abrir também aos domingos, das 9h às 14h, para as compras de fim de ano.',
+      'Aviso: amanhã a gente abre mais tarde, às 11h, por causa de um treinamento da equipe.',
     ],
   },
   'Antes e depois': {
@@ -145,8 +163,22 @@ const TIPOS = {
     exemplos: [
       'Antes e depois de um cliente que chegou com o problema e saiu com tudo resolvido em uma semana.',
       'Antes e depois da reforma que a gente fez. Mostrar o capricho nos detalhes e chamar para orçamento.',
+      'Antes e depois de um sorriso que passou pelo clareamento. Destacar que foram só três sessões.',
+      'Antes e depois de um quintal esquecido que virou um cantinho de convivência. Chamar para orçamento sem compromisso.',
     ],
   },
+}
+// Mostra 3 exemplos por vez; a cada rodada vem outra ordem (sempre a mesma para a mesma rodada).
+function sortear(lista, rodada) {
+  if (rodada === 0) return lista
+  let semente = rodada * 9301 + lista.length
+  const aleatorio = () => ((semente = (semente * 49297 + 233280) % 233280) / 233280)
+  const copia = [...lista]
+  for (let i = copia.length - 1; i > 0; i--) {
+    const j = Math.floor(aleatorio() * (i + 1));
+    [copia[i], copia[j]] = [copia[j], copia[i]]
+  }
+  return copia
 }
 const GERAL = {
   dica: 'Um bom pedido diz <b>o que</b> é o post, <b>para quem</b>, o que a pessoa deve <b>fazer depois</b> e algum detalhe (preço, data, tom). Escolha um tipo acima ou toque num exemplo.',
@@ -175,6 +207,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
   const [flash, setFlash] = useState(false)
   const [imagens, setImagens] = useState({ logo: null, foto: null, pronto: false })
   const [layout, setLayout] = useState('ia') // 'ia' ou um dos modelos sugeridos
+  const [rodada, setRodada] = useState(0) // muda a cada "Ver outros exemplos"
   const [miniaturas, setMiniaturas] = useState({ logo: null, foto: null, fotoDaMarca: null })
   const canvas = useRef(null)
   const area = useRef(null)
@@ -302,6 +335,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
   }
   const comecos = perfil.padrao.tipos.map((t) => [t, TIPOS[t]?.comeco || `Post de ${t.toLowerCase()} sobre `])
   const guia = (tipo && TIPOS[tipo]) || GERAL
+  const exemplos = sortear(guia.exemplos, rodada).slice(0, 3)
   const semTexto = pedido.trim().length < 3 || (tipo && pedido.trim() === (TIPOS[tipo]?.comeco || '').trim())
 
   return (
@@ -329,11 +363,14 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
               </div>
             )}
             {semTexto && (
-              <div className="criar__exemplos" key={tipo || 'geral'}>
+              <div className="criar__exemplos" key={`${tipo || 'geral'}-${rodada}`}>
                 <p>{guia.dica.split(/<\/?b>/).map((parte, i) => (i % 2 ? <strong key={i}>{parte}</strong> : parte))}</p>
-                {guia.exemplos.map((e) => (
+                {exemplos.map((e) => (
                   <button key={e} type="button" className="criar__exemplo" onClick={() => { setPedido(e); area.current?.focus() }}>{e}</button>
                 ))}
+                {guia.exemplos.length > 3 && (
+                  <button type="button" className="criar__mais-exemplos" onClick={() => setRodada((r) => r + 1)}>Ver outros exemplos</button>
+                )}
               </div>
             )}
           </div>

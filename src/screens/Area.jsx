@@ -114,6 +114,7 @@ export default function Area({ sessao, teste = false }) {
         negocioId={negocio.id}
         perfil={perfil}
         pecaInicial={criando === 'nova' ? null : criando}
+        onPerfil={(novo) => { setPerfil(novo); recarregar() }}
         onSair={(mudou) => { if (mudou) recarregarPecas(); setCriando(null); window.scrollTo({ top: 0 }) }}
       />
     )

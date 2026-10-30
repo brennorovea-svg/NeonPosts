@@ -1,4 +1,5 @@
 // Transforma as respostas da entrevista da marca em regras curtas (o guia da marca).
+// Com acao "regra", transforma o "Isso não é a minha marca" de uma peça em 1 ou 2 regras novas.
 // O app mostra as regras para o dono conferir antes de salvar no perfil. Não conta no limite de peças.
 import Anthropic from 'npm:@anthropic-ai/sdk@0.132.1'
 import { createClient } from 'npm:@supabase/supabase-js@2.117.3'
@@ -39,6 +40,20 @@ Como escrever as regras
 - Resposta vazia ou "não sei" não vira regra.
 - Português do Brasil, sem emoji, sem jargão.`
 
+const INSTRUCOES_DA_REGRA = `Você cuida do guia de comunicação de um pequeno negócio brasileiro. A IA escreveu uma peça de Instagram para a marca e o dono disse que ela não soa como a marca. Você recebe o perfil, as regras atuais do guia, a peça e o que o dono marcou ou escreveu, e devolve de 1 a 2 regras novas que evitam esse erro nas próximas peças.
+
+Como escrever
+- Cada regra com até 20 palavras, começando pelo verbo no imperativo ("Diga", "Nunca use", "Mostre").
+- Concreta: cite a palavra ou o trecho da peça que o dono rejeitou, entre aspas, quando der.
+- Só o que o dono disse ou o que a peça mostra que deu errado. Não invente preço, endereço, data, horário ou promessa.
+- Não repita uma regra que já está no guia. Se a peça desobedeceu uma regra que já existe, reescreva essa regra mais clara e mais firme.
+- Se o dono não explicou e só marcou um motivo, use a peça para descobrir o que, nela, causou o motivo.
+- Português do Brasil, sem emoji, sem jargão.`
+
+const MOTIVOS = ['Não é assim que a gente fala', 'Isso a gente não vende ou não faz', 'O preço não devia aparecer', 'Tem palavra que a gente não usa', 'Prometeu o que a gente não pode']
+
+function texto(valor: unknown, max: number) { return String(valor ?? '').trim().slice(0, max) }
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CABECALHOS })
   if (req.method !== 'POST') return erro('Método não aceito.', 405)
@@ -51,13 +66,28 @@ Deno.serve(async (req) => {
   const { data: negocio } = await banco.from('negocios').select('id').eq('dono', conta.user.id).single()
   if (!negocio) return erro('Não achamos o seu negócio.', 404)
 
-  let corpo: { respostas?: { pergunta?: string; resposta?: string }[] }
+  let corpo: {
+    acao?: string
+    respostas?: { pergunta?: string; resposta?: string }[]
+    peca?: Record<string, unknown>; motivos?: string[]; comentario?: string; regras?: string[]
+  }
   try { corpo = await req.json() } catch { return erro('Pedido inválido.', 400) }
+  const deRegra = corpo.acao === 'regra'
   const respostas = (corpo.respostas || [])
     .map((r) => ({ pergunta: String(r.pergunta || '').slice(0, 200), resposta: String(r.resposta || '').trim().slice(0, 600) }))
     .filter((r) => r.pergunta && r.resposta)
     .slice(0, 20)
-  if (!respostas.length) return erro('Responda pelo menos uma pergunta.', 400)
+  if (!deRegra && !respostas.length) return erro('Responda pelo menos uma pergunta.', 400)
+
+  const motivos = (corpo.motivos || []).map((m) => String(m)).filter((m) => MOTIVOS.includes(m))
+  const comentario = texto(corpo.comentario, 400)
+  if (deRegra && !motivos.length && comentario.length < 3) return erro('Conte o que não soou como a sua marca.', 400)
+  const p = corpo.peca || {}
+  const peca = {
+    titulo: texto(p.titulo, 120), apoio: texto(p.apoio, 300), chamada: texto(p.chamada, 80), legenda: texto(p.legenda, 1500),
+    pontos: Array.isArray(p.pontos) ? p.pontos.slice(0, 7).map((x) => texto(x, 120)) : [],
+  }
+  const atuais = (corpo.regras || []).map((r) => texto(r, 300)).filter(Boolean).slice(0, 30)
 
   const { data: perfil } = await banco.from('perfis_marca').select('identidade, voz, dados')
     .eq('negocio', negocio.id).order('versao', { ascending: false }).limit(1).maybeSingle()
@@ -79,17 +109,19 @@ Deno.serve(async (req) => {
       max_tokens: 8000,
       // @ts-ignore: output_config.format ainda sem tipo nesta versão do SDK
       output_config: { effort: 'medium', format: { type: 'json_schema', schema: ESQUEMA } },
-      system: INSTRUCOES,
+      system: deRegra ? INSTRUCOES_DA_REGRA : INSTRUCOES,
       messages: [{
         role: 'user',
-        content: `<marca>\n${JSON.stringify(marca, null, 2)}\n</marca>\n\n<respostas>\n${JSON.stringify(respostas, null, 2)}\n</respostas>`,
+        content: deRegra
+          ? `<marca>\n${JSON.stringify(marca, null, 2)}\n</marca>\n\n<guia_atual>\n${JSON.stringify(atuais, null, 2)}\n</guia_atual>\n\n<peca>\n${JSON.stringify(peca, null, 2)}\n</peca>\n\n<o_que_o_dono_disse>\n${JSON.stringify({ motivos, comentario }, null, 2)}\n</o_que_o_dono_disse>`
+          : `<marca>\n${JSON.stringify(marca, null, 2)}\n</marca>\n\n<respostas>\n${JSON.stringify(respostas, null, 2)}\n</respostas>`,
       }],
     })
     if (msg.stop_reason === 'refusal') return erro('A IA não conseguiu montar o guia. Tente mudar alguma resposta.', 422)
     const texto = msg.content.find((b) => b.type === 'text')
     if (!texto || texto.type !== 'text') throw new Error('sem texto')
     const regras = (JSON.parse(texto.text).regras as unknown[])
-      .map((r) => String(r).trim()).filter(Boolean).slice(0, 12)
+      .map((r) => String(r).trim()).filter(Boolean).slice(0, deRegra ? 2 : 12)
     return resposta({ regras })
   } catch (falha) {
     console.error('ia', falha)

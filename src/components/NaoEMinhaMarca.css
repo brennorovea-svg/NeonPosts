@@ -1,0 +1,38 @@
+.nao-marca__abrir {
+  align-self: center;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid var(--borda);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--neve);
+  font: 500 14px var(--fonte);
+  cursor: pointer;
+  transition: transform var(--dur-controle) var(--ease), opacity var(--dur-controle) var(--ease);
+}
+.nao-marca__abrir:hover { opacity: .8; }
+.nao-marca__abrir:active { transform: scale(.97); }
+.nao-marca {
+  display: flex; flex-direction: column; gap: 12px;
+  padding: 16px;
+  background: var(--painel);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio-cartao);
+  animation: nao-marca-entra 260ms var(--ease) both;
+}
+.nao-marca--salva { border-color: var(--violeta); }
+.nao-marca__titulo { margin: 0; font-size: 16px; font-weight: 600; line-height: 1.35; }
+.nao-marca__nota { margin: 0; font-size: 13px; line-height: 1.4; color: var(--texto-2); }
+.nao-marca__regras.campo { margin: 0; padding: 0 0 0 20px; display: flex; flex-direction: column; gap: 8px; }
+.nao-marca__regras li::marker { color: var(--violeta); font-family: var(--fonte-mono); font-size: 12px; }
+.nao-marca__regras textarea { width: 100%; min-height: 0; resize: vertical; field-sizing: content; }
+.nao-marca__acoes { display: grid; grid-template-columns: auto 1fr; gap: 10px; }
+.nao-marca__acoes .botao--destaque { min-height: 48px; }
+@keyframes nao-marca-entra {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nao-marca { animation: none; }
+  .nao-marca__abrir { transition: none; }
+}

@@ -3,10 +3,11 @@ import Obturador from '../components/Obturador.jsx'
 import Imagens from '../components/campos/Imagens.jsx'
 import Layouts from '../components/Layouts.jsx'
 import DeuProblema from '../components/DeuProblema.jsx'
+import NaoEMinhaMarca from '../components/NaoEMinhaMarca.jsx'
 import { sugerirLayouts, tipoDoPedido } from '../lib/sugerir.js'
 import { DURACAO, duracaoDe, gravar, tocar } from '../lib/video.js'
 import { listaDeNomes, MARCADORES, marcadoresDe, preencher } from '../lib/marcadores.js'
-import { enderecoDaImagem } from '../lib/perfil.js'
+import { enderecoDaImagem, salvarPerfil } from '../lib/perfil.js'
 import { acordarIA, escolherVersao, gerarPeca, guardarImagem } from '../lib/pecas.js'
 import { carregarImagem, desenhar, NOMES_DOS_MODELOS, paraArquivo, prepararFontes, SO_NO_VIDEO } from '../lib/desenhar.js'
 import './Criar.css'
@@ -195,7 +196,7 @@ const GERAL = {
   exemplos: EXEMPLOS,
 }
 
-export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
+export default function Criar({ negocioId, perfil, pecaInicial, onSair, onPerfil }) {
   const [pedido, setPedido] = useState('')
   const [tipo, setTipo] = useState(null)
   const [formato, setFormato] = useState('post')
@@ -324,6 +325,18 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
     link.download = arquivo.name
     link.click()
     setTimeout(() => URL.revokeObjectURL(link.href), 4000)
+  }
+
+  // "Isso não é a minha marca": a regra entra no guia como versão nova do perfil, e a próxima peça já segue.
+  async function juntarAoGuia(lista) {
+    const guiaAtual = perfil.voz.guia || {}
+    const novo = { ...perfil, voz: { ...perfil.voz, guia: { ...guiaAtual, regras: [...(guiaAtual.regras || []), ...lista], feito_em: new Date().toISOString() } } }
+    try {
+      await salvarPerfil(negocioId, novo)
+    } catch {
+      throw new Error('Não deu para salvar agora. Confira a internet e tente de novo.')
+    }
+    onPerfil?.(novo)
   }
 
   async function copiar() {
@@ -549,6 +562,15 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
                 <button type="button" className="botao botao--fantasma" onClick={() => { setPeca(null); setPedido(''); setTipo(null); setFotos([]); setLayout('ia'); setAvisoVideo(''); setDadosFaltando({}); setEstado('pedido') }}>Criar outro</button>
               </div>
               <p className="criar__nota">Gerar de novo não conta como peça nova.</p>
+              <NaoEMinhaMarca
+                key={`${peca.id}-${peca.refeitas}-${indice}`}
+                roteiro={roteiro} regras={perfil.voz.guia?.regras || []} onSalvar={juntarAoGuia}
+                salva={restantes > 0 && (
+                  <button type="button" className="botao botao--destaque" onClick={() => { setPedidoNovo(''); setAjuste(''); criar(true) }}>
+                    Gerar de novo com a regra ({restantes})
+                  </button>
+                )}
+              />
               <DeuProblema
                 contexto={{ Negócio: nome, Pedido: versoes[indice]?.pedido, Formato: video && peca.formato === 'story' ? 'vídeo' : peca.formato, Modelo: NOMES_DOS_MODELOS[peca.modelo] || peca.modelo, Peça: peca.id, Erro: erro }}
                 imagem={() => paraArquivo(canvas.current, 'deu-problema.png')}

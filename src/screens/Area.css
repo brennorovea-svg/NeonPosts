@@ -57,7 +57,9 @@
 /* Histórico de peças */
 .area__historico { margin-top: 24px; display: flex; flex-direction: column; gap: 12px; }
 .area__subtitulo { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -.02em; }
-.area__pecas { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; align-items: end; }
+.area__pecas .carrossel__trilho { align-items: end; }
+.area__item { width: calc((100% - 20px) / 2.6); }
+@media (min-width: 760px) { .area__item { width: calc((100% - 50px) / 5.4); } }
 .area__peca {
   width: 100%; padding: 0; overflow: hidden; cursor: pointer;
   display: grid; place-items: center;

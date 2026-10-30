@@ -206,7 +206,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
   const [ajuste, setAjuste] = useState('')
   const [flash, setFlash] = useState(false)
   const [imagens, setImagens] = useState({ logo: null, foto: null, pronto: false })
-  const [layout, setLayout] = useState('ia') // 'ia' ou um dos modelos sugeridos
+  const [layout, setLayout] = useState('ia') // 'ia' ou um dos modelos
   const [rodada, setRodada] = useState(0) // muda a cada "Ver outros exemplos"
   const [miniaturas, setMiniaturas] = useState({ logo: null, foto: null, fotoDaMarca: null })
   const canvas = useRef(null)
@@ -222,11 +222,9 @@ export default function Criar({ negocioId, perfil, pecaInicial, onSair }) {
     return () => { vivo = false }
   }, [foto])
 
-  // Sugestão de layout pelo tipo (ficha ou texto do pedido) e pela foto. Se a escolhida
-  // sai da sugestão (trocou o tipo ou tirou a foto), volta para a IA escolher.
+  // Sugestão de layout pelo tipo (ficha ou texto do pedido) e pela foto; os sugeridos vêm na frente.
   const tipoPercebido = tipoDoPedido(tipo, pedido)
   const sugeridos = sugerirLayouts(tipoPercebido, Boolean(foto))
-  useEffect(() => { if (layout !== 'ia' && !sugeridos.includes(layout)) setLayout('ia') }, [sugeridos.join()])
 
   // Logo e foto carregados uma vez por peça; fontes antes do primeiro desenho.
   useEffect(() => {

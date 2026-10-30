@@ -1,11 +1,13 @@
 // Desenha a peça no próprio aparelho, num canvas de 1080 de largura.
-// Post 4:5 (1080x1350) e story 9:16 (1080x1920). Nove modelos; a IA escolhe o modelo e o
+// Post 4:5 (1080x1350) e story 9:16 (1080x1920). Dezenove modelos; a IA escolhe o modelo e o
 // jeito da arte (palavra em destaque, tamanho do título, alinhamento e fundo).
 
 export const TAMANHOS = { post: [1080, 1350], story: [1080, 1920] }
 export const NOMES_DOS_MODELOS = {
   promo: 'Promoção', aviso: 'Aviso', bastidores: 'Bastidores', manchete: 'Manchete', lista: 'Lista',
   citacao: 'Citação', dividido: 'Dividido', foto: 'Foto inteira', cartao: 'Cartão',
+  numero: 'Número', cupom: 'Cupom', agenda: 'Agenda', conversa: 'Conversa', mosaico: 'Mosaico', faixas: 'Faixas',
+  capa: 'Capa de revista', comparar: 'Antes e depois', tabela: 'Tabela', enquete: 'Enquete',
 }
 const FONTE = '"Instrument Sans", system-ui, sans-serif'
 
@@ -671,7 +673,675 @@ function cartao(ctx, { L, A, story, c, r, logo, foto, nome }) {
   void story
 }
 
-const MODELOS = { promo, aviso, bastidores, manchete, lista, citacao, dividido, foto: fotoInteira, cartao }
+// ---- Layouts novos (30/10) ----
+
+// Espaço entre letras, onde o navegador suporta.
+function espacar(ctx, px) {
+  if ('letterSpacing' in ctx) ctx.letterSpacing = `${px}px`
+}
+
+// Rótulo curto em caixa alta (ENQUETE, QUANDO, ANTES).
+function rotulo(ctx, texto, { x, y, tamanho = 30, cor, alinhar = 'left', espaco = 6 }) {
+  animado(ctx, () => {
+    ctx.font = `700 ${tamanho}px ${FONTE}`
+    espacar(ctx, espaco)
+    ctx.fillStyle = cor
+    ctx.textAlign = alinhar
+    ctx.textBaseline = 'alphabetic'
+    ctx.fillText(String(texto).toUpperCase(), x, y)
+  }, { desloca: 16 })
+}
+
+// Chamada em texto com seta, como no manchete.
+function chamadaEmTexto(ctx, r, { x, y, largura, alinhar, cor, tamanho = 40 }) {
+  if (!r.chamada) return
+  animado(ctx, () => {
+    ctx.font = `700 ${tamanho}px ${FONTE}`
+    ctx.fillStyle = cor
+    ctx.textAlign = alinhar
+    ctx.textBaseline = 'alphabetic'
+    ctx.fillText(`${r.chamada}  →`, ancora(alinhar, x, largura), y)
+  })
+}
+
+// Pílula da chamada com a largura do texto.
+function pilulaCurta(ctx, r, { x, y, largura, alinhar = 'left', fundo, cor, altura = 104, tamanho = 40 }) {
+  if (!r.chamada) return
+  ctx.font = `700 ${tamanho}px ${FONTE}`
+  const w = Math.min(ctx.measureText(r.chamada).width + 110, largura)
+  const px = alinhar === 'center' ? x + (largura - w) / 2 : alinhar === 'right' ? x + largura - w : x
+  pilula(ctx, r.chamada, { x: px, y, largura: w, altura, tamanho, fundo, cor })
+}
+
+// Um pedaço da foto: amplia e centraliza num ponto (fx, fy de 0 a 1), sem sair da imagem.
+function recorte(ctx, img, x, y, l, a, zoom = 1, fx = 0.5, fy = 0.5) {
+  const z = (relogio ? 1.08 - 0.08 * suave(relogio.t / relogio.total) : 1) * zoom
+  const e = Math.max(l / img.width, a / img.height) * z
+  const w = img.width * e, h = img.height * e
+  const px = Math.min(x, Math.max(x + l - w, x + l / 2 - w * fx))
+  const py = Math.min(y, Math.max(y + a - h, y + a / 2 - h * fy))
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(x, y, l, a)
+  ctx.clip()
+  ctx.drawImage(img, px, py, w, h)
+  ctx.restore()
+}
+
+// Degradê da marca num retângulo, para quando falta foto.
+function placaDaMarca(ctx, x, y, l, a, de, para, luzCor) {
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(x, y, l, a)
+  ctx.clip()
+  const g = ctx.createLinearGradient(x, y, x + l, y + a)
+  g.addColorStop(0, de)
+  g.addColorStop(1, para)
+  ctx.fillStyle = g
+  ctx.fillRect(x, y, l, a)
+  brilho(ctx, x + l * 0.8, y + a * 0.2, Math.max(l, a) * 0.7, luzCor, 0.45)
+  ctx.restore()
+}
+
+// Número grande como protagonista (50%, 7 dias, 3x). Sem número, vira manchete.
+function numero(ctx, args) {
+  const { L, A, story, c, r, logo, nome } = args
+  const valor = String(r.numero || '').trim()
+  if (!valor) return manchete(ctx, args)
+  const tinta = pintarFundo(ctx, { L, A, c, foto: args.foto, r, padrao: 'escuro' })
+  const m = 80, topo = story ? 230 : 80, base = story ? 330 : 90
+  const al = lado(r)
+  selo(ctx, { logo, nome, x: ancora(al, m, L - m * 2), y: topo, altura: 64, alinhar: al, claro: tinta === '#FFFFFF' })
+  const [, corpo, sufixo] = valor.match(/^(.*\d)(\D*)$/) || [null, valor, '']
+  const corNumero = r.cores?.destaque ? corPedida(r, 'destaque', tinta) : legivel(c[0], tinta)
+  const tOp = { x: m, largura: L - m * 2, tamanho: Math.round(96 * escala(r)), maxLinhas: 3, entre: 1.0, alinhar: al }
+  const aOp = { x: m, largura: L - m * 2, tamanho: 42, peso: 400, maxLinhas: 3, entre: 1.3, alinhar: al }
+  const fim = A - base - (r.chamada ? 100 : 0)
+  const resto = medir(ctx, r.titulo, tOp) + 30 + medir(ctx, r.apoio, aOp)
+  // O número cresce até a largura e até a altura que sobra.
+  let t = story ? 600 : 520
+  const largura = () => {
+    ctx.font = `700 ${t}px ${FONTE}`
+    espacar(ctx, -t * 0.05)
+    const w1 = ctx.measureText(corpo).width
+    ctx.font = `700 ${Math.round(t * 0.46)}px ${FONTE}`
+    espacar(ctx, 0)
+    return w1 + ctx.measureText(sufixo).width
+  }
+  while ((largura() > L - m * 2 || t * 0.78 + 60 + resto > fim - (topo + 130)) && t > 120) t -= 10
+  const alturaNumero = t * 0.74
+  const y0 = topo + 130 + Math.max(0, (fim - (topo + 130) - (alturaNumero + 60 + resto)) / 2)
+  const baseNumero = y0 + alturaNumero
+  const w = largura()
+  const x0 = al === 'center' ? (L - w) / 2 : al === 'right' ? L - m - w : m
+  animado(ctx, () => {
+    ctx.textBaseline = 'alphabetic'
+    ctx.textAlign = 'left'
+    ctx.font = `700 ${t}px ${FONTE}`
+    espacar(ctx, -t * 0.05)
+    ctx.fillStyle = corNumero
+    ctx.fillText(corpo, x0, baseNumero)
+    const w1 = ctx.measureText(corpo).width
+    ctx.font = `700 ${Math.round(t * 0.46)}px ${FONTE}`
+    espacar(ctx, 0)
+    ctx.fillStyle = corPedida(r, 'titulo', tinta)
+    ctx.fillText(sufixo, x0 + w1 + t * 0.02, baseNumero)
+  }, { escala: 0.12, desloca: 0 }, x0 + w / 2, baseNumero - alturaNumero / 2)
+  let y = bloco(ctx, r.titulo, { ...tOp, y: baseNumero + 60, cor: corPedida(r, 'titulo', tinta), ...marca(r, destaqueSobre(tinta, c)) })
+  bloco(ctx, r.apoio, { ...aOp, y: y + 30, cor: corPedida(r, 'texto', apagado(tinta)) })
+  chamadaEmTexto(ctx, r, { x: m, y: A - base, largura: L - m * 2, alinhar: al, cor: corPedida(r, 'destaque', destaqueSobre(tinta, c)) })
+}
+
+// Cupom recortado: oferta em cima, código e validade embaixo da linha picotada.
+function cupom(ctx, { L, A, story, c, r, logo, foto, nome }) {
+  const tinta = pintarFundo(ctx, { L, A, c, foto, r, padrao: 'marca' })
+  const m = 90, larg = L - m * 2, dentro = larg - 140
+  const codigo = String(r.cupom || '').trim() || '[CUPOM]'
+  const tOp = { x: m + 70, largura: dentro, tamanho: Math.round(140 * escala(r)), maxLinhas: 2, entre: 0.95 }
+  const aOp = { x: m + 70, largura: dentro, tamanho: 40, peso: 400, maxLinhas: 3, entre: 1.3 }
+  const cima = 80 + 34 + 30 + medir(ctx, r.titulo, tOp) + 26 + medir(ctx, r.apoio, aOp) + 60
+  const h = cima + 60 + 130 + 70
+  const y0 = Math.max(story ? 360 : 200, (A - h) / 2 - (r.chamada ? 40 : 0))
+  const corte = y0 + cima
+  selo(ctx, { logo, nome, x: L / 2, y: y0 - 130, altura: 64, alinhar: 'center', claro: tinta === '#FFFFFF' })
+  animado(ctx, () => {
+    ctx.save()
+    // Os dois semicírculos do picote são furos no cartão.
+    ctx.beginPath()
+    ctx.rect(0, 0, L, A)
+    ctx.moveTo(m + 46, corte)
+    ctx.arc(m, corte, 46, 0, Math.PI * 2)
+    ctx.moveTo(L - m + 46, corte)
+    ctx.arc(L - m, corte, 46, 0, Math.PI * 2)
+    ctx.clip('evenodd')
+    ctx.shadowColor = 'rgba(0,0,0,.28)'
+    ctx.shadowBlur = 50
+    arredondado(ctx, m, y0, larg, h, 40)
+    ctx.fillStyle = '#FFFFFF'
+    ctx.fill()
+    ctx.restore()
+    ctx.setLineDash([22, 16])
+    ctx.lineWidth = 5
+    ctx.strokeStyle = 'rgba(17,17,20,.18)'
+    ctx.beginPath()
+    ctx.moveTo(m + 70, corte)
+    ctx.lineTo(L - m - 70, corte)
+    ctx.stroke()
+    ctx.setLineDash([])
+  }, { desloca: 0, escala: 0.06 }, L / 2, y0 + h / 2)
+  sobre('#FFFFFF')
+  const destaque = destaqueSobre('#111114', c)
+  rotulo(ctx, 'Cupom', { x: m + 70, y: y0 + 80 + 26, tamanho: 30, cor: corPedida(r, 'destaque', destaque), espaco: 8 })
+  let y = bloco(ctx, r.titulo, { ...tOp, y: y0 + 80 + 34 + 30, cor: corPedida(r, 'titulo', '#111114'), ...marca(r, destaque) })
+  bloco(ctx, r.apoio, { ...aOp, y: y + 26, cor: corPedida(r, 'texto', 'rgba(17,17,20,.72)') })
+  const yc = corte + 60
+  animado(ctx, () => {
+    ctx.font = `700 52px ${FONTE}`
+    espacar(ctx, 6)
+    const w = Math.min(ctx.measureText(codigo).width + 70, dentro * (r.data ? 0.62 : 1))
+    arredondado(ctx, m + 70, yc, w, 120, 22)
+    ctx.lineWidth = 5
+    ctx.strokeStyle = '#111114'
+    ctx.stroke()
+    ctx.fillStyle = '#111114'
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(codigo, m + 105, yc + 62, w - 70)
+    espacar(ctx, 0)
+    if (r.data) {
+      ctx.textAlign = 'right'
+      ctx.font = `400 30px ${FONTE}`
+      ctx.fillStyle = 'rgba(17,17,20,.6)'
+      ctx.fillText('Válido até', L - m - 70, yc + 38)
+      ctx.font = `700 40px ${FONTE}`
+      ctx.fillStyle = '#111114'
+      ctx.fillText(r.data, L - m - 70, yc + 88, dentro * 0.36)
+    }
+  }, { desloca: 20 })
+  sobre(c[0])
+  if (r.chamada) {
+    animado(ctx, () => {
+      ctx.font = `700 42px ${FONTE}`
+      ctx.fillStyle = tinta
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'alphabetic'
+      ctx.fillText(r.chamada, L / 2, y0 + h + 110, L - m * 2)
+    })
+  }
+}
+
+const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
+const DIAS = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado']
+// "29/11", "29 de novembro" ou "29 nov" viram dia, mês e dia da semana (na próxima vez que a data cair).
+function lerData(texto) {
+  const t = String(texto || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+  const achado = t.match(/(\d{1,2})\s*(?:\/|de\s+|\s)\s*(\d{1,2}|[a-z]{3,})/)
+  if (!achado) return null
+  const dia = Number(achado[1])
+  const mes = /^\d+$/.test(achado[2]) ? Number(achado[2]) - 1 : MESES.findIndex((m) => achado[2].startsWith(m))
+  if (mes < 0 || mes > 11 || dia < 1 || dia > 31) return null
+  const hoje = new Date()
+  let data = new Date(hoje.getFullYear(), mes, dia)
+  if (data < new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate())) data = new Date(hoje.getFullYear() + 1, mes, dia)
+  return { dia: String(dia), mes: MESES[mes], semana: DIAS[data.getDay()] }
+}
+
+// Folha de calendário com o dia, horário ao lado, título embaixo. Bom para evento e aviso com data.
+function agenda(ctx, { L, A, story, c, r, logo, foto, nome }) {
+  const tinta = pintarFundo(ctx, { L, A, c, foto, r, padrao: 'claro' })
+  const m = 80, topo = story ? 230 : 80, base = story ? 330 : 90
+  const destaque = destaqueSobre(tinta, c)
+  const lida = lerData(r.data)
+  const lf = story ? 340 : 300, af = story ? 380 : 340
+  const yf = topo + (story ? 60 : 50)
+  // Folha do calendário.
+  animado(ctx, () => {
+    ctx.save()
+    ctx.shadowColor = 'rgba(0,0,0,.18)'
+    ctx.shadowBlur = 40
+    arredondado(ctx, m, yf, lf, af, 32)
+    ctx.fillStyle = '#FFFFFF'
+    ctx.fill()
+    ctx.restore()
+    ctx.save()
+    arredondado(ctx, m, yf, lf, af, 32)
+    ctx.clip()
+    ctx.fillStyle = fundoPedido(r, c[0])
+    ctx.fillRect(m, yf, lf, 90)
+    ctx.restore()
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.font = `700 34px ${FONTE}`
+    espacar(ctx, 8)
+    ctx.fillStyle = textoSobre(fundoPedido(r, c[0]))
+    ctx.fillText(lida ? lida.mes.toUpperCase() : 'DATA', m + lf / 2, yf + 47)
+    espacar(ctx, 0)
+    ctx.fillStyle = '#111114'
+    if (lida) {
+      ctx.font = `700 ${story ? 190 : 170}px ${FONTE}`
+      espacar(ctx, -8)
+      ctx.textBaseline = 'alphabetic'
+      ctx.fillText(lida.dia, m + lf / 2, yf + 90 + (af - 90) * 0.66)
+      espacar(ctx, 0)
+      ctx.font = `400 34px ${FONTE}`
+      ctx.fillStyle = 'rgba(17,17,20,.6)'
+      ctx.fillText(lida.semana, m + lf / 2, yf + af - 34)
+    } else {
+      // Sem data legível (ou com o marcador), escreve o que veio.
+      ctx.font = `700 44px ${FONTE}`
+      quebrar(ctx, r.data || '[DATA]', lf - 40).slice(0, 3).forEach((l, i, ls) => ctx.fillText(l, m + lf / 2, yf + 90 + (af - 90) / 2 + (i - (ls.length - 1) / 2) * 52))
+    }
+  }, { desloca: 0, escala: 0.08 }, m + lf / 2, yf + af / 2)
+  // Ao lado: QUANDO e o horário.
+  const xl = m + lf + 50, ll = L - m - xl
+  rotulo(ctx, 'Quando', { x: xl, y: yf + 60, tamanho: 28, cor: corPedida(r, 'destaque', destaque) })
+  let yl = yf + 84
+  if (r.horario) yl = bloco(ctx, r.horario, { x: xl, y: yl, largura: ll, tamanho: 72, minimo: 44, maxLinhas: 2, entre: 1.0, cor: corPedida(r, 'titulo', tinta) })
+  if (lida && !r.horario) yl = bloco(ctx, `${lida.semana}, ${lida.dia} de ${lida.mes}`, { x: xl, y: yl, largura: ll, tamanho: 56, maxLinhas: 2, entre: 1.05, cor: corPedida(r, 'titulo', tinta) })
+  // Título e apoio embaixo da folha; a chamada e o selo no pé.
+  const fimTexto = A - base - (r.chamada ? 150 : 40)
+  const tOp = { x: m, largura: L - m * 2, tamanho: Math.round(100 * escala(r)), maxLinhas: 4, entre: 1.0 }
+  const aOp = { x: m, largura: L - m * 2, tamanho: 40, peso: 400, maxLinhas: 3, entre: 1.3 }
+  const comeco = yf + af + 80
+  while (comeco + medir(ctx, r.titulo, tOp) + 26 + medir(ctx, r.apoio, aOp) > fimTexto && tOp.tamanho > 60) tOp.tamanho -= 6
+  let y = bloco(ctx, r.titulo, { ...tOp, y: comeco, cor: corPedida(r, 'titulo', tinta), ...marca(r, destaque) })
+  bloco(ctx, r.apoio, { ...aOp, y: y + 26, cor: corPedida(r, 'texto', apagado(tinta, 0.72)) })
+  const fundo = tinta === '#FFFFFF' ? '#FFFFFF' : '#111114'
+  pilulaCurta(ctx, r, { x: m, y: A - base - 104, largura: L - m * 2 - 260, fundo, cor: textoSobre(fundo) })
+  selo(ctx, { logo, nome, x: L - m, y: A - base - 96, altura: 60, alinhar: 'right', claro: tinta === '#FFFFFF' })
+  void yl
+}
+
+// Balão de conversa; devolve a altura.
+function balao(ctx, texto, { x, y, largura, tamanho, peso = 500, fundo, cor, direita = false }) {
+  ctx.font = `${peso} ${tamanho}px ${FONTE}`
+  const linhas = quebrar(ctx, texto, largura - 72).slice(0, 4)
+  const w = Math.min(largura, Math.max(...linhas.map((l) => ctx.measureText(l).width)) + 72)
+  const h = linhas.length * tamanho * 1.25 + 56
+  const bx = direita ? x + largura - w : x
+  animado(ctx, () => {
+    arredondado(ctx, bx, y, w, h, 34)
+    ctx.fillStyle = fundo
+    ctx.fill()
+    ctx.font = `${peso} ${tamanho}px ${FONTE}`
+    ctx.fillStyle = cor
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'alphabetic'
+    linhas.forEach((l, i) => ctx.fillText(l, bx + 36, y + 28 + tamanho * 0.95 + i * tamanho * 1.25))
+  }, { desloca: 24 })
+  return h
+}
+
+// Perguntas do cliente em balões e a resposta da marca. Bom para dúvida frequente.
+function conversa(ctx, { L, A, story, c, r, logo, foto, nome }) {
+  const tinta = pintarFundo(ctx, { L, A, c, foto, r, padrao: 'escuro' })
+  const m = 80, topo = story ? 230 : 80, base = story ? 330 : 90
+  selo(ctx, { logo, nome, x: m, y: topo, altura: 64, claro: tinta === '#FFFFFF' })
+  const perguntas = (r.pontos || []).filter(Boolean).slice(0, 3)
+  const larg = L - m * 2
+  const fundoPergunta = tinta === '#FFFFFF' ? 'rgba(255,255,255,.12)' : 'rgba(17,17,20,.07)'
+  const fundoResposta = fundoPedido(r, c[0])
+  // Mede tudo antes para centralizar a conversa no espaço livre.
+  const guardado = relogio
+  relogio = null
+  const medida = (texto, tamanho, peso) => {
+    ctx.font = `${peso} ${tamanho}px ${FONTE}`
+    return quebrar(ctx, texto, larg * 0.78 - 72).slice(0, 4).length * tamanho * 1.25 + 56
+  }
+  const tamResposta = Math.round(52 * escala(r))
+  let total = perguntas.reduce((t, p) => t + medida(p, 40, 500) + 22, 0) + 30 + medida(r.titulo, tamResposta, 700)
+  relogio = guardado
+  const aOp = { x: m, largura: larg * 0.8, tamanho: 34, peso: 400, maxLinhas: 3, entre: 1.3, alinhar: 'right' }
+  if (r.apoio) total += 40 + medir(ctx, r.apoio, aOp)
+  const livreTopo = topo + 150, livreFim = A - base - (r.chamada ? 110 : 20)
+  let y = livreTopo + Math.max(0, (livreFim - livreTopo - total) / 2)
+  for (const p of perguntas) {
+    y += balao(ctx, p, { x: m, y, largura: larg * 0.78, tamanho: 40, fundo: fundoPergunta, cor: apagado(tinta, 0.92) }) + 22
+  }
+  y += 30
+  y += balao(ctx, r.titulo, { x: m, y, largura: larg * 0.78, tamanho: tamResposta, peso: 700, fundo: fundoResposta, cor: textoSobre(fundoResposta), direita: true }) + 40
+  if (r.apoio) bloco(ctx, r.apoio, { ...aOp, x: L - m - larg * 0.8, y, cor: corPedida(r, 'texto', apagado(tinta, 0.72)) })
+  chamadaEmTexto(ctx, r, { x: m, y: A - base, largura: larg, alinhar: 'right', cor: corPedida(r, 'destaque', destaqueSobre(tinta, c)) })
+}
+
+// Três quadros em cima (foto, outro pedaço da foto e um bloco de cor com o número), texto embaixo.
+function mosaico(ctx, { L, A, story, c, r, logo, foto, nome }) {
+  const claro = r.arte?.fundo === 'claro'
+  const tinta = claro ? '#111114' : '#FFFFFF'
+  const fundo = claro ? '#F6F4F9' : '#0D0D12'
+  ctx.fillStyle = fundo
+  ctx.fillRect(0, 0, L, A)
+  const vao = 10
+  const alto = Math.round(A * (story ? 0.62 : 0.6) - (escala(r) - 1) * A * 0.2)
+  const le = Math.round(L * 0.56)
+  const ld = L - le - vao
+  const ad = Math.round((alto - vao) / 2)
+  if (foto) {
+    recorte(ctx, foto, 0, 0, le, alto, 1.05, 0.4, 0.5)
+    recorte(ctx, foto, le + vao, 0, ld, ad, 2.2, 0.8, 0.3)
+  } else {
+    placaDaMarca(ctx, 0, 0, le, alto, c[0], c[2], c[1])
+    placaDaMarca(ctx, le + vao, 0, ld, ad, c[2], misturar(c[2], '#000000', 0.4), c[1])
+  }
+  const corBloco = fundoPedido(r, c[0])
+  ctx.fillStyle = corBloco
+  ctx.fillRect(le + vao, ad + vao, ld, alto - ad - vao)
+  const textoBloco = String(r.numero || r.arte?.destaque || '').trim()
+  if (textoBloco) {
+    animado(ctx, () => {
+      let t = 110
+      ctx.font = `700 ${t}px ${FONTE}`
+      while (ctx.measureText(textoBloco).width > ld - 80 && t > 40) ctx.font = `700 ${(t -= 4)}px ${FONTE}`
+      ctx.fillStyle = textoSobre(corBloco)
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(textoBloco, le + vao + ld / 2, ad + vao + (alto - ad - vao) / 2)
+    }, { escala: 0.1, desloca: 0 }, le + vao + ld / 2, ad + vao + (alto - ad - vao) / 2)
+  }
+  ctx.fillStyle = fundo
+  ctx.fillRect(0, alto, L, vao)
+  sobre(fundo)
+  const m = 80, base = story ? 330 : 80
+  const al = lado(r)
+  const destaque = destaqueSobre(tinta, c)
+  const tOp = { x: m, largura: L - m * 2, tamanho: Math.round(88 * escala(r)), maxLinhas: 3, entre: 1.0, alinhar: al }
+  const aOp = { x: m, largura: L - m * 2 - (al === 'left' ? 160 : 0), tamanho: 36, peso: 400, maxLinhas: 2, entre: 1.3, alinhar: al }
+  const livre = A - base - 20 - (alto + 70)
+  while (medir(ctx, r.titulo, tOp) + 22 + medir(ctx, r.apoio, aOp) > livre && tOp.tamanho > 52) tOp.tamanho -= 6
+  let y = bloco(ctx, r.titulo, { ...tOp, y: alto + 70, cor: corPedida(r, 'titulo', tinta), ...marca(r, destaque) })
+  bloco(ctx, r.apoio, { ...aOp, y: y + 22, cor: corPedida(r, 'texto', apagado(tinta, 0.75)) })
+  selo(ctx, { logo, nome, x: al === 'right' ? m : L - m, y: A - base - 76, altura: 52, alinhar: al === 'right' ? 'left' : 'right', claro: tinta === '#FFFFFF' })
+}
+
+// Duas fitas inclinadas com palavras da marca, título no meio. Bom para lançamento e chamada geral.
+function faixas(ctx, { L, A, story, c, r, logo, foto, nome }) {
+  const tinta = pintarFundo(ctx, { L, A, c, foto, r, padrao: 'marca' })
+  const m = 90, topo = story ? 250 : 70, base = story ? 330 : 70
+  const palavras = (r.pontos || []).filter(Boolean)
+  const fita = (texto, y, angulo, cor, corTexto, sentido) => {
+    ctx.save()
+    if (relogio) entrar(ctx, 0.15, { desloca: 0 })
+    ctx.translate(L / 2, y)
+    ctx.rotate(angulo)
+    ctx.fillStyle = cor
+    ctx.fillRect(-L, -58, L * 2, 116)
+    ctx.font = `700 58px ${FONTE}`
+    espacar(ctx, -1)
+    ctx.fillStyle = corTexto
+    ctx.textBaseline = 'middle'
+    ctx.textAlign = 'left'
+    const trecho = `${texto.toUpperCase()} · `
+    const w = ctx.measureText(trecho).width
+    // No vídeo a fita corre devagar para o lado.
+    const corre = relogio ? (relogio.t * 60 * sentido) % w : 0
+    for (let x = -L - w + corre; x < L; x += w) ctx.fillText(trecho, x, 4)
+    ctx.restore()
+  }
+  const corA = fundoPedido(r, c[0])
+  fita(palavras.length ? palavras.join(' · ') : nome || '', topo + 60, -0.07, corA, textoSobre(corA), 1)
+  fita(nome || palavras.join(' · '), A - base - 60, 0.06, c[1], textoSobre(c[1]), -1)
+  const tOp = { x: m, largura: L - m * 2, tamanho: Math.round(118 * escala(r)), maxLinhas: 4, entre: 0.98, alinhar: 'center' }
+  const aOp = { x: m + 30, largura: L - (m + 30) * 2, tamanho: 40, peso: 400, maxLinhas: 3, entre: 1.3, alinhar: 'center' }
+  const livreTopo = topo + 190, livreFim = A - base - 170
+  const pil = r.chamada ? 150 : 0
+  while (medir(ctx, r.titulo, tOp) + 30 + medir(ctx, r.apoio, aOp) + pil > livreFim - livreTopo && tOp.tamanho > 64) tOp.tamanho -= 6
+  const altura = medir(ctx, r.titulo, tOp) + 30 + medir(ctx, r.apoio, aOp) + pil
+  let y = livreTopo + Math.max(0, (livreFim - livreTopo - altura) / 2)
+  y = bloco(ctx, r.titulo, { ...tOp, y, cor: corPedida(r, 'titulo', tinta), ...marca(r, tinta === '#FFFFFF' ? '#FFFFFF' : '#111114') })
+  y = bloco(ctx, r.apoio, { ...aOp, y: y + 30, cor: corPedida(r, 'texto', apagado(tinta, 0.86)) })
+  const fundo = tinta === '#FFFFFF' ? '#FFFFFF' : '#111114'
+  pilulaCurta(ctx, r, { x: m, y: y + 46, largura: L - m * 2, alinhar: 'center', fundo, cor: fundo === '#FFFFFF' ? legivel(c[2], '#111114') : '#FFFFFF' })
+  void logo
+}
+
+// Capa de revista: nome da marca no alto, chamada da matéria e título grande sobre a foto.
+function capa(ctx, { L, A, story, c, r, logo, foto, nome }) {
+  if (foto) cobrir(ctx, foto, 0, 0, L, A)
+  else placaDaMarca(ctx, 0, 0, L, A, c[2], misturar(c[0], '#000000', 0.5), c[0])
+  const g = ctx.createLinearGradient(0, 0, 0, A)
+  g.addColorStop(0, 'rgba(8,8,12,.55)')
+  g.addColorStop(0.35, 'rgba(8,8,12,.1)')
+  g.addColorStop(0.6, 'rgba(8,8,12,.25)')
+  g.addColorStop(1, 'rgba(8,8,12,.9)')
+  ctx.fillStyle = g
+  ctx.fillRect(0, 0, L, A)
+  sobre('#1A1A20')
+  const m = 60, topo = story ? 220 : 40, base = story ? 330 : 70
+  // Nome da marca como título da revista, do tamanho da largura.
+  animado(ctx, () => {
+    let t = 180
+    ctx.font = `700 ${t}px ${FONTE}`
+    espacar(ctx, -t * 0.045)
+    while (ctx.measureText(nome || '').width > L - m * 2 && t > 60) {
+      t -= 6
+      ctx.font = `700 ${t}px ${FONTE}`
+      espacar(ctx, -t * 0.045)
+    }
+    ctx.fillStyle = '#FFFFFF'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'alphabetic'
+    ctx.fillText(nome || '', L / 2, topo + t * 0.82)
+    espacar(ctx, 0)
+    ctx.fillStyle = 'rgba(255,255,255,.7)'
+    ctx.fillRect(m, topo + t * 0.82 + 30, L - m * 2, 3)
+  }, { desloca: -20 })
+  // Chamada da matéria à esquerda.
+  if (r.apoio) {
+    const ya = topo + 290
+    rotulo(ctx, 'Nesta edição', { x: m, y: ya, tamanho: 28, cor: legivel(c[1], '#FFFFFF') })
+    bloco(ctx, r.apoio, { x: m, y: ya + 22, largura: L * 0.48, tamanho: 40, minimo: 32, peso: 600, maxLinhas: 4, entre: 1.15, cor: corPedida(r, 'texto', '#FFFFFF') })
+  }
+  const tOp = { x: m, largura: L - m * 2 - (r.chamada ? 120 : 0), tamanho: Math.round(116 * escala(r)), maxLinhas: 3, entre: 0.98, baseEmBaixo: true }
+  bloco(ctx, r.titulo, { ...tOp, y: A - base, cor: corPedida(r, 'titulo', '#FFFFFF'), ...marca(r, legivel(c[0], '#FFFFFF')) })
+  // Selo redondo com a chamada.
+  if (r.chamada) {
+    const raio = 110, cx = L - m - raio + 20, cy = A - base - raio - 10
+    animado(ctx, () => {
+      ctx.beginPath()
+      ctx.arc(cx, cy, raio, 0, Math.PI * 2)
+      const fundo = fundoPedido(r, c[0])
+      ctx.fillStyle = fundo
+      ctx.fill()
+      ctx.font = `700 34px ${FONTE}`
+      ctx.fillStyle = textoSobre(fundo)
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      const linhas = equilibrar(ctx, r.chamada, raio * 1.5).slice(0, 3)
+      linhas.forEach((l, i) => ctx.fillText(l, cx, cy + (i - (linhas.length - 1) / 2) * 38, raio * 1.6))
+    }, { escala: 0.2, desloca: 0 }, cx, cy)
+  }
+  void logo
+}
+
+// Antes e depois lado a lado, em texto (a foto, quando há, entra do lado do depois).
+function comparar(ctx, { L, A, story, c, r, logo, foto, nome }) {
+  const claro = r.arte?.fundo === 'claro'
+  const tinta = claro ? '#111114' : '#FFFFFF'
+  const fundo = claro ? '#F6F4F9' : '#0D0D12'
+  ctx.fillStyle = fundo
+  ctx.fillRect(0, 0, L, A)
+  const alto = Math.round(A * (story ? 0.6 : 0.64) - (escala(r) - 1) * A * 0.2)
+  const meio = L / 2
+  const [antes, depois] = [(r.pontos || [])[0] || '', (r.pontos || [])[1] || '']
+  // Antes: cinza e apagado.
+  ctx.fillStyle = claro ? '#DCD9E0' : '#24242B'
+  ctx.fillRect(0, 0, meio - 4, alto)
+  // Depois: a foto (escurecida embaixo) ou a cor da marca.
+  if (foto) {
+    recorte(ctx, foto, meio + 4, 0, meio - 4, alto)
+    ctx.fillStyle = 'rgba(8,8,12,.45)'
+    ctx.fillRect(meio + 4, 0, meio - 4, alto)
+  } else placaDaMarca(ctx, meio + 4, 0, meio - 4, alto, c[0], c[2], c[1])
+  const topo = story ? 230 : 50
+  const etiqueta = (texto, x, cor, corTexto) => animado(ctx, () => {
+    ctx.font = `700 28px ${FONTE}`
+    espacar(ctx, 6)
+    const w = ctx.measureText(texto).width + 50
+    arredondado(ctx, x, topo, w, 60, 30)
+    ctx.fillStyle = cor
+    ctx.fill()
+    ctx.fillStyle = corTexto
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(texto, x + 25, topo + 32)
+    espacar(ctx, 0)
+  }, { desloca: -12 })
+  etiqueta('ANTES', 40, claro ? '#FFFFFF' : '#111114', claro ? '#111114' : '#FFFFFF')
+  etiqueta('DEPOIS', meio + 44, fundoPedido(r, c[0]), textoSobre(fundoPedido(r, c[0])))
+  const lado2 = { largura: meio - 120, tamanho: 58, minimo: 38, peso: 700, maxLinhas: 5, entre: 1.08 }
+  const yMeio = topo + 60 + (alto - topo - 60) / 2
+  if (antes) {
+    sobre(claro ? '#DCD9E0' : '#24242B')
+    const h = medir(ctx, antes, { ...lado2, x: 60 })
+    bloco(ctx, antes, { ...lado2, x: 60, y: yMeio - h / 2, cor: claro ? 'rgba(17,17,20,.55)' : 'rgba(255,255,255,.55)' })
+  }
+  if (depois) {
+    sobre('#1A1A20')
+    const h = medir(ctx, depois, { ...lado2, x: meio + 60 })
+    bloco(ctx, depois, { ...lado2, x: meio + 60, y: yMeio - h / 2, cor: '#FFFFFF' })
+  }
+  // Seta no meio da divisa.
+  animado(ctx, () => {
+    ctx.beginPath()
+    ctx.arc(meio, yMeio, 54, 0, Math.PI * 2)
+    ctx.fillStyle = '#FFFFFF'
+    ctx.fill()
+    ctx.font = `700 50px ${FONTE}`
+    ctx.fillStyle = '#111114'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText('→', meio, yMeio + 2)
+  }, { escala: 0.3, desloca: 0 }, meio, yMeio)
+  sobre(fundo)
+  const m = 80, base = story ? 330 : 80
+  const al = lado(r)
+  const destaque = destaqueSobre(tinta, c)
+  const tOp = { x: m, largura: L - m * 2, tamanho: Math.round(84 * escala(r)), maxLinhas: 3, entre: 1.0, alinhar: al }
+  const aOp = { x: m, largura: L - m * 2 - (al === 'left' ? 160 : 0), tamanho: 36, peso: 400, maxLinhas: 2, entre: 1.3, alinhar: al }
+  while (medir(ctx, r.titulo, tOp) + 22 + medir(ctx, r.apoio, aOp) > A - base - 20 - (alto + 60) && tOp.tamanho > 50) tOp.tamanho -= 6
+  let y = bloco(ctx, r.titulo, { ...tOp, y: alto + 60, cor: corPedida(r, 'titulo', tinta), ...marca(r, destaque) })
+  bloco(ctx, r.apoio, { ...aOp, y: y + 22, cor: corPedida(r, 'texto', apagado(tinta, 0.75)) })
+  selo(ctx, { logo, nome, x: al === 'right' ? m : L - m, y: A - base - 76, altura: 52, alinhar: al === 'right' ? 'left' : 'right', claro: tinta === '#FFFFFF' })
+}
+
+// Tabela de preços com pontilhado entre o nome e o preço. Usa os itens da marca.
+function tabela(ctx, { L, A, story, c, r, logo, foto, nome }) {
+  const tinta = pintarFundo(ctx, { L, A, c, foto, r, padrao: 'escuro' })
+  const m = 50, topo = story ? 220 : 50, base = story ? 320 : 50
+  animado(ctx, () => {
+    arredondado(ctx, m, topo, L - m * 2, A - topo - base, 40)
+    ctx.lineWidth = 3
+    ctx.strokeStyle = apagado(tinta, 0.18)
+    ctx.stroke()
+  }, { desloca: 0 })
+  const dentro = m + 70, larg = L - dentro * 2
+  const destaque = destaqueSobre(tinta, c)
+  let y = bloco(ctx, r.titulo, { x: dentro, y: topo + 90, largura: larg, tamanho: Math.round(100 * escala(r)), maxLinhas: 2, entre: 1.0, alinhar: 'center', cor: corPedida(r, 'titulo', tinta), ...marca(r, destaque) })
+  y = bloco(ctx, r.apoio, { x: dentro, y: y + 20, largura: larg, tamanho: 36, peso: 400, maxLinhas: 2, entre: 1.3, alinhar: 'center', cor: corPedida(r, 'texto', apagado(tinta, 0.72)) })
+  const linhas = r.itens?.length ? r.itens.slice(0, 6) : (r.pontos || []).filter(Boolean).slice(0, 6).map((p) => ({ nome: p, preco: '' }))
+  const fim = A - base - (r.chamada ? 230 : 150)
+  const passo = Math.min(story ? 170 : 130, (fim - y - 60) / Math.max(linhas.length, 1))
+  let yl = y + 60 + Math.max(0, (fim - y - 60 - passo * linhas.length) / 2)
+  const corPreco = corPedida(r, 'destaque', destaque)
+  for (const item of linhas) {
+    const yi = yl
+    animado(ctx, () => {
+      ctx.textBaseline = 'alphabetic'
+      ctx.font = `700 ${story ? 52 : 46}px ${FONTE}`
+      ctx.fillStyle = corPreco
+      ctx.textAlign = 'right'
+      const wp = item.preco ? ctx.measureText(item.preco).width : 0
+      if (item.preco) ctx.fillText(item.preco, dentro + larg, yi + passo * 0.55)
+      ctx.font = `600 ${story ? 50 : 44}px ${FONTE}`
+      ctx.fillStyle = corPedida(r, 'texto', tinta)
+      ctx.textAlign = 'left'
+      const espacoNome = larg - wp - 60
+      let n = item.nome
+      while (ctx.measureText(n).width > espacoNome && n.length > 4) n = n.slice(0, -2).trimEnd() + '…'
+      ctx.fillText(n, dentro, yi + passo * 0.55)
+      // Pontilhado entre o nome e o preço.
+      const de = dentro + ctx.measureText(n).width + 24, ate = dentro + larg - wp - 24
+      if (item.preco && ate > de) {
+        ctx.setLineDash([3, 10])
+        ctx.lineWidth = 3
+        ctx.strokeStyle = apagado(tinta, 0.35)
+        ctx.beginPath()
+        ctx.moveTo(de, yi + passo * 0.55 - 6)
+        ctx.lineTo(ate, yi + passo * 0.55 - 6)
+        ctx.stroke()
+        ctx.setLineDash([])
+      }
+    }, { desloca: 16 })
+    yl += passo
+  }
+  const fundo = fundoPedido(r, c[0])
+  pilulaCurta(ctx, r, { x: dentro, y: A - base - 230, largura: larg, alinhar: 'center', fundo, cor: textoSobre(fundo), altura: 96, tamanho: 38 })
+  selo(ctx, { logo, nome, x: L / 2, y: A - base - 116, altura: 52, alinhar: 'center', claro: tinta === '#FFFFFF' })
+}
+
+// Pergunta grande e opções A, B, C. Bom para enquete nos stories.
+function enquete(ctx, { L, A, story, c, r, logo, foto, nome }) {
+  let tinta
+  if (r.arte?.fundo && r.arte.fundo !== 'marca') tinta = pintarFundo(ctx, { L, A, c, foto, r })
+  else {
+    ctx.fillStyle = c[1]
+    ctx.fillRect(0, 0, L, A)
+    brilho(ctx, L, 0, L * 0.9, c[0], 0.18)
+    sobre(c[1])
+    tinta = textoSobre(c[1])
+  }
+  const m = 80, topo = story ? 230 : 80, base = story ? 330 : 90
+  // Interrogação gigante no fundo.
+  animado(ctx, () => {
+    ctx.font = `700 ${Math.round(A * 0.62)}px ${FONTE}`
+    ctx.fillStyle = apagado(tinta, 0.07)
+    ctx.textAlign = 'right'
+    ctx.textBaseline = 'alphabetic'
+    ctx.fillText('?', L + 20, A * 0.62)
+  }, { desloca: 0, escala: 0.06 }, L * 0.8, A * 0.35)
+  selo(ctx, { logo, nome, x: m, y: topo, altura: 60, claro: tinta === '#FFFFFF' })
+  const opcoes = (r.pontos || []).filter(Boolean).slice(0, 4)
+  const altOpcao = story ? 120 : 104, entreOpcoes = 22
+  const blocoOpcoes = opcoes.length * (altOpcao + entreOpcoes)
+  const fim = A - base - (r.chamada ? 90 : 0)
+  const tOp = { x: m, largura: L - m * 2, tamanho: Math.round(104 * escala(r)), maxLinhas: 4, entre: 1.0 }
+  const comeco = topo + 190
+  while (comeco + medir(ctx, r.titulo, tOp) + 60 + blocoOpcoes > fim - 40 && tOp.tamanho > 60) tOp.tamanho -= 6
+  rotulo(ctx, 'Enquete', { x: m, y: comeco - 24, tamanho: 30, cor: corPedida(r, 'destaque', apagado(tinta, 0.7)) })
+  let y = bloco(ctx, r.titulo, { ...tOp, y: comeco, cor: corPedida(r, 'titulo', tinta), ...marca(r, tinta === '#FFFFFF' ? legivel(c[0], tinta) : misturar(c[0], '#000000', 0.35)) })
+  y = Math.max(y + 60, fim - 40 - blocoOpcoes)
+  opcoes.forEach((op, i) => {
+    // Opções alternadas: clara e marcada. Em fundo escuro, a marcada vai na cor da marca.
+    const escuro = i % 2 === 1
+    const forte = tinta === '#FFFFFF' ? fundoPedido(r, c[0]) : '#111114'
+    const yo = y
+    animado(ctx, () => {
+      arredondado(ctx, m, yo, L - m * 2, altOpcao, 24)
+      ctx.fillStyle = escuro ? forte : 'rgba(255,255,255,.88)'
+      ctx.fill()
+      ctx.beginPath()
+      ctx.arc(m + 60, yo + altOpcao / 2, 26, 0, Math.PI * 2)
+      ctx.fillStyle = escuro ? (forte === '#111114' ? fundoPedido(r, c[0]) : '#FFFFFF') : '#111114'
+      ctx.fill()
+      ctx.font = `700 28px ${FONTE}`
+      ctx.fillStyle = escuro ? (forte === '#111114' ? textoSobre(fundoPedido(r, c[0])) : '#111114') : '#FFFFFF'
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText('ABCD'[i], m + 60, yo + altOpcao / 2 + 1)
+      ctx.font = `600 ${story ? 44 : 40}px ${FONTE}`
+      ctx.fillStyle = escuro ? textoSobre(forte) : '#111114'
+      ctx.textAlign = 'left'
+      ctx.fillText(op, m + 112, yo + altOpcao / 2 + 2, L - m * 2 - 150)
+    }, { desloca: 20 })
+    y += altOpcao + entreOpcoes
+  })
+  chamadaEmTexto(ctx, r, { x: m, y: A - base, largura: L - m * 2, alinhar: 'left', cor: corPedida(r, 'texto', tinta), tamanho: 36 })
+}
+
+const MODELOS = {
+  promo, aviso, bastidores, manchete, lista, citacao, dividido, foto: fotoInteira, cartao,
+  numero, cupom, agenda, conversa, mosaico, faixas, capa, comparar, tabela, enquete,
+}
 
 export function desenhar(canvas, { formato, modelo, roteiro, cores, logo, foto, nome, tempo = null, total = 8 }) {
   const [L, A] = TAMANHOS[formato] || TAMANHOS.post

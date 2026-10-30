@@ -1,7 +1,10 @@
 // Parte pura da função gerar-peca: instruções para a IA, formato da resposta e a
 // conferência final, que tira qualquer preço, data, horário ou telefone inventado.
 
-export const MODELOS = ['promo', 'aviso', 'bastidores', 'manchete', 'lista', 'citacao', 'dividido', 'foto', 'cartao']
+export const MODELOS = [
+  'promo', 'aviso', 'bastidores', 'manchete', 'lista', 'citacao', 'dividido', 'foto', 'cartao',
+  'numero', 'cupom', 'agenda', 'conversa', 'mosaico', 'faixas', 'capa', 'comparar', 'tabela', 'enquete',
+]
 const TAMANHOS = ['normal', 'grande', 'gigante']
 const ALINHAMENTOS = ['esquerda', 'centro', 'direita']
 const FUNDOS = ['marca', 'escuro', 'claro', 'foto']
@@ -18,6 +21,10 @@ export const ESQUEMA = {
     hashtags: { type: 'array', items: { type: 'string' } },
     pontos: { type: 'array', items: { type: 'string' } },
     autor: { type: 'string' },
+    numero: { type: 'string' },
+    cupom: { type: 'string' },
+    data: { type: 'string' },
+    horario: { type: 'string' },
     arte: {
       type: 'object',
       properties: {
@@ -37,7 +44,7 @@ export const ESQUEMA = {
     },
     nao_deu: { type: 'array', items: { type: 'string' } },
   },
-  required: ['modelo', 'titulo', 'apoio', 'itens', 'chamada', 'legenda', 'hashtags', 'pontos', 'autor', 'arte', 'cores', 'nao_deu'],
+  required: ['modelo', 'titulo', 'apoio', 'itens', 'chamada', 'legenda', 'hashtags', 'pontos', 'autor', 'numero', 'cupom', 'data', 'horario', 'arte', 'cores', 'nao_deu'],
   additionalProperties: false,
 }
 
@@ -77,11 +84,24 @@ Arte: você também decide como a peça é desenhada, para cada peça ter a sua 
 - "manchete": título enorme como protagonista, para novidade ou frase de impacto.
 - "lista": título e de 2 a 4 pontos numerados em "pontos", para dica, passo a passo ou o que está incluso.
 - "citacao": a fala de um cliente no "titulo", com o nome em "autor", para depoimento.
-- "dividido": foto em cima e texto embaixo, para lançamento, produto ou antes e depois.
+- "dividido": foto em cima e texto embaixo, para lançamento ou produto.
 - "foto": foto inteira com um cartão de texto embaixo. Só com foto.
 - "cartao": cartão branco no meio, para convite, evento ou comunicado mais formal.
-Varie: não use sempre o mesmo. Se o pedido diz que tem foto, prefira "bastidores", "dividido" ou "foto".
-"pontos": só no "lista", frases de até 6 palavras; nos outros, lista vazia. "autor": só no "citacao"; nos outros, "".
+- "numero": um número enorme é o protagonista (50%, 7 dias, 3x), com o título embaixo. Usa "numero".
+- "cupom": cupom recortado com o código e a validade. Usa "cupom" e, se houver, "data" (validade).
+- "agenda": folha de calendário com o dia e o horário, para evento, aula, live ou data especial. Usa "data" e "horario".
+- "conversa": perguntas de cliente em balões ("pontos") e a resposta da marca no "titulo", para dúvida frequente.
+- "mosaico": três quadros (foto, outro pedaço da foto e um bloco de cor com "numero" ou o destaque) e o texto embaixo. Melhor com foto.
+- "faixas": duas fitas inclinadas com palavras curtas da marca ("pontos") e o título no meio, para lançamento ou chamada geral.
+- "capa": capa de revista com o nome da marca no alto, a chamada da matéria no "apoio" e o título grande embaixo. Melhor com foto.
+- "comparar": antes e depois em texto, lado a lado: "pontos" com exatamente 2 frases, a primeira o antes e a segunda o depois.
+- "tabela": tabela de preços com os itens da marca (usa "itens"), para cardápio ou lista de serviços.
+- "enquete": a pergunta no "titulo" e de 2 a 4 opções em "pontos", para enquete nos stories.
+Varie: não use sempre o mesmo. Se o pedido diz que tem foto, prefira "bastidores", "dividido", "foto", "mosaico" ou "capa".
+"pontos": no "lista" (2 a 4 frases de até 6 palavras), "conversa" (1 a 3 perguntas de até 12 palavras, no jeito de um cliente escrever), "faixas" (3 a 5 palavras soltas), "comparar" (2 frases de até 6 palavras) e "enquete" (2 a 4 opções de até 5 palavras); nos outros, lista vazia. "autor": só no "citacao"; nos outros, "".
+"numero": só no "numero" e no "mosaico", o número que é o coração da peça, curto (até 7 caracteres, ex.: "50%", "7 dias", "3x"). Tem de estar no pedido ou nos dados da marca; se não estiver, "" e o app usa o título. Nos outros modelos, "".
+"cupom": só no "cupom", o código escrito igual ao pedido. Se o pedido não traz o código, escreva [CUPOM]. Nos outros, "".
+"data" e "horario": no "agenda" e na validade do "cupom". Só do pedido ou dos dados da marca; se a peça precisa e não tem, [DATA] e [HORÁRIO]. "data" curta (ex.: "29/11"), "horario" curto (ex.: "10h às 14h"). Nos outros, "".
 "arte":
 - "destaque": 1 a 3 palavras do título, escritas igual a ele, que a arte pinta na cor de destaque (o coração da mensagem). "" para nenhuma.
 - "tamanho_titulo": "normal", "grande" ou "gigante" (título curto e forte pede maior).
@@ -102,6 +122,16 @@ const DICAS_DO_LAYOUT: Record<string, string> = {
   dividido: 'título curto e apoio que completa; a foto ou a cor da marca fica em cima.',
   foto: 'título curto, a foto é a protagonista.',
   cartao: 'tom de convite ou comunicado, título de até 6 palavras.',
+  numero: 'preencha "numero" com o número do pedido (ex.: "50%"); o título completa o número em até 5 palavras.',
+  cupom: 'título curto com a oferta (ex.: "50% off"); "cupom" com o código do pedido ou [CUPOM]; "data" com a validade, se houver.',
+  agenda: '"data" e "horario" do pedido (ou os marcadores); título com o nome do evento, até 6 palavras.',
+  conversa: '"pontos" com 1 a 3 perguntas que um cliente faria e a resposta da marca no "titulo", até 10 palavras.',
+  mosaico: 'título curto; "numero" com um número do pedido, se houver.',
+  faixas: '"pontos" com 3 a 5 palavras soltas da marca (serviços, produtos, valores); título de até 5 palavras.',
+  capa: 'título de manchete de revista, até 7 palavras; o "apoio" é a chamada da matéria; a "chamada" cabe em 2 palavras.',
+  comparar: '"pontos" com exatamente 2 frases de até 6 palavras: antes e depois.',
+  tabela: 'preencha "itens" com os itens da lista que entram; título curto.',
+  enquete: 'a pergunta no "titulo" e 2 a 4 opções curtas em "pontos".',
 }
 
 type Perfil = {
@@ -124,8 +154,8 @@ export function montarMensagem(perfil: Perfil, pedido: string, formato: string, 
     texto += `\n\n<layout>${layout}</layout>\n\nO dono já escolheu o layout. Use "modelo": "${layout}" e escreva pensando nele: ${DICAS_DO_LAYOUT[layout] || ''} Você continua decidindo o destaque, o tamanho do título, o alinhamento e o fundo.`
   }
   if (anterior) {
-    const { modelo, titulo, apoio, chamada, legenda, pontos, autor, arte, cores } = anterior as Record<string, unknown>
-    texto += `\n\n<versao_anterior>\n${JSON.stringify({ modelo, titulo, apoio, chamada, legenda, pontos: pontos || [], autor: autor || '', arte: arte || {}, cores: cores || { titulo: '', texto: '', destaque: '' } }, null, 2)}\n</versao_anterior>`
+    const { modelo, titulo, apoio, chamada, legenda, pontos, autor, numero, cupom, data, horario, arte, cores } = anterior as Record<string, unknown>
+    texto += `\n\n<versao_anterior>\n${JSON.stringify({ modelo, titulo, apoio, chamada, legenda, pontos: pontos || [], autor: autor || '', numero: numero || '', cupom: cupom || '', data: data || '', horario: horario || '', arte: arte || {}, cores: cores || { titulo: '', texto: '', destaque: '' } }, null, 2)}\n</versao_anterior>`
     texto += ajuste
       ? `\n\n<ajuste>\n${ajuste}\n</ajuste>\n\nO dono gostou da versão anterior e quer só este ajuste. Parta dela e mude apenas o que o ajuste pede; o resto fica igual, palavra por palavra quando der.`
       : `\n\nO dono pediu outra versão, sem dizer o que mudar. Escreva uma peça nova de verdade: outro ângulo, outro título, outra primeira linha na legenda. Se o pedido mudou, siga o pedido novo.`
@@ -139,6 +169,7 @@ const MARCADORES: Record<string, string> = {
   '[DATA]': 'Falta a data',
   '[HORÁRIO]': 'Falta o horário',
   '[TELEFONE]': 'Falta o telefone',
+  '[CUPOM]': 'Falta o código do cupom',
 }
 
 // Cada número que aparece nos dados ou no pedido, com e sem separadores.
@@ -154,6 +185,11 @@ function numerosDaFonte(fonte: string) {
 }
 
 const semZero = (n: string) => n.replace(/^0+(?=\d)/, '')
+
+// Todo número do trecho (ex.: "10h às 14h" tem 10 e 14) aparece no pedido ou nos dados.
+function numerosPermitidos(trecho: string, fonte: Set<string>) {
+  return (trecho.match(/\d+/g) || []).every((n) => permitido(n, fonte))
+}
 
 function permitido(trecho: string, fonte: Set<string>) {
   const so = semZero(trecho.replace(/\D/g, ''))
@@ -178,7 +214,7 @@ export function formatarPreco(preco: string) {
   return /^r\$/i.test(limpo) ? limpo : `R$ ${limpo}`
 }
 
-export function conferir(bruto: Record<string, unknown>, perfil: Perfil, pedido: string) {
+export function conferir(bruto: Record<string, unknown>, perfil: Perfil, pedido: string, layout = '') {
   const fonte = numerosDaFonte(pedido + ' ' + JSON.stringify(perfil.dados))
   const avisos: string[] = []
   const trocados = new Set<string>()
@@ -196,7 +232,7 @@ export function conferir(bruto: Record<string, unknown>, perfil: Perfil, pedido:
   }
 
   const roteiro = {
-    modelo: MODELOS.includes(bruto.modelo as string) ? bruto.modelo as string : 'aviso',
+    modelo: MODELOS.includes(layout) ? layout : MODELOS.includes(bruto.modelo as string) ? bruto.modelo as string : 'aviso',
     titulo: limpar(bruto.titulo),
     apoio: limpar(bruto.apoio),
     chamada: limpar(bruto.chamada),
@@ -205,9 +241,28 @@ export function conferir(bruto: Record<string, unknown>, perfil: Perfil, pedido:
     hashtags: [] as string[],
     pontos: ((bruto.pontos as string[] | undefined) || []).map(limpar).filter(Boolean).slice(0, 4),
     autor: limpar(bruto.autor),
+    numero: '',
+    cupom: '',
+    data: '',
+    horario: '',
     arte: {} as Record<string, string>,
     cores: {} as Record<string, string>,
     avisos,
+  }
+
+  // Número, data e horário só com números que vieram do pedido ou dos dados; senão, sem número ou o marcador.
+  const numero = String(bruto.numero ?? '').trim().slice(0, 12)
+  roteiro.numero = numero && numerosPermitidos(numero, fonte) && !/R\$/.test(numero) ? numero : ''
+  if (numero && !roteiro.numero) trocados.add('numero')
+  const data = String(bruto.data ?? '').trim().slice(0, 30)
+  roteiro.data = !data || data === '[DATA]' || numerosPermitidos(data, fonte) ? data : (trocados.add('[DATA]'), '[DATA]')
+  const horario = String(bruto.horario ?? '').trim().slice(0, 30)
+  roteiro.horario = !horario || horario === '[HORÁRIO]' || numerosPermitidos(horario, fonte) ? horario : (trocados.add('[HORÁRIO]'), '[HORÁRIO]')
+  // O código do cupom tem de estar escrito no pedido.
+  const codigo = String(bruto.cupom ?? '').trim().slice(0, 24)
+  if (roteiro.modelo === 'cupom') {
+    roteiro.cupom = codigo && codigo !== '[CUPOM]' && pedido.toLowerCase().includes(codigo.toLowerCase()) ? codigo : '[CUPOM]'
+    if (codigo && codigo !== '[CUPOM]' && roteiro.cupom === '[CUPOM]') trocados.add('[CUPOM]')
   }
 
   const arte = (bruto.arte || {}) as Record<string, unknown>
@@ -245,7 +300,7 @@ export function conferir(bruto: Record<string, unknown>, perfil: Perfil, pedido:
   const naoDeu = ((bruto.nao_deu as string[] | undefined) || []).map((t) => String(t).trim().replace(/\.$/, '')).filter(Boolean).slice(0, 3)
   if (naoDeu.length) avisos.push(`Por aqui ainda não dá para ${naoDeu.join(', ')}. O resto do pedido foi atendido.`)
   if (trocados.size) avisos.push('A IA tentou escrever um dado que não está na sua marca. Trocamos por um marcador.')
-  const tudo = [roteiro.titulo, roteiro.apoio, roteiro.chamada, roteiro.legenda, ...roteiro.pontos, ...roteiro.itens.map((i) => i.preco)].join(' ')
+  const tudo = [roteiro.titulo, roteiro.apoio, roteiro.chamada, roteiro.legenda, roteiro.numero, roteiro.cupom, roteiro.data, roteiro.horario, ...roteiro.pontos, ...roteiro.itens.map((i) => i.preco)].join(' ')
   for (const [marcador, texto] of Object.entries(MARCADORES)) {
     if (tudo.includes(marcador)) avisos.push(`${texto}: troque ${marcador} antes de postar.`)
   }

@@ -5,7 +5,7 @@ import { listarPecas, pecasDoMes } from '../lib/pecas.js'
 import { agendar, listarAgenda, mudarAgenda } from '../lib/agenda.js'
 import { avisosPermitidos, pedirAvisos, vigiarAgenda } from '../lib/avisos.js'
 import PerfilMarca, { PARTES } from './PerfilMarca.jsx'
-import ApresentacaoMarca from './ApresentacaoMarca.jsx'
+import Comecar from './Comecar.jsx'
 import Criar from './Criar.jsx'
 import Entrevista from './Entrevista.jsx'
 import Planos from './Planos.jsx'
@@ -43,7 +43,8 @@ export default function Area({ sessao, teste = false }) {
   const [entrevista, setEntrevista] = useState(null) // null, 'nova' ou 'revisar'
   const [dica, setDica] = useState(null) // dica que abriu a edição: o campo dela já vem em foco
   const [erro, setErro] = useState('')
-  const [apresentou, setApresentou] = useState(false)
+  const [comecando, setComecando] = useState(null) // null = ainda não sabe; true = entrada mínima aberta; false = já passou
+  const [videoInicial, setVideoInicial] = useState(false)
   const [criando, setCriando] = useState(null) // null, 'nova' ou a peça aberta do histórico
   const [pecas, setPecas] = useState([])
   const [usadas, setUsadas] = useState(0)
@@ -93,6 +94,11 @@ export default function Area({ sessao, teste = false }) {
   }, [negocio])
 
   useEffect(recarregar, [recarregar])
+
+  // Primeira vez (nenhuma versão salva): a entrada mínima abre uma vez e fica até a pessoa sair dela.
+  useEffect(() => {
+    if (perfil && comecando === null) setComecando(versao === 0)
+  }, [perfil, versao, comecando])
 
   const recarregarPecas = useCallback(() => {
     if (!negocio) return
@@ -191,12 +197,15 @@ export default function Area({ sessao, teste = false }) {
     )
   }
 
-  // Primeira vez (nenhuma versão salva): explica para que serve antes de tudo.
-  if (perfil && versao === 0 && !apresentou) {
+  // Primeira vez (nenhuma versão salva): nome, ramo e cor, e a primeira peça já sai.
+  if (perfil && comecando) {
     return (
-      <ApresentacaoMarca
-        onComecar={() => { setApresentou(true); setEditando(0) }}
-        onDepois={() => setApresentou(true)}
+      <Comecar
+        negocioId={negocio.id}
+        perfil={perfil}
+        onSalvo={(novo) => { setPerfil(novo); recarregar() }}
+        onDepois={() => { setComecando(false); window.scrollTo({ top: 0 }) }}
+        onPeca={(peca, video) => { setComecando(false); setCriarCom(null); setVideoInicial(video); setCriando(peca); recarregarPecas(); window.scrollTo({ top: 0 }) }}
       />
     )
   }
@@ -205,6 +214,8 @@ export default function Area({ sessao, teste = false }) {
   const feitas = perfil ? PARTES.map((p) => parteFeita(perfil, p.chave)) : [false, false, false, false]
   const total = feitas.filter(Boolean).length
   const proxima = feitas.indexOf(false)
+  // Com a identidade feita já dá para criar; o resto da marca deixa as peças mais com a cara dela.
+  const podeCriar = feitas[0]
   const nomeMarca = perfil?.identidade.nome || negocio?.nome
   const { dicas, forca } = perfil && total === 4 ? dicasDaMarca(perfil) : { dicas: [], forca: 0 }
 
@@ -214,9 +225,9 @@ export default function Area({ sessao, teste = false }) {
     if (destino !== 'criar') { setCriando(null); setCriarCom(null); setVoltarPara(null) }
     if (destino === 'plano') { setVendoPlanos(true); return }
     if (destino === 'criar') {
-      if (total === 4 && usadas < limite) { setCriando('nova'); return }
-      setAba(total === 4 ? 'plano' : 'marca')
-      if (total === 4) setVendoPlanos(true)
+      if (podeCriar && usadas < limite) { setCriando('nova'); return }
+      setAba(podeCriar ? 'plano' : 'marca')
+      if (podeCriar) setVendoPlanos(true)
       return
     }
     setAba(destino)
@@ -233,26 +244,37 @@ export default function Area({ sessao, teste = false }) {
           <p className="area__texto">É daqui que sai cada post. Toque num cartão para mudar; cada mudança vira uma versão nova, sem perder a anterior.</p>
         </>
       ) : (
-        <>
-          <h1 className="area__titulo">Primeiro, conte a sua marca.</h1>
-          <p className="area__texto">
-            Com isso, cada post já sai com as suas cores, o seu jeito de falar e os seus dados certos.
-            Você configura uma vez e fica guardado.
-          </p>
-        </>
+        podeCriar ? (
+          <>
+            <h1 className="area__titulo">{nomeMarca ? `Marca: ${nomeMarca}` : 'Sua marca'}</h1>
+            <div className="area__progresso" role="img" aria-label={`${total} de 4 partes da marca feitas`}>
+              <span className="area__barra"><span style={{ transform: `scaleX(${total / 4})` }} /></span>
+              <span className="mono area__progresso-num">{total} de 4</span>
+            </div>
+            <p className="area__texto">Você já pode criar. Cada parte que completar deixa as peças mais com a sua cara.</p>
+          </>
+        ) : (
+          <>
+            <h1 className="area__titulo">Primeiro, conte a sua marca.</h1>
+            <p className="area__texto">
+              Com isso, cada post já sai com as suas cores, o seu jeito de falar e os seus dados certos.
+              Você configura uma vez e fica guardado.
+            </p>
+          </>
+        )
       )}
 
       {total < 4 && (
       <ol className="area__passos">
         {PARTES.map((p, i) => (
           <li key={p.chave}>
-            <button type="button" className="area__passo" onClick={() => setEditando(i)} disabled={!perfil}>
+            <button type="button" className={`area__passo${i === proxima && podeCriar ? ' area__passo--proximo' : ''}`} onClick={() => setEditando(i)} disabled={!perfil}>
               <span className="mono area__num">{p.numero}</span>
               <span className="area__passo-texto">
                 <strong>{p.titulo}</strong>
                 <span>{p.resumo}</span>
               </span>
-              <span className={`mono area__estado${feitas[i] ? ' area__estado--feito' : ''}`}>{feitas[i] ? 'Feito' : 'Falta'}</span>
+              <span className={`mono area__estado${feitas[i] ? ' area__estado--feito' : i === proxima ? ' area__estado--proximo' : ''}`}>{feitas[i] ? 'Feita' : i === proxima ? 'Próxima' : 'Depois'}</span>
             </button>
           </li>
         ))}
@@ -261,7 +283,7 @@ export default function Area({ sessao, teste = false }) {
 
       {erro && <p className="campo__erro" role="alert">{erro}</p>}
 
-      {total === 4 ? (
+      {podeCriar ? (
         usadas >= limite ? (
           <div className="area__limite">
             <p>Você usou as {limite} peças deste mês. Suba de plano para continuar criando agora, ou espere o contador zerar no dia 1.</p>
@@ -271,9 +293,10 @@ export default function Area({ sessao, teste = false }) {
           <button type="button" className="botao botao--primario area__cta" onClick={() => setCriando('nova')}>Criar post</button>
         )
       ) : (
-        <button type="button" className="botao botao--primario area__cta" onClick={() => setEditando(proxima)} disabled={!perfil}>
-          {total === 0 ? 'Começar' : `Continuar: ${PARTES[proxima].titulo}`}
-        </button>
+        <button type="button" className="botao botao--primario area__cta" onClick={() => setComecando(true)} disabled={!perfil}>Começar</button>
+      )}
+      {podeCriar && total < 4 && (
+        <button type="button" className="botao botao--destaque area__cta" onClick={() => setEditando(proxima)}>Continuar a marca: {PARTES[proxima].titulo}</button>
       )}
       {total === 4 && <DicasMarca dicas={dicas} forca={forca} onAbrir={(d) => { if (d.id === 'entrevista') return setEntrevista('nova'); setDica(d); setEditando(d.parte) }} />}
       {total === 4 && <PainelMarca perfil={perfil} versao={versao} dicas={dicas} onEditar={setEditando} onGuia={() => setEntrevista(perfil.voz.guia?.regras?.length ? 'revisar' : 'nova')} />}
@@ -293,7 +316,7 @@ export default function Area({ sessao, teste = false }) {
           {pecas.map((p) => <Miniatura key={p.id} peca={p} onAbrir={() => abrirPeca(p)} />)}
         </div>
       )}
-      {total === 4 && usadas < limite && <button type="button" className="botao botao--primario area__cta" onClick={() => setCriando('nova')}>Criar post</button>}
+      {podeCriar && usadas < limite && <button type="button" className="botao botao--primario area__cta" onClick={() => setCriando('nova')}>Criar post</button>}
     </section>
   )
 
@@ -315,6 +338,9 @@ export default function Area({ sessao, teste = false }) {
             perfil={perfil}
             pecaInicial={criando === 'nova' ? null : criando}
             formatoInicial={criarCom?.formato}
+            videoInicial={videoInicial}
+            marca={{ feitas: total, proxima: proxima >= 0 ? PARTES[proxima] : null }}
+            onCompletar={() => { setCriando(null); setVideoInicial(false); setEditando(proxima); window.scrollTo({ top: 0 }) }}
             onCriou={ligarAoPlanner}
             noPlanner={Boolean(criarCom)}
             onAgendar={async (peca, quando) => {
@@ -328,6 +354,7 @@ export default function Area({ sessao, teste = false }) {
               if (voltarPara) { setAbrirItem({ id: `volta-${Date.now()}`, quando: voltarPara }); setAba('planner') }
               setVoltarPara(null)
               setCriando(null)
+              setVideoInicial(false)
               setCriarCom(null)
               window.scrollTo({ top: 0 })
             }}

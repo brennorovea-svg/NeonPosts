@@ -1,5 +1,5 @@
 import { supabase } from './supabase.js'
-import { modoDeTeste } from './perfil.js'
+import { modoDeTeste, perfilDeTeste } from './perfil.js'
 import { SUPABASE_URL } from '../config.js'
 
 // Peças geradas. A IA roda na função gerar-peca do Supabase; aqui só chamamos,
@@ -28,10 +28,19 @@ export function acordarIA() {
   fetch(`${SUPABASE_URL}/functions/v1/gerar-peca`).catch(() => {})
 }
 
-export async function gerarPeca({ pedido, formato, video = false, fotos = [], refazer, ajuste, modelo }) {
+export async function gerarPeca({ pedido, formato, video = false, fotos = [], refazer, ajuste, modelo, boas_vindas = false }) {
   if (modoDeTeste()) {
     await new Promise((ok) => setTimeout(ok, 6000))
     const antiga = refazer && pecasDeTeste.find((p) => p.id === refazer)
+    if (boas_vindas) {
+      const peca = {
+        id: `teste-${Date.now()}`, formato, modelo: modelo || 'manchete', pedido: 'Post de apresentação da marca', fotos: [], cortesia: true,
+        roteiro: { ...ROTEIRO_DE_TESTE, modelo: modelo || 'manchete', titulo: `Prazer, a gente é a ${perfilDeTeste()?.identidade?.nome || 'Naruá'}`, apoio: 'Comida boa, feita na hora. A partir de agora, por aqui também.', chamada: 'Segue a gente', itens: [], legenda: 'Chegamos no Instagram. Por aqui vai ter cardápio, bastidor e aviso de onde o truck está. Segue a gente e chama no WhatsApp.' },
+        imagem: null, refeitas: 0, criado_em: new Date().toISOString(), versoes: [], escolhida: null,
+      }
+      pecasDeTeste = [peca, ...pecasDeTeste]
+      return { peca, refeitasRestantes: 3 }
+    }
     const peca = {
       id: antiga?.id || `teste-${Date.now()}`,
       formato, modelo: modelo || antiga?.modelo || ROTEIRO_DE_TESTE.modelo, pedido: pedido || antiga?.pedido, fotos: antiga?.fotos || fotos,
@@ -47,7 +56,7 @@ export async function gerarPeca({ pedido, formato, video = false, fotos = [], re
     pecasDeTeste = [peca, ...pecasDeTeste.filter((p) => p.id !== peca.id)]
     return { peca, refeitasRestantes: 3 - peca.refeitas }
   }
-  const { data, error } = await supabase.functions.invoke('gerar-peca', { body: { pedido, formato, video, fotos, refazer, ajuste, modelo } })
+  const { data, error } = await supabase.functions.invoke('gerar-peca', { body: { pedido, formato, video, fotos, refazer, ajuste, modelo, boas_vindas } })
   if (error) {
     let mensagem = 'Não deu para criar agora. Tente de novo.'
     try { mensagem = (await error.context.json()).erro || mensagem } catch { /* resposta sem corpo */ }
@@ -59,16 +68,16 @@ export async function gerarPeca({ pedido, formato, video = false, fotos = [], re
 export async function listarPecas(negocioId, quantas = 12) {
   if (modoDeTeste()) return pecasDeTeste.slice(0, quantas)
   const { data, error } = await supabase.from('pecas')
-    .select('id, formato, modelo, pedido, roteiro, versoes, escolhida, fotos, imagem, refeitas, criado_em')
+    .select('id, formato, modelo, pedido, roteiro, versoes, escolhida, fotos, imagem, refeitas, cortesia, criado_em')
     .eq('negocio', negocioId).order('criado_em', { ascending: false }).limit(quantas)
   if (error) throw error
   return data
 }
 
 export async function pecasDoMes(negocioId) {
-  if (modoDeTeste()) return pecasDeTeste.length
+  if (modoDeTeste()) return pecasDeTeste.filter((p) => !p.cortesia).length
   const { count } = await supabase.from('pecas').select('id', { count: 'exact', head: true })
-    .eq('negocio', negocioId).gte('criado_em', inicioDoMes())
+    .eq('negocio', negocioId).eq('cortesia', false).gte('criado_em', inicioDoMes())
   return count ?? 0
 }
 

@@ -1,0 +1,81 @@
+/* Entrada mínima: nome, ramo e cor, e a vitrine com a marca viva. */
+.comecar {
+  width: 100%; max-width: 520px; margin: 0 auto; min-height: 100%;
+  display: flex; flex-direction: column; gap: 20px;
+  padding: 20px 16px 40px;
+  animation: comecar-sobe 520ms var(--ease) both;
+}
+.comecar__topo { display: flex; align-items: center; justify-content: space-between; }
+.comecar__marca { margin: 0; font-size: 21px; }
+.comecar__passo { font-size: 12px; color: var(--texto-2); }
+.comecar__titulo { margin: 0; font-size: clamp(26px, 6.4vw, 34px); font-weight: 700; line-height: 1.12; letter-spacing: -.03em; }
+.comecar__texto { margin: -8px 0 0; font-size: 14px; line-height: 1.5; color: var(--texto-2); }
+.comecar__nota { margin: 0; font-size: 12px; line-height: 1.5; color: var(--cinza-claro); text-align: center; }
+
+/* Cores: bolinhas de 40 px, a escolhida com aro claro. */
+.comecar__cores { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.comecar__cor {
+  width: 40px; height: 40px; border-radius: 50%; border: 3px solid var(--fundo); padding: 0; cursor: pointer;
+  box-shadow: 0 0 0 1px var(--borda); transition: transform var(--dur-controle) var(--ease);
+}
+.comecar__cor:hover { transform: scale(1.06); }
+.comecar__cor[aria-pressed="true"], .comecar__cor--atual { border-color: var(--neve); }
+.comecar__cor--outra {
+  position: relative; display: inline-flex; align-items: center; justify-content: center;
+  background: transparent; border: 1px dashed var(--borda); box-shadow: none; color: var(--texto-2);
+}
+.comecar__cor--outra input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
+.comecar__cor--outra svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; pointer-events: none; }
+.comecar__hex { width: 104px; min-height: 40px; padding: 8px 10px; font-size: 13px; }
+.comecar__logo { margin-top: 4px; }
+.comecar__logo .imagens { display: flex; }
+.comecar__logo .imagem--nova { flex: 1; min-height: 56px; aspect-ratio: auto; padding: 10px 14px; text-align: left; place-items: center start; font-size: 14px; }
+.comecar__logo .imagem:not(.imagem--nova) { width: 96px; }
+
+.comecar__acoes { display: flex; flex-direction: column; align-items: stretch; gap: 10px; margin-top: 4px; }
+.comecar__acoes .perfil__depois { align-self: center; }
+
+/* Vitrine: as amostras rolam para o lado; o vídeo fica maior e com o aro aceso. */
+.comecar--vitrine { gap: 14px; }
+.comecar__carrossel { margin: 0 -16px; }
+.comecar__carrossel .carrossel__seta--antes { left: 6px; }
+.comecar__carrossel .carrossel__seta--depois { right: 6px; }
+.comecar__amostras { display: flex; align-items: center; gap: 12px; padding: 8px 16px 12px; }
+.comecar__amostra {
+  flex: 0 0 auto; display: flex; flex-direction: column; gap: 8px; align-items: center;
+  padding: 0; border: 0; background: none; cursor: pointer; font: inherit; color: var(--texto-2);
+  transition: transform var(--dur-controle) var(--ease);
+}
+.comecar__amostra--post { width: 150px; }
+.comecar__amostra--story { width: 150px; }
+.comecar__amostra--video { width: 176px; }
+.comecar__amostra:active { transform: scale(.98); }
+.comecar__tela {
+  display: block; width: 100%; border-radius: 12px; overflow: hidden;
+  outline: 2px solid transparent; outline-offset: 3px;
+  box-shadow: 0 0 0 1px var(--borda), 0 12px 30px rgba(0, 0, 0, .4);
+  transition: outline-color var(--dur-controle) var(--ease);
+}
+.comecar__amostra--video .comecar__tela { border-radius: 16px; box-shadow: 0 0 0 1px var(--borda), 0 16px 40px rgba(123, 92, 255, .25); }
+.comecar__tela canvas { display: block; width: 100%; height: auto; }
+.comecar__amostra[aria-checked="true"] .comecar__tela { outline-color: var(--violeta); }
+.comecar__amostra[aria-checked="true"] { color: var(--neve); }
+.comecar__rotulo { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; }
+.comecar__rodando { width: 7px; height: 7px; border-radius: 50%; background: #2ECC71; animation: comecar-pulsa 1.4s var(--ease) infinite; }
+
+/* Gerando: a lente respira no centro. */
+.comecar--gerando { align-items: center; justify-content: center; text-align: center; min-height: 70vh; }
+.comecar__gerando { margin: 8px 0 0; font-size: 18px; font-weight: 600; }
+.comecar__sub { margin: 0; font-size: 12px; color: var(--texto-2); }
+
+@keyframes comecar-sobe { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes comecar-pulsa { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) {
+  .comecar, .comecar__rodando { animation: none; }
+  .comecar__cor, .comecar__cor:hover, .comecar__amostra, .comecar__amostra:active, .comecar__tela { transition: none; transform: none; }
+}
+@media (min-width: 1024px) {
+  .comecar { max-width: 640px; padding-top: 48px; }
+  .comecar__amostra--post, .comecar__amostra--story { width: 180px; }
+  .comecar__amostra--video { width: 210px; }
+}

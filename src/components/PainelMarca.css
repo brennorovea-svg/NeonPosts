@@ -58,3 +58,5 @@
   .painel__cartao, .painel__cartao:hover, .painel__cartao:active { transition: none; transform: none; }
 }
 .painel__dicas { margin-left: auto; font-size: 11px; color: var(--lilas); padding: 3px 8px; border-radius: 999px; background: rgba(123, 92, 255, .14); }
+.painel__regras { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; line-height: 1.45; }
+.painel__regras li::marker { color: var(--lilas); font-family: var(--fonte-mono); font-size: 12px; }

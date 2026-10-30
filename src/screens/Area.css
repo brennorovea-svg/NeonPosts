@@ -28,6 +28,8 @@
   display: flex; flex-direction: column; gap: 16px;
   padding: 40px 16px 56px;
 }
+.area__conteudo--painel { max-width: 880px; }
+.area__conteudo--painel > .area__cta, .area__conteudo--painel > .area__limite { max-width: 560px; }
 .area__ola { margin: 0; font-size: 13px; letter-spacing: .1em; text-transform: uppercase; color: var(--lilas); }
 .area__titulo { margin: 0; font-size: clamp(30px, 7vw, 44px); font-weight: 700; line-height: 1.02; letter-spacing: -.04em; }
 .area__texto { margin: 0; font-size: 16px; line-height: 1.55; color: var(--texto-2); }

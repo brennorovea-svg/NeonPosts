@@ -37,12 +37,6 @@ const REGRAS = [
     porque: 'WhatsApp ou site. Sem isso, a chamada do post fica sem destino.',
   },
   {
-    id: 'poucos-itens', parte: 3, campo: 'itens', peso: 2,
-    falta: (m) => { const n = m.dados.itens.filter((x) => temTexto(x.nome)).length; return n > 0 && n < 3 },
-    titulo: (m) => { const n = m.dados.itens.filter((x) => temTexto(x.nome)).length; return `Só ${n === 1 ? '1 item cadastrado' : `${n} itens cadastrados`}` },
-    porque: 'Com mais itens, a IA varia os posts e monta cardápio, tabela e vídeo em cenas.',
-  },
-  {
     id: 'sem-preco', parte: 3, campo: 'itens', peso: 2,
     falta: (m) => m.dados.itens.some((x) => temTexto(x.nome) && !temTexto(x.preco)),
     titulo: (m) => { const n = m.dados.itens.filter((x) => temTexto(x.nome) && !temTexto(x.preco)).length; return `${n === 1 ? '1 item está' : `${n} itens estão`} sem preço` },

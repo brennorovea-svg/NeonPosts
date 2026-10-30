@@ -14,6 +14,18 @@ const POR_TIPO = {
   'Antes e depois': { foto: ['comparar', 'dividido', 'bastidores'], sem: ['comparar', 'dividido', 'manchete'] },
 }
 const GERAL = { foto: ['dividido', 'capa', 'manchete'], sem: ['manchete', 'faixas', 'enquete'] }
+// No vídeo, os stories com movimento que mais combinam com cada tipo.
+const POR_TIPO_NO_VIDEO = {
+  Promoção: { foto: ['vitrine', 'glitch', 'cenas'], sem: ['vitrine', 'glitch', 'contador'] },
+  Novidade: { foto: ['acende', 'revelacao', 'cenas'], sem: ['acende', 'revelacao', 'glitch'] },
+  Bastidores: { foto: ['aovivo', 'cenas', 'movimento'], sem: ['movimento', 'pronto', 'impacto'] },
+  Dica: { foto: ['inclui', 'pergunta', 'cenas'], sem: ['inclui', 'pergunta', 'direct'] },
+  'Cardápio ou catálogo': { foto: ['vitrine', 'cenas', 'semana'], sem: ['vitrine', 'semana', 'inclui'] },
+  Depoimento: { foto: ['estrelas', 'direct', 'aovivo'], sem: ['estrelas', 'direct', 'impacto'] },
+  'Aviso de horário': { foto: ['semana', 'contagem', 'local'], sem: ['semana', 'contagem', 'local'] },
+  'Antes e depois': { foto: ['escolha', 'pergunta', 'cenas'], sem: ['escolha', 'pergunta', 'impacto'] },
+}
+const GERAL_NO_VIDEO = { foto: ['aovivo', 'impacto', 'cenas'], sem: ['impacto', 'direct', 'busca'] }
 
 // Quando a pessoa escreve sem tocar numa ficha, o texto ainda diz o tipo.
 const PISTAS = [
@@ -32,11 +44,10 @@ export function tipoDoPedido(tipo, pedido) {
   return PISTAS.find(([, r]) => r.test(pedido || ''))?.[0] || null
 }
 
-// No vídeo, o vídeo em cenas vem primeiro.
+// No vídeo, os stories com movimento.
 export function sugerirLayouts(tipo, temFoto, video = false) {
-  const lista = POR_TIPO[tipo] || GERAL
-  const base = temFoto ? lista.foto : lista.sem
-  return video ? ['cenas', ...base.slice(0, 2)] : base
+  const lista = video ? POR_TIPO_NO_VIDEO[tipo] || GERAL_NO_VIDEO : POR_TIPO[tipo] || GERAL
+  return temFoto ? lista.foto : lista.sem
 }
 
 // Todos os layouts, com os 3 sugeridos na frente. Os que só servem para vídeo saem fora do vídeo.
@@ -71,20 +82,29 @@ export function roteiroDeAmostra(modelo, tipo, perfil, temFoto) {
     comparar: ['Como era antes', 'Como ficou depois'],
     enquete: ['Primeira opção', 'Segunda opção', 'Terceira opção'],
     tabela: nomes.length ? [] : ['Seu produto', 'Outro produto'],
+    direct: ['Vocês entregam hoje?', 'Quanto fica?'],
+    busca: [`${String(perfil.identidade.ramo || 'loja').toLowerCase()} perto de mim`],
+    painel: ['12', '18', '15', '24', '31'],
+    semana: ['SEG: Seu destaque', 'QUA: Outro destaque', 'SEX: Mais um destaque', 'SÁB: Aberto o dia todo'],
+    inclui: ['Primeiro item', 'Segundo item', 'Terceiro item'],
+    movimento: (nomes.length ? nomes.slice(0, 3) : ['Seu produto', 'Seu serviço']).map((n) => `Saiu agora · ${n}`),
+    escolha: ['Opção um', 'Opção dois'],
+    vitrine: nomes.length ? [] : ['Seu produto', 'Outro produto', 'Mais um'],
   }
+  const APOIO = { busca: 'Seu resultado aparece aqui', painel: 'Pedidos por dia', local: String(perfil.dados.endereco || '').trim() || '[ENDEREÇO]', direct: '' }
   return {
     modelo,
     titulo: a.titulo,
-    apoio: a.apoio,
+    apoio: modelo in APOIO ? APOIO[modelo] : a.apoio,
     chamada: perfil.padrao.chamada || 'Chama no WhatsApp',
     itens: modelo === 'promo' ? (itens.length ? itens : [{ nome: 'Seu produto', preco: 'R$ --' }])
-      : modelo === 'tabela' ? (perfil.dados.itens || []).filter((i) => i.nome).slice(0, 4).map((i) => ({ nome: i.nome, preco: i.preco ? `R$ ${String(i.preco).replace(/^r\$\s*/i, '')}` : 'R$ --' }))
+      : ['tabela', 'vitrine'].includes(modelo) ? (perfil.dados.itens || []).filter((i) => i.nome).slice(0, 4).map((i) => ({ nome: i.nome, preco: i.preco ? `R$ ${String(i.preco).replace(/^r\$\s*/i, '')}` : 'R$ --' }))
       : [],
     pontos: PONTOS[modelo] || [],
-    autor: modelo === 'citacao' ? 'Cliente' : '',
-    numero: modelo === 'numero' ? '30%' : modelo === 'mosaico' ? '7 dias' : '',
+    autor: ['citacao', 'estrelas'].includes(modelo) ? 'Cliente' : '',
+    numero: { numero: '30%', mosaico: '7 dias', contador: '1.200', comemoracao: '5' }[modelo] || '',
     cupom: modelo === 'cupom' ? 'BEMVINDO' : '',
-    data: ['agenda', 'cupom'].includes(modelo) ? '29/11' : '',
+    data: ['agenda', 'cupom', 'contagem'].includes(modelo) ? '29/11' : '',
     horario: modelo === 'agenda' ? '10h às 14h' : '',
     arte: { destaque: a.destaque, tamanho_titulo: 'normal', alinhamento: '', fundo: temFoto && ['manchete', 'cartao'].includes(modelo) ? 'foto' : '' },
     cores: {},

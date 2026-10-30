@@ -1,6 +1,8 @@
 // Desenha a peça no próprio aparelho, num canvas de 1080 de largura.
-// Post 4:5 (1080x1350) e story 9:16 (1080x1920). Vinte modelos (o vídeo em cenas só no vídeo); a IA escolhe o modelo e o
-// jeito da arte (palavra em destaque, tamanho do título, alinhamento e fundo).
+// Post 4:5 (1080x1350) e story 9:16 (1080x1920). Vinte modelos para post e story, mais o vídeo em cenas e os vinte
+// stories com movimento (historias.js), que só aparecem no vídeo. A IA escolhe o modelo e o jeito da arte
+// (palavra em destaque, tamanho do título, alinhamento e fundo).
+import { criarHistorias, NOMES_DAS_HISTORIAS } from './historias.js'
 
 export const TAMANHOS = { post: [1080, 1350], story: [1080, 1920] }
 export const NOMES_DOS_MODELOS = {
@@ -9,9 +11,10 @@ export const NOMES_DOS_MODELOS = {
   numero: 'Número', cupom: 'Cupom', agenda: 'Agenda', conversa: 'Conversa', mosaico: 'Mosaico', faixas: 'Faixas',
   capa: 'Capa de revista', comparar: 'Antes e depois', tabela: 'Tabela', enquete: 'Enquete',
   cenas: 'Vídeo em cenas',
+  ...NOMES_DAS_HISTORIAS,
 }
 // Só aparece quando o formato é vídeo.
-export const SO_NO_VIDEO = ['cenas']
+export const SO_NO_VIDEO = ['cenas', ...Object.keys(NOMES_DAS_HISTORIAS)]
 import { fonteDa } from './fontes.js'
 
 const FONTE = '"Instrument Sans", system-ui, sans-serif'
@@ -60,11 +63,59 @@ function piscada(inicio) {
   return [[0.0, 0.08], [0.16, 0.22], [2.6, 2.66]].some(([a, b]) => t >= a && t < b) ? 0.25 : 1
 }
 
+// Quando o próximo elemento vai entrar, sem gastar a vez dele.
+const espiar = () => 0.35 + relogio.ordem * 0.32
+// Acende como neon: apaga e acende rápido algumas vezes nos primeiros 0,25 s e fica aceso.
+function acender(inicio, dur = 0.7) {
+  if (!relogio) return 1
+  const p = (relogio.t - inicio) / dur
+  if (p < 0) return 0
+  const passos = [[0, 0.08], [0.1, 1], [0.14, 0.2], [0.22, 1], [0.27, 0.35], [0.36, 1]]
+  let o = 0.08
+  for (const [k, v] of passos) if (p >= k) o = v
+  return o
+}
+// Número pseudoaleatório estável (o mesmo quadro desenha sempre igual, na prévia e na gravação).
+const sorteio = (a, b = 0) => {
+  const x = Math.sin(a * 127.1 + b * 311.7) * 43758.5453
+  return x - Math.floor(x)
+}
+// Peso no botão: afunda, estica um pouco e assenta (0,52 s).
+function apertao(e) {
+  if (e < 0 || e > 0.52) return 1
+  const k = [[0, 1], [0.25, 0.92], [0.6, 1.07], [0.8, 0.98], [1, 1]]
+  const p = e / 0.52
+  for (let i = 1; i < k.length; i++) {
+    if (p <= k[i][0]) {
+      const q = (p - k[i - 1][0]) / (k[i][0] - k[i - 1][0])
+      return k[i - 1][1] + (k[i][1] - k[i - 1][1]) * (0.5 - Math.cos(q * Math.PI) / 2)
+    }
+  }
+  return 1
+}
+// Confete nas cores da marca, saindo de (cx, cy) no instante `inicio`. Some em 1 s.
+function confete(ctx, cx, cy, inicio, cores) {
+  if (!relogio) return
+  const tau = relogio.t - inicio
+  if (tau < 0 || tau > 1) return
+  ctx.save()
+  ctx.globalAlpha = 1 - tau
+  for (let i = 0; i < 30; i++) {
+    const ang = -Math.PI / 2 + (sorteio(i, 1) - 0.5) * Math.PI * 1.3
+    const vel = 700 + sorteio(i, 2) * 900
+    const lado = 12 + sorteio(i, 3) * 12
+    ctx.fillStyle = cores[i % cores.length]
+    ctx.fillRect(cx + Math.cos(ang) * vel * tau - lado / 2, cy + Math.sin(ang) * vel * tau + 2600 * tau * tau - lado / 2, lado, lado)
+  }
+  ctx.restore()
+}
+
 export async function prepararFontes(chave) {
   const titulo = fonteDa(chave)
   await Promise.all([
     ...['400', '600', '700'].map((p) => document.fonts.load(`${p} 40px "Instrument Sans"`)),
     document.fonts.load(`${titulo.peso} 40px ${titulo.familia}`),
+    document.fonts.load('600 40px "JetBrains Mono"'),
   ])
 }
 
@@ -148,6 +199,53 @@ function bloco(ctx, texto, { x, y, largura, tamanho, minimo = 36, peso = 700, ma
   const topo = baseEmBaixo ? y - altura * n : y
   const pintar = corMarca ? marcadas(texto, marcar) : new Set()
   const inicio = relogio ? proximaEntrada() : 0
+  // No vídeo, título grande entra palavra por palavra, com um leve exagero (cresce a 1,08 e assenta).
+  if (relogio && peso >= 700 && tamanho >= 64) {
+    ctx.textAlign = 'left'
+    const espaco = ctx.measureText(' ').width
+    const total = linhas.reduce((n, l) => n + l.split(' ').length, 0)
+    const passo = total > 12 ? 0.05 : 0.08
+    // Os próximos elementos esperam a frase terminar de entrar.
+    relogio.ordem += Math.floor((total * passo) / 0.32)
+    const fimDasPalavras = inicio + total * passo + 0.48
+    let k = 0
+    linhas.forEach((l, i) => {
+      const w = ctx.measureText(l).width
+      let px = alinhar === 'center' ? x + (largura - w) / 2 : alinhar === 'right' ? x + largura - w : x
+      const yb = topo + t * 0.9 + altura * i
+      const palavras = l.split(' ')
+      palavras.forEach((palavra, j) => {
+        const marcada = pintar.has(k)
+        const pw = ctx.measureText(palavra).width
+        const p = (relogio.t - (inicio + k * passo)) / 0.48
+        k++
+        if (p > 0) {
+          const a = Math.min(1, p / 0.6)
+          const e = p < 0.6 ? 0.55 + 0.53 * suave(p / 0.6) : 1.08 - 0.08 * suave((p - 0.6) / 0.4)
+          ctx.save()
+          ctx.globalAlpha *= a
+          ctx.translate(px + pw / 2, yb - t * 0.35 + (1 - a) * t * 0.14)
+          ctx.scale(e, e)
+          ctx.translate(-(px + pw / 2), -(yb - t * 0.35))
+          ctx.fillStyle = marcada ? corMarca : cor
+          ctx.fillText(palavra, px, yb)
+          ctx.restore()
+          // Sublinhado que se desenha sob o trecho destacado, depois que a frase toda entrou.
+          if (marcada) {
+            const q = suave((relogio.t - fimDasPalavras - 0.1) / 0.4)
+            const continua = j < palavras.length - 1 && pintar.has(k)
+            const sw = (pw + (continua ? espaco : 0)) * q
+            if (sw > 0) {
+              ctx.fillStyle = corMarca
+              ctx.fillRect(px, yb + t * 0.12, sw, Math.max(6, t * 0.06))
+            }
+          }
+        }
+        px += pw + espaco
+      })
+    })
+    return baseEmBaixo ? topo : topo + altura * n
+  }
   // No vídeo, cada linha entra um pouco depois da anterior.
   const linha = (i, desenho) => {
     ctx.save()
@@ -230,9 +328,28 @@ function selo(ctx, { logo, nome, x, y, altura = 96, alinhar = 'left', claro = tr
   ctx.restore()
 }
 
-function pilula(ctx, texto, { x, y, largura, altura = 112, fundo, cor, tamanho = 42 }) {
+function pilula(ctx, texto, { x, y, largura, altura = 112, fundo, cor, tamanho = 42, festa = null }) {
   ctx.save()
-  if (relogio) entrar(ctx, proximaEntrada() + 0.2, { dur: 0.5, desloca: 0, escala: 0.12 }, x + largura / 2, y + altura / 2)
+  if (relogio) {
+    const ini = proximaEntrada() + 0.2
+    entrar(ctx, ini, { dur: 0.5, desloca: 0, escala: 0.12 }, x + largura / 2, y + altura / 2)
+    // Um segundo depois de aparecer, o botão é "apertado", como um convite a tocar.
+    const e = apertao(relogio.t - (ini + 1.0))
+    ctx.translate(x + largura / 2, y + altura / 2)
+    ctx.scale(e, e)
+    ctx.translate(-(x + largura / 2), -(y + altura / 2))
+    if (festa) {
+      ctx.restore()
+      ctx.save()
+      confete(ctx, x + largura / 2, y + altura / 2, ini + 1.15, festa)
+      ctx.restore()
+      ctx.save()
+      entrar(ctx, ini, { dur: 0.5, desloca: 0, escala: 0.12 }, x + largura / 2, y + altura / 2)
+      ctx.translate(x + largura / 2, y + altura / 2)
+      ctx.scale(e, e)
+      ctx.translate(-(x + largura / 2), -(y + altura / 2))
+    }
+  }
   arredondado(ctx, x, y, largura, altura, altura / 2)
   ctx.fillStyle = fundo
   ctx.fill()
@@ -399,7 +516,7 @@ function promo(ctx, { L, A, story, c, r, logo, foto, nome }) {
     ctx.restore()
     iy += 124
   }
-  if (r.chamada) pilula(ctx, r.chamada, { x: m, y: chamadaY, largura: L - m * 2, fundo: tinta, cor: tinta === '#FFFFFF' ? c[0] : '#FFFFFF' })
+  if (r.chamada) pilula(ctx, r.chamada, { x: m, y: chamadaY, largura: L - m * 2, fundo: tinta, cor: tinta === '#FFFFFF' ? c[0] : '#FFFFFF', festa: [c[1], c[2], tinta, '#FFFFFF'] })
 }
 
 function aviso(ctx, { L, A, story, c, r, logo, foto, nome }) {
@@ -540,7 +657,9 @@ function lista(ctx, { L, A, story, c, r, logo, foto, nome }) {
       ctx.fillRect(m, y - 22, L - m * 2, 2)
     }
     const yn = y
+    const acende = relogio ? espiar() : 0
     animado(ctx, () => {
+      if (relogio) ctx.globalAlpha *= acender(acende)
       ctx.font = `700 64px ${FONTE}`
       ctx.fillStyle = corPedida(r, 'destaque', destaque)
       ctx.textAlign = 'left'
@@ -696,14 +815,23 @@ function espacar(ctx, px) {
 }
 
 // Rótulo curto em caixa alta (ENQUETE, QUANDO, ANTES).
+// No vídeo, as letras embaralham e travam uma a uma, da esquerda para a direita.
+const EMBARALHO = '!<>-_/[]{}=+*^?#'
 function rotulo(ctx, texto, { x, y, tamanho = 30, cor, alinhar = 'left', espaco = 6 }) {
+  const final = String(texto).toUpperCase()
+  const ini = relogio ? espiar() : 0
   animado(ctx, () => {
+    let mostrar = final
+    if (relogio) {
+      const quadro = Math.floor(relogio.t * 25)
+      mostrar = [...final].map((ch, i) => (ch === ' ' || relogio.t >= ini + 0.15 + i * 0.04 ? ch : EMBARALHO[Math.floor(sorteio(i, quadro) * EMBARALHO.length)])).join('')
+    }
     ctx.font = `700 ${tamanho}px ${FONTE}`
     espacar(ctx, espaco)
     ctx.fillStyle = cor
     ctx.textAlign = alinhar
     ctx.textBaseline = 'alphabetic'
-    ctx.fillText(String(texto).toUpperCase(), x, y)
+    ctx.fillText(mostrar, x, y)
   }, { desloca: 16 })
 }
 
@@ -789,13 +917,17 @@ function numero(ctx, args) {
   const baseNumero = y0 + alturaNumero
   const w = largura()
   const x0 = al === 'center' ? (L - w) / 2 : al === 'right' ? L - m - w : m
+  // No vídeo, número inteiro conta do zero até o valor em 1,2 s, sem passar dele.
+  const conta = corpo.match(/^(\D*?)(\d{1,4})$/)
+  const iniConta = relogio ? espiar() : 0
   animado(ctx, () => {
     ctx.textBaseline = 'alphabetic'
     ctx.textAlign = 'left'
     ctx.font = `700 ${t}px ${FONTE}`
     espacar(ctx, -t * 0.05)
     ctx.fillStyle = corNumero
-    ctx.fillText(corpo, x0, baseNumero)
+    const agora = relogio && conta ? conta[1] + Math.round(Number(conta[2]) * suave((relogio.t - iniConta) / 1.2)) : corpo
+    ctx.fillText(agora, x0, baseNumero)
     const w1 = ctx.measureText(corpo).width
     ctx.font = `700 ${Math.round(t * 0.46)}px ${FONTE}`
     espacar(ctx, 0)
@@ -850,6 +982,8 @@ function cupom(ctx, { L, A, story, c, r, logo, foto, nome }) {
   let y = bloco(ctx, r.titulo, { ...tOp, y: y0 + 80 + 34 + 30, cor: corPedida(r, 'titulo', '#111114'), ...marca(r, destaque) })
   bloco(ctx, r.apoio, { ...aOp, y: y + 26, cor: corPedida(r, 'texto', 'rgba(17,17,20,.72)') })
   const yc = corte + 60
+  const iniCodigo = relogio ? espiar() : 0
+  confete(ctx, L / 2, yc + 60, iniCodigo + 0.5, [c[0], c[1], c[2], '#111114'])
   animado(ctx, () => {
     ctx.font = `700 52px ${FONTE}`
     espacar(ctx, 6)
@@ -898,7 +1032,7 @@ function lerData(texto) {
   const hoje = new Date()
   let data = new Date(hoje.getFullYear(), mes, dia)
   if (data < new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate())) data = new Date(hoje.getFullYear() + 1, mes, dia)
-  return { dia: String(dia), mes: MESES[mes], semana: DIAS[data.getDay()] }
+  return { dia: String(dia), mes: MESES[mes], semana: DIAS[data.getDay()], quando: data }
 }
 
 // Folha de calendário com o dia, horário ao lado, título embaixo. Bom para evento e aviso com data.
@@ -974,7 +1108,16 @@ function balao(ctx, texto, { x, y, largura, tamanho, peso = 500, fundo, cor, dir
   const w = Math.min(largura, Math.max(...linhas.map((l) => ctx.measureText(l).width)) + 72)
   const h = linhas.length * tamanho * 1.25 + 56
   const bx = direita ? x + largura - w : x
+  // No vídeo, cada balão chega do seu lado, passa um pouco e volta, como mensagem chegando.
+  const ini = relogio ? espiar() : 0
   animado(ctx, () => {
+    if (relogio) {
+      const p = (relogio.t - ini) / 0.52
+      const de = (direita ? 1 : -1) * (w + 80)
+      const passa = (direita ? -1 : 1) * 10
+      const dx = p < 0.7 ? de + (passa - de) * suave(p / 0.7) : passa * (1 - suave((p - 0.7) / 0.3))
+      ctx.translate(dx, -24 * (1 - Math.min(1, Math.max(0, p))))
+    }
     arredondado(ctx, bx, y, w, h, 34)
     ctx.fillStyle = fundo
     ctx.fill()
@@ -1502,9 +1645,52 @@ function cenas(ctx, args) {
   }
 }
 
+// Os stories com movimento usam as mesmas peças (texto, botão, selo, cores) e marcam a hora de cada entrada.
+const HISTORIAS = criarHistorias({
+  relogio: () => relogio,
+  // O próximo elemento entra em `s` segundos.
+  aos: (s) => { if (relogio) relogio.ordem = (s - 0.35) / 0.32 },
+  // Desenha parado, mesmo no vídeo (quando o movimento é do grupo todo).
+  semRelogio: (desenho) => {
+    const guardado = relogio
+    relogio = null
+    try { return desenho() } finally { relogio = guardado }
+  },
+  modelos: () => MODELOS,
+  bloco, medir, selo, rotulo, balao, quebrar, espacar, arredondado, pilulaCurta, chamadaEmTexto, placaDaMarca, brilho, lerData,
+  pintarFundo, corPedida, fundoPedido, destaqueSobre, apagado, textoSobre, comAlfa, misturar, legivel, luz, contraste,
+  marca, escala, lado, sobre, fonteDoBloco, FONTE, EMBARALHO, suave, sorteio, acender, confete,
+})
+
 const MODELOS = {
   promo, aviso, bastidores, manchete, lista, citacao, dividido, foto: fotoInteira, cartao,
   numero, cupom, agenda, conversa, mosaico, faixas, capa, comparar, tabela, enquete, cenas,
+  ...HISTORIAS,
+}
+
+// Marca d'água (W2): neonposts.com.br repetido na diagonal sobre a peça inteira, bem fraco.
+// Sai em toda peça (imagem, vídeo, prévia), para ninguém levar a criação sem passar pelo app.
+// Clara com sombra escura, para aparecer igual em fundo claro e escuro. A inclinação é fixa, não anima.
+const MARCA_DAGUA = 'neonposts.com.br'
+function marcaDagua(ctx, L, A) {
+  ctx.save()
+  ctx.globalAlpha = 0.09
+  ctx.font = `600 36px ${FONTE}`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  espacar(ctx, 2)
+  ctx.translate(L / 2, A / 2)
+  ctx.rotate(-Math.PI / 6)
+  const passoX = 440, passoY = 210, alcance = Math.hypot(L, A) / 2 + passoX
+  for (let y = -alcance, linha = 0; y <= alcance; y += passoY, linha++) {
+    for (let x = -alcance + (linha % 2) * (passoX / 2); x <= alcance; x += passoX) {
+      ctx.fillStyle = '#000000'
+      ctx.fillText(MARCA_DAGUA, x + 2, y + 2)
+      ctx.fillStyle = '#FFFFFF'
+      ctx.fillText(MARCA_DAGUA, x, y)
+    }
+  }
+  ctx.restore()
 }
 
 export function desenhar(canvas, { formato, modelo, roteiro, cores, logo, foto, fotos, nome, fonte, tempo = null, total = 8 }) {
@@ -1520,6 +1706,7 @@ export function desenhar(canvas, { formato, modelo, roteiro, cores, logo, foto, 
   const todas = fotos?.length ? fotos : foto ? [foto] : []
   try {
     ;(MODELOS[modelo] || aviso)(ctx, { L, A, story: formato === 'story', c, r: roteiro, logo, foto: todas[0] || null, fotos: todas, nome })
+    marcaDagua(ctx, L, A)
   } finally {
     relogio = null
     fonteTitulo = fonteDa()

@@ -9,7 +9,7 @@ const ICONES = {
   redes: <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="12" r="2.5" /><circle cx="18" cy="6" r="2.5" /><circle cx="18" cy="18" r="2.5" /><path d="M8.3 10.8l7.4-3.6M8.3 13.2l7.4 3.6" /></svg>,
   plano: <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v12H4zM4 11h16M9 7V5h6v2" /></svg>,
 }
-export const ABAS = [['planner', 'Planner'], ['criar', 'Criar'], ['pecas', 'Peças'], ['marca', 'Marca'], ['redes', 'Redes'], ['plano', 'Plano']]
+export const ABAS = [['planner', 'Planner'], ['criar', 'Criar'], ['pecas', 'Posts'], ['marca', 'Marca'], ['redes', 'Redes'], ['plano', 'Plano']]
 
 export default function Menu({ aba, onIr, nomeMarca, usadas, limite, onSair }) {
   return (
@@ -28,7 +28,7 @@ export default function Menu({ aba, onIr, nomeMarca, usadas, limite, onSair }) {
         <div className="menu__conta">
           <span className="menu__conta-rotulo">Marca ativa</span>
           <strong>{nomeMarca || 'Sua marca'}</strong>
-          <span className="mono menu__contador">{usadas} de {limite} peças no mês</span>
+          <span className="mono menu__contador">{usadas} de {limite} posts no mês</span>
         </div>
         <button type="button" className="botao botao--fantasma menu__sair" onClick={onSair}>Sair</button>
       </div>

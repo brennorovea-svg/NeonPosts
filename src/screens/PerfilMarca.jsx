@@ -158,7 +158,7 @@ function Identidade({ v, mudar, negocioId }) {
         <Cores valor={v.cores} onChange={(cores) => { mudar({ cores }); setCoresDoLogo(false) }} />
         {coresDoLogo && <p className="cores__aviso" role="status">Cores tiradas do seu logo. Confira e ajuste se precisar.</p>}
       </Grupo>
-      <Grupo rotulo="Fonte dos títulos" ajuda="É a letra do título grande das peças. O resto do texto fica na fonte de leitura.">
+      <Grupo rotulo="Fonte dos títulos" ajuda="É a letra do título grande dos posts. O resto do texto fica na fonte de leitura.">
         <div className="fontes" role="radiogroup" aria-label="Fonte dos títulos">
           {Object.entries(FONTES).map(([chave, f]) => (
             <button
@@ -218,7 +218,7 @@ function Padrao({ v, mudar }) {
       <Grupo rotulo="Que tipo de post você faz">
         <Fichas rotulo="Tipos de post" opcoes={TIPOS} valor={v.tipos} onChange={(tipos) => mudar({ tipos })} varias outra />
       </Grupo>
-      <Grupo rotulo="Quantas vezes você publica por semana?" ajuda="Pode ser o que você faz hoje ou a sua meta. A gente usa para sugerir o ritmo das próximas peças.">
+      <Grupo rotulo="Quantas vezes você publica por semana?" ajuda="Pode ser o que você faz hoje ou a sua meta. A gente usa para sugerir o ritmo dos próximos posts.">
         <div className="frequencia">
           <div className="frequencia__item">
             <span><strong>Posts no feed</strong>ficam no perfil</span>
@@ -243,7 +243,7 @@ function Padrao({ v, mudar }) {
 function Dados({ v, mudar }) {
   return (
     <>
-      <p className="perfil__aviso">O que faltar aparece na peça como <span className="marcador">[SEU PREÇO]</span> para você completar.</p>
+      <p className="perfil__aviso">O que faltar aparece no post como <span className="marcador">[SEU PREÇO]</span> para você completar.</p>
       <Campo id="endereco" rotulo="Endereço">
         <input id="endereco" value={v.endereco} onChange={(e) => mudar({ endereco: e.target.value })} placeholder="Rua, número, bairro" />
       </Campo>

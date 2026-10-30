@@ -22,7 +22,7 @@ const REGRAS = [
     id: 'itens', parte: 3, campo: 'itens', peso: 3,
     falta: (m) => m.dados.itens.filter((x) => temTexto(x.nome)).length === 0,
     titulo: 'Cadastre seus produtos ou serviços',
-    porque: 'Sem eles, a IA não cita o que você vende e a peça sai genérica.',
+    porque: 'Sem eles, a IA não cita o que você vende e o post sai genérico.',
   },
   {
     id: 'logo', parte: 0, campo: 'logo', peso: 3,
@@ -40,7 +40,7 @@ const REGRAS = [
     id: 'sem-preco', parte: 3, campo: 'itens', peso: 2,
     falta: (m) => m.dados.itens.some((x) => temTexto(x.nome) && !temTexto(x.preco)),
     titulo: (m) => { const n = m.dados.itens.filter((x) => temTexto(x.nome) && !temTexto(x.preco)).length; return `${n === 1 ? '1 item está' : `${n} itens estão`} sem preço` },
-    porque: 'Sem preço, a peça mostra [SEU PREÇO] e você precisa completar antes de postar. Se o preço muda muito, pode deixar assim.',
+    porque: 'Sem preço, o post mostra [SEU PREÇO] e você precisa completar antes de postar. Se o preço muda muito, pode deixar assim.',
   },
   {
     id: 'evita', parte: 1, campo: 'evita', peso: 2,
@@ -76,7 +76,7 @@ const REGRAS = [
     id: 'endereco', parte: 3, campo: 'endereco', peso: 1,
     falta: (m) => !temTexto(m.dados.endereco),
     titulo: 'Diga onde o cliente encontra você',
-    porque: 'Endereço, bairro ou "só online". Sem isso, peça de visita sai com [ENDEREÇO].',
+    porque: 'Endereço, bairro ou "só online". Sem isso, post de visita sai com [ENDEREÇO].',
   },
   {
     id: 'hashtags', parte: 2, campo: 'hashtags', peso: 1,

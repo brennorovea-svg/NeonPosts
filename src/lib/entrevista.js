@@ -103,7 +103,7 @@ export async function calibrar(regras, carroChefe = '') {
     await new Promise((ok) => setTimeout(ok, 3000))
     return CALIBRACAO_DE_TESTE
   }
-  const data = await chamar('gerar-peca', { calibrar: true, regras, carro_chefe: carroChefe }, 'Não deu para gerar as peças de teste agora. Tente de novo.')
+  const data = await chamar('gerar-peca', { calibrar: true, regras, carro_chefe: carroChefe }, 'Não deu para gerar os posts de teste agora. Tente de novo.')
   return data.pecas
 }
 
@@ -117,7 +117,7 @@ export async function proporRegra({ peca, motivos, comentario, regras }) {
       'Não é assim que a gente fala': 'Diga "a gente", nunca "nós", quando a marca fala de si mesma.',
     }
     const lista = motivos.map((m) => deTeste[m]).filter(Boolean)
-    if (!lista.length) lista.push(`Evite o que apareceu nesta peça: ${comentario.trim() || motivos[0]}.`)
+    if (!lista.length) lista.push(`Evite o que apareceu neste post: ${comentario.trim() || motivos[0]}.`)
     return lista.slice(0, 2)
   }
   const data = await chamar('entrevista', { acao: 'regra', peca: { titulo, apoio, chamada, legenda, pontos }, motivos, comentario, regras }, 'Não deu para propor a regra agora. Tente de novo.')

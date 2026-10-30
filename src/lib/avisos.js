@@ -37,7 +37,7 @@ export function vigiarAgenda(obterItens, onAbrir, onAvisou) {
       if (!item.peca && !vespera.has(item.id) && quando - UM_DIA <= agora && quando - UM_DIA > agora - 60 * 60 * 1000) {
         try {
           const n = new Notification(`Amanhã tem ${item.titulo}`, {
-            body: 'A arte ainda não existe. Toque para criar a peça agora.',
+            body: 'A arte ainda não existe. Toque para criar o post agora.',
             icon: '/neonposts-icone-192.png',
             tag: `criar-${item.id}`,
           })

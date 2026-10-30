@@ -46,7 +46,7 @@ export default function NaoEMinhaMarca({ roteiro, regras, onSalvar, salva = null
     return (
       <div className="nao-marca nao-marca--salva" role="status">
         <p className="nao-marca__titulo">Regra salva no guia da marca</p>
-        <p className="nao-marca__nota">As próximas peças já seguem essa regra.</p>
+        <p className="nao-marca__nota">Os próximos posts já seguem essa regra.</p>
         {salva}
       </div>
     )
@@ -80,7 +80,7 @@ export default function NaoEMinhaMarca({ roteiro, regras, onSalvar, salva = null
       ) : (
         <>
           <p className="nao-marca__titulo">{propostas.length > 1 ? 'Estas regras entram no guia' : 'Esta regra entra no guia'}</p>
-          <p className="nao-marca__nota">Mude o que quiser antes de salvar. A IA segue o guia em toda peça.</p>
+          <p className="nao-marca__nota">Mude o que quiser antes de salvar. A IA segue o guia em todo post.</p>
           <ol className="nao-marca__regras campo">
             {propostas.map((r, i) => (
               <li key={i}>

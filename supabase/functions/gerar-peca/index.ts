@@ -91,16 +91,16 @@ Deno.serve(async (req) => {
 
   if (corpo.refazer) {
     const data = anterior.data as (NonNullable<typeof refeita> & { formato: string; fotos: string[] }) | null
-    if (!data) return erro('Não achamos essa peça.', 404)
-    if (data.refeitas >= MAX_REFEITAS) return erro(`Você já refez esta peça ${MAX_REFEITAS} vezes. Escreva um pedido novo.`, 429)
+    if (!data) return erro('Não achamos esse post.', 404)
+    if (data.refeitas >= MAX_REFEITAS) return erro(`Você já refez este post ${MAX_REFEITAS} vezes. Escreva um pedido novo.`, 429)
     refeita = data
     pedido = pedido || data.pedido
     formato = corpo.formato ? formato : data.formato
     fotos = data.fotos
   } else if (boasVindas) {
-    if ((anterior.count ?? 0) > 0) return erro('A peça de boas-vindas já foi criada. Escreva um pedido novo.', 409)
+    if ((anterior.count ?? 0) > 0) return erro('O post de boas-vindas já foi criado. Escreva um pedido novo.', 409)
   } else if ((anterior.count ?? 0) >= negocio.limite_pecas) {
-    return erro(`Você usou as ${negocio.limite_pecas} peças deste mês.`, 429)
+    return erro(`Você usou os ${negocio.limite_pecas} posts deste mês.`, 429)
   }
   if (pedido.length < 3 || pedido.length > 600) return erro('Escreva o pedido com 3 a 600 letras.', 400)
 
@@ -169,7 +169,7 @@ Deno.serve(async (req) => {
     }).eq('id', refeita.id)
     : banco.from('pecas').insert({ ...linha, negocio: negocio.id, pedido, fotos, cortesia: boasVindas })
   const { data: peca, error } = await consulta.select('*').single()
-  if (error) { console.error('banco', error); return erro('Não deu para guardar a peça. Tente de novo.', 500) }
+  if (error) { console.error('banco', error); return erro('Não deu para guardar o post. Tente de novo.', 500) }
   return resposta({ peca, refeitasRestantes: MAX_REFEITAS - peca.refeitas })
 })
 

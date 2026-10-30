@@ -98,7 +98,7 @@
 .planner__form { display: flex; flex-direction: column; gap: 14px; padding: 16px; border-radius: var(--raio-cartao); background: var(--painel); border: 1px solid var(--borda); }
 .planner__form-linha { display: flex; flex-wrap: wrap; gap: 14px; }
 .planner__form-linha .campo { flex: 1; min-width: 120px; }
-.planner__select, .planner__mudar input {
+.planner__select, .planner__editar input[type="date"], .planner__editar input[type="time"] {
   min-height: 44px; padding: 8px 12px; border-radius: var(--raio-campo);
   border: 1px solid var(--borda); background: var(--grafite); color: var(--neve); font: 14px var(--fonte);
 }
@@ -129,7 +129,22 @@
 .planner__cartao-nota { flex-basis: 100%; }
 .planner__cartao-acoes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 2px; }
 .planner__cartao-acoes .botao { width: auto; min-height: 40px; padding: 8px 14px; font-size: 14px; }
-.planner__mudar { display: flex; flex-wrap: wrap; gap: 8px; }
+.planner__confirmar {
+  display: flex; flex-direction: column; gap: 4px; margin-top: 6px; padding: 14px;
+  border: 1px solid var(--violeta); border-radius: 12px; background: rgba(123, 92, 255, .08);
+  font-size: 14px; color: var(--texto-2);
+  animation: planner-abre var(--dur-controle) var(--ease) both;
+}
+.planner__confirmar strong { color: var(--neve); font-size: 15px; }
+.planner__confirmar-acoes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.planner__confirmar-acoes .botao { width: auto; min-height: 40px; padding: 8px 14px; font-size: 14px; }
+.planner__editar {
+  display: flex; flex-direction: column; gap: 12px; margin-top: 6px; padding: 14px;
+  border: 1px solid var(--borda); border-radius: 12px; background: rgba(255, 255, 255, .03);
+  animation: planner-abre var(--dur-controle) var(--ease) both;
+}
+@keyframes planner-abre { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .planner__editar, .planner__confirmar { animation: none; } }
 
 .planner__sugestao {
   display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 14px 16px;

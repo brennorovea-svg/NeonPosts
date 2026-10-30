@@ -6,6 +6,7 @@ import PerfilMarca, { PARTES } from './PerfilMarca.jsx'
 import ApresentacaoMarca from './ApresentacaoMarca.jsx'
 import Criar from './Criar.jsx'
 import Planos from './Planos.jsx'
+import PainelMarca from '../components/PainelMarca.jsx'
 import { PLANOS, voltouDoPagamento } from '../lib/planos.js'
 import './Area.css'
 
@@ -153,7 +154,7 @@ export default function Area({ sessao, teste = false }) {
         </div>
       </header>
 
-      <main className="area__conteudo">
+      <main className={`area__conteudo${total === 4 ? ' area__conteudo--painel' : ''}`}>
         {aviso && <p className="area__aviso" role="status">{aviso}</p>}
         {negocio?.cancela_no_fim && negocio.renova_em && (
           <div className="area__aviso area__aviso--fim" role="status">
@@ -168,7 +169,7 @@ export default function Area({ sessao, teste = false }) {
         {total === 4 ? (
           <>
             <h1 className="area__titulo">{nomeMarca ? `${nomeMarca} está pronta.` : 'Sua marca está pronta.'}</h1>
-            <p className="area__texto">Tudo guardado. Toque em uma parte para rever ou mudar; cada mudança vira uma versão nova, sem perder a anterior.</p>
+            <p className="area__texto">É daqui que sai cada post. Toque num cartão para mudar; cada mudança vira uma versão nova, sem perder a anterior.</p>
           </>
         ) : (
           <>
@@ -180,6 +181,7 @@ export default function Area({ sessao, teste = false }) {
           </>
         )}
 
+        {total < 4 && (
         <ol className="area__passos">
           {PARTES.map((p, i) => (
             <li key={p.chave}>
@@ -194,6 +196,7 @@ export default function Area({ sessao, teste = false }) {
             </li>
           ))}
         </ol>
+        )}
 
         {erro && <p className="campo__erro" role="alert">{erro}</p>}
 
@@ -211,6 +214,7 @@ export default function Area({ sessao, teste = false }) {
             {total === 0 ? 'Começar' : `Continuar: ${PARTES[proxima].titulo}`}
           </button>
         )}
+        {total === 4 && <PainelMarca perfil={perfil} versao={versao} onEditar={setEditando} />}
         {pecas.length > 0 && (
           <section className="area__historico" aria-labelledby="historico">
             <h2 id="historico" className="area__subtitulo">Suas peças</h2>

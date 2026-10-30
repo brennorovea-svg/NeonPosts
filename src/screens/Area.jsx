@@ -7,6 +7,8 @@ import ApresentacaoMarca from './ApresentacaoMarca.jsx'
 import Criar from './Criar.jsx'
 import Planos from './Planos.jsx'
 import PainelMarca from '../components/PainelMarca.jsx'
+import DicasMarca from '../components/DicasMarca.jsx'
+import { dicasDaMarca } from '../lib/dicas.js'
 import Carrossel from '../components/Carrossel.jsx'
 import { PLANOS, voltouDoPagamento } from '../lib/planos.js'
 import './Area.css'
@@ -33,6 +35,7 @@ export default function Area({ sessao, teste = false }) {
   const [perfil, setPerfil] = useState(null)
   const [versao, setVersao] = useState(0)
   const [editando, setEditando] = useState(null) // índice da parte aberta
+  const [dica, setDica] = useState(null) // dica que abriu a edição: o campo dela já vem em foco
   const [erro, setErro] = useState('')
   const [apresentou, setApresentou] = useState(false)
   const [criando, setCriando] = useState(null) // null, 'nova' ou a peça aberta do histórico
@@ -120,9 +123,11 @@ export default function Area({ sessao, teste = false }) {
         negocioId={negocio.id}
         perfilInicial={perfil}
         parteInicial={editando}
+        dica={dica}
         onSair={(salvo) => {
           if (salvo) { setPerfil(salvo); recarregar() }
           setEditando(null)
+          setDica(null)
           window.scrollTo({ top: 0 })
         }}
       />
@@ -144,6 +149,7 @@ export default function Area({ sessao, teste = false }) {
   const total = feitas.filter(Boolean).length
   const proxima = feitas.indexOf(false)
   const nomeMarca = perfil?.identidade.nome || negocio?.nome
+  const { dicas, forca } = perfil && total === 4 ? dicasDaMarca(perfil) : { dicas: [], forca: 0 }
 
   return (
     <div className="area">
@@ -215,7 +221,8 @@ export default function Area({ sessao, teste = false }) {
             {total === 0 ? 'Começar' : `Continuar: ${PARTES[proxima].titulo}`}
           </button>
         )}
-        {total === 4 && <PainelMarca perfil={perfil} versao={versao} onEditar={setEditando} />}
+        {total === 4 && <DicasMarca dicas={dicas} forca={forca} onAbrir={(d) => { setDica(d); setEditando(d.parte) }} />}
+        {total === 4 && <PainelMarca perfil={perfil} versao={versao} dicas={dicas} onEditar={setEditando} />}
         {pecas.length > 0 && (
           <section className="area__historico" aria-labelledby="historico">
             <h2 id="historico" className="area__subtitulo">Suas peças</h2>

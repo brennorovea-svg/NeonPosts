@@ -208,3 +208,14 @@ button.cor__amostra { padding: 0; font: inherit; }
 .fonte[aria-checked="true"] { border-color: var(--violeta); background: rgba(123, 92, 255, .16); }
 .fonte__amostra { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.15; }
 .fonte__nome { font: 500 12px var(--fonte); color: var(--texto-2); }
+
+/* Recado da dica que abriu esta tela */
+.campo__dica {
+  margin: 0; padding: 10px 12px; border-radius: var(--raio-campo);
+  font-size: 13px; line-height: 1.45; color: var(--neve);
+  background: rgba(123, 92, 255, .14); border: 1px solid rgba(123, 92, 255, .5);
+  animation: dica-entra 400ms var(--ease) both;
+}
+.campo__dica strong { font-weight: 600; color: var(--lilas); }
+@keyframes dica-entra { from { opacity: 0; transform: translateY(-4px); } }
+@media (prefers-reduced-motion: reduce) { .campo__dica { animation: none; } }

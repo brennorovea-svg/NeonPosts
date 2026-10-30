@@ -57,3 +57,4 @@
 @media (prefers-reduced-motion: reduce) {
   .painel__cartao, .painel__cartao:hover, .painel__cartao:active { transition: none; transform: none; }
 }
+.painel__dicas { margin-left: auto; font-size: 11px; color: var(--lilas); padding: 3px 8px; border-radius: 999px; background: rgba(123, 92, 255, .14); }

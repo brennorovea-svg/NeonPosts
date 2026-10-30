@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
 import Fichas from '../components/campos/Fichas.jsx'
 import Cores from '../components/campos/Cores.jsx'
 import Imagens from '../components/campos/Imagens.jsx'
@@ -104,20 +104,31 @@ const RAMOS = ['Restaurante', 'Café ou padaria', 'Loja', 'Beleza e estética', 
 const TONS = ['Próximo', 'Divertido', 'Direto', 'Acolhedor', 'Formal', 'Inspirador']
 const TIPOS = ['Promoção', 'Novidade', 'Bastidores', 'Dica', 'Cardápio ou catálogo', 'Depoimento', 'Aviso de horário', 'Antes e depois']
 
+// Dica que abriu esta tela (vinda da Área): o campo dela ganha o recado e o foco.
+const DicaContexto = createContext(null)
+
+function Recado({ id }) {
+  const dica = useContext(DicaContexto)
+  if (dica?.campo !== id) return null
+  return <p className="campo__dica" role="note"><strong>{dica.titulo}.</strong> {dica.porque}</p>
+}
+
 function Campo({ id, rotulo, ajuda, children }) {
   return (
-    <div className="campo">
+    <div className="campo" data-campo={id}>
       <label htmlFor={id}>{rotulo}</label>
+      <Recado id={id} />
       {ajuda && <p className="campo__ajuda">{ajuda}</p>}
       {children}
     </div>
   )
 }
 
-function Grupo({ rotulo, ajuda, children }) {
+function Grupo({ id, rotulo, ajuda, children }) {
   return (
-    <div className="campo" role="group" aria-label={rotulo}>
+    <div className="campo" role="group" aria-label={rotulo} data-campo={id}>
       <span className="campo__rotulo">{rotulo}</span>
+      <Recado id={id} />
       {ajuda && <p className="campo__ajuda">{ajuda}</p>}
       {children}
     </div>
@@ -140,7 +151,7 @@ function Identidade({ v, mudar, negocioId }) {
       <Grupo rotulo="Ramo">
         <Fichas rotulo="Ramo" opcoes={RAMOS} valor={v.ramo} onChange={(ramo) => mudar({ ramo })} outra />
       </Grupo>
-      <Grupo rotulo="Logo" ajuda="PNG com fundo transparente fica melhor.">
+      <Grupo id="logo" rotulo="Logo" ajuda="PNG com fundo transparente fica melhor.">
         <Imagens negocioId={negocioId} valor={v.logo} onChange={(logo) => mudar({ logo })} maximo={1} tipo="logo" texto="Enviar logo" onArquivo={lerCoresDoLogo} />
       </Grupo>
       <Grupo rotulo="Cores da marca" ajuda="Até 3. Ao enviar o logo, a gente lê as cores dele. Toque na cor para trocar ou digite o código em HEX ou RGB.">
@@ -160,7 +171,7 @@ function Identidade({ v, mudar, negocioId }) {
           ))}
         </div>
       </Grupo>
-      <Grupo rotulo="Fotos da marca (opcional)" ajuda="O que mostra o seu trabalho: produtos, trabalhos entregues, bastidores, equipe ou o espaço. Até 6, entram nos posts.">
+      <Grupo id="fotos" rotulo="Fotos da marca (opcional)" ajuda="O que mostra o seu trabalho: produtos, trabalhos entregues, bastidores, equipe ou o espaço. Até 6, entram nos posts.">
         <Imagens negocioId={negocioId} valor={v.fotos} onChange={(fotos) => mudar({ fotos })} maximo={6} tipo="foto" texto="Enviar fotos" />
       </Grupo>
     </>
@@ -172,7 +183,7 @@ function Voz({ v, mudar, ramo }) {
   const sugeridas = [...new Set([...v.tom.flatMap((t) => PALAVRAS_DO_TOM[t] || []), ...(PALAVRAS_DO_RAMO[ramo] || [])])]
   return (
     <>
-      <Grupo rotulo="Tom" ajuda="Escolha até 3. As sugestões de palavras abaixo mudam conforme o tom.">
+      <Grupo id="tom" rotulo="Tom" ajuda="Escolha até 3. As sugestões de palavras abaixo mudam conforme o tom.">
         <Fichas rotulo="Tom" opcoes={TONS} valor={v.tom} onChange={(tom) => mudar({ tom: tom.slice(0, 3) })} varias />
       </Grupo>
       <Grupo rotulo="Como trata o cliente">
@@ -250,7 +261,7 @@ function Dados({ v, mudar }) {
       <Campo id="site" rotulo="Site">
         <input id="site" value={v.site} onChange={(e) => mudar({ site: e.target.value })} inputMode="url" placeholder="seunegocio.com.br" />
       </Campo>
-      <Grupo rotulo="Produtos, serviços e preços" ajuda="Deixe o preço em branco se ele muda muito.">
+      <Grupo id="itens" rotulo="Produtos, serviços e preços" ajuda="Deixe o preço em branco se ele muda muito.">
         <Itens valor={v.itens} onChange={(itens) => mudar({ itens })} />
       </Grupo>
     </>
@@ -259,7 +270,7 @@ function Dados({ v, mudar }) {
 
 const TELAS = { identidade: Identidade, voz: Voz, padrao: Padrao, dados: Dados }
 
-export default function PerfilMarca({ negocioId, perfilInicial, parteInicial = 0, onSair }) {
+export default function PerfilMarca({ negocioId, perfilInicial, parteInicial = 0, dica = null, onSair }) {
   const [perfil, setPerfil] = useState(perfilInicial)
   const [indice, setIndice] = useState(parteInicial)
   const [salvando, setSalvando] = useState(false)
@@ -268,6 +279,19 @@ export default function PerfilMarca({ negocioId, perfilInicial, parteInicial = 0
   const parte = PARTES[indice]
   const Tela = TELAS[parte.chave]
   const ultima = indice === PARTES.length - 1
+
+  const dicaAqui = dica?.parte === indice ? dica : null
+
+  // Abre já no campo da dica: rola até ele e põe o cursor no primeiro controle.
+  useEffect(() => {
+    if (!dicaAqui) return
+    const campo = document.querySelector(`[data-campo="${dicaAqui.campo}"]`)
+    if (!campo) return
+    const calmo = matchMedia('(prefers-reduced-motion: reduce)').matches
+    campo.scrollIntoView({ block: 'center', behavior: calmo ? 'auto' : 'smooth' })
+    const controle = campo.querySelector('textarea, input:not([type=file])') || campo.querySelector('button')
+    controle?.focus({ preventScroll: true })
+  }, [dicaAqui])
 
   function mudar(trecho) { setPerfil((p) => ({ ...p, [parte.chave]: { ...p[parte.chave], ...trecho } })) }
 
@@ -299,7 +323,9 @@ export default function PerfilMarca({ negocioId, perfilInicial, parteInicial = 0
         <h1 className="perfil__titulo">{parte.titulo}</h1>
         <Porque parte={parte} />
         <form className="perfil__form" onSubmit={(e) => { e.preventDefault(); salvar('seguir') }}>
-          <Tela v={perfil[parte.chave]} mudar={mudar} negocioId={negocioId} ramo={perfil.identidade.ramo} />
+          <DicaContexto.Provider value={dicaAqui}>
+            <Tela v={perfil[parte.chave]} mudar={mudar} negocioId={negocioId} ramo={perfil.identidade.ramo} />
+          </DicaContexto.Provider>
           {erro && <p className="campo__erro" role="alert">{erro}</p>}
           <div className="perfil__acoes">
             <button type="submit" className="botao botao--destaque" disabled={salvando}>

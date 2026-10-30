@@ -12,6 +12,7 @@ const CABECALHOS = {
   'Access-Control-Max-Age': '86400',
 }
 const MAX_REFEITAS = 3
+const PEDIDO_DE_BOAS_VINDAS = 'Post de apresentação da marca para quem chegou agora no perfil: quem a gente é, o que a gente faz e um convite para seguir e chamar no WhatsApp. Tom de boas-vindas, sem preço.'
 
 // Calibração do guia da marca: 3 pedidos fixos, montados aqui com o ramo e o carro-chefe,
 // para a função não virar um jeito de criar peça sem contar no limite.
@@ -60,11 +61,13 @@ Deno.serve(async (req) => {
   const { data: negocio } = await banco.from('negocios').select('id, limite_pecas').eq('dono', conta.user.id).single()
   if (!negocio) return erro('Não achamos o seu negócio.', 404)
 
-  let corpo: { pedido?: string; formato?: string; video?: boolean; fotos?: string[]; refazer?: string; ajuste?: string; modelo?: string; calibrar?: boolean; regras?: string[]; carro_chefe?: string }
+  let corpo: { pedido?: string; formato?: string; video?: boolean; fotos?: string[]; refazer?: string; ajuste?: string; modelo?: string; calibrar?: boolean; regras?: string[]; carro_chefe?: string; boas_vindas?: boolean }
   try { corpo = await req.json() } catch { return erro('Pedido inválido.', 400) }
   if (corpo.calibrar) return calibrar(banco, negocio.id, corpo)
 
-  let pedido = String(corpo.pedido || '').trim()
+  // Peça de boas-vindas: pedido fixo, uma por marca, não conta no limite (coluna cortesia).
+  const boasVindas = corpo.boas_vindas === true && !corpo.refazer
+  let pedido = boasVindas ? PEDIDO_DE_BOAS_VINDAS : String(corpo.pedido || '').trim()
   let formato = corpo.formato === 'story' ? 'story' : 'post'
   const video = corpo.video === true
   let fotos = (corpo.fotos || []).filter((f) => typeof f === 'string' && f.startsWith(`${negocio.id}/`)).slice(0, 4)
@@ -80,8 +83,10 @@ Deno.serve(async (req) => {
     corpo.refazer
       ? banco.from('pecas').select('id, pedido, formato, fotos, refeitas, roteiro, versoes, escolhida')
         .eq('id', corpo.refazer).eq('negocio', negocio.id).maybeSingle()
-      : banco.from('pecas').select('id', { count: 'exact', head: true })
-        .eq('negocio', negocio.id).gte('criado_em', inicioDoMes()),
+      : boasVindas
+        ? banco.from('pecas').select('id', { count: 'exact', head: true }).eq('negocio', negocio.id).eq('cortesia', true)
+        : banco.from('pecas').select('id', { count: 'exact', head: true })
+          .eq('negocio', negocio.id).eq('cortesia', false).gte('criado_em', inicioDoMes()),
   ])
 
   if (corpo.refazer) {
@@ -92,6 +97,8 @@ Deno.serve(async (req) => {
     pedido = pedido || data.pedido
     formato = corpo.formato ? formato : data.formato
     fotos = data.fotos
+  } else if (boasVindas) {
+    if ((anterior.count ?? 0) > 0) return erro('A peça de boas-vindas já foi criada. Escreva um pedido novo.', 409)
   } else if ((anterior.count ?? 0) >= negocio.limite_pecas) {
     return erro(`Você usou as ${negocio.limite_pecas} peças deste mês.`, 429)
   }
@@ -160,7 +167,7 @@ Deno.serve(async (req) => {
       ...linha, pedido, refeitas: refeita.refeitas + 1, escolhida: null,
       versoes: [...(refeita.versoes || []), { pedido: refeita.pedido, roteiro: refeita.roteiro }],
     }).eq('id', refeita.id)
-    : banco.from('pecas').insert({ ...linha, negocio: negocio.id, pedido, fotos })
+    : banco.from('pecas').insert({ ...linha, negocio: negocio.id, pedido, fotos, cortesia: boasVindas })
   const { data: peca, error } = await consulta.select('*').single()
   if (error) { console.error('banco', error); return erro('Não deu para guardar a peça. Tente de novo.', 500) }
   return resposta({ peca, refeitasRestantes: MAX_REFEITAS - peca.refeitas })

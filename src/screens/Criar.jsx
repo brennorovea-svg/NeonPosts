@@ -209,11 +209,12 @@ function sugestoesDeQuando() {
 const paraInput = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 const quandoPorExtenso = (d) => d.toLocaleString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
 
-export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, onSair, onPerfil, onCriou, onAgendar, noPlanner = false }) {
+export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, videoInicial = false, marca = null, onCompletar, onSair, onPerfil, onCriou, onAgendar, noPlanner = false }) {
   const [pedido, setPedido] = useState('')
   const [tipo, setTipo] = useState(null)
   const [formato, setFormato] = useState(formatoInicial === 'story' ? 'story' : 'post')
-  const [video, setVideo] = useState(false)
+  const [video, setVideo] = useState(Boolean(videoInicial))
+  const [dispensouMarca, setDispensouMarca] = useState(false)
   const [gravando, setGravando] = useState(null) // null ou de 0 a 1
   const [avisoVideo, setAvisoVideo] = useState('')
   const [avisoPost, setAvisoPost] = useState('')
@@ -669,6 +670,21 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
                     )}
                   </>
                 )}
+              </div>
+            )}
+
+            {marca && marca.feitas < 4 && marca.proxima && !dispensouMarca && (
+              <div className="criar__marca-dica">
+                <div className="criar__marca-dica-topo">
+                  <strong>Sua marca está {marca.feitas} de 4 pronta</strong>
+                  <span className="mono">{Math.round((marca.feitas / 4) * 100)}%</span>
+                </div>
+                <span className="criar__marca-barra"><span style={{ transform: `scaleX(${marca.feitas / 4})` }} /></span>
+                <p>Quanto mais a gente conhece a {nome || 'sua marca'}, mais o texto sai do seu jeito. Próximo passo: {marca.proxima.titulo.toLowerCase()}. {marca.proxima.resumo}</p>
+                <div className="criar__acoes-linha">
+                  <button type="button" className="botao botao--destaque" onClick={onCompletar}>Completar agora</button>
+                  <button type="button" className="botao botao--fantasma" onClick={() => setDispensouMarca(true)}>Depois</button>
+                </div>
               </div>
             )}
 

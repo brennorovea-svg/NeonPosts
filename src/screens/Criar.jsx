@@ -256,7 +256,9 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
 
   // Sugestão de layout pelo tipo (ficha ou texto do pedido) e pela foto; os sugeridos vêm na frente.
   const tipoPercebido = tipoDoPedido(tipo, pedido)
-  const sugeridos = sugerirLayouts(tipoPercebido, Boolean(foto), video)
+  // No story, os com movimento também vêm na frente: escolher um deles vira vídeo.
+  const comMovimento = video || formato === 'story'
+  const sugeridos = sugerirLayouts(tipoPercebido, Boolean(foto), comMovimento)
 
   // Logo e foto carregados uma vez por peça; fontes antes do primeiro desenho.
   useEffect(() => {
@@ -507,10 +509,10 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
 
               <div className="campo">
                 <span className="campo__rotulo">Layout</span>
-                <p className="campo__ajuda">Escolha um jeito para a arte ou deixe a IA decidir. Dá para trocar depois.</p>
+                <p className="campo__ajuda">Escolha um jeito para a arte ou deixe a IA decidir. Dá para trocar depois.{!video && formato === 'story' && ' Os com movimento viram vídeo.'}</p>
                 <Layouts
-                  sugeridos={sugeridos} escolhido={layout} onEscolher={setLayout} tipo={tipoPercebido}
-                  perfil={perfil} formato={formato} video={video} {...miniaturas}
+                  sugeridos={sugeridos} escolhido={layout} onEscolher={(m) => { setLayout(m); if (SO_NO_VIDEO.includes(m)) setVideo(true) }} tipo={tipoPercebido}
+                  perfil={perfil} formato={formato} video={comMovimento} {...miniaturas}
                 />
               </div>
               </div>

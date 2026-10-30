@@ -237,6 +237,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
   const [imagens, setImagens] = useState({ logo: null, fotos: [], pronto: false })
   const [layout, setLayout] = useState('ia') // 'ia' ou um dos modelos
   const [rodada, setRodada] = useState(0) // muda a cada "Ver outros exemplos"
+  const [maisOpcoes, setMaisOpcoes] = useState(false) // fotos e layout ficam guardados até a pessoa pedir
   const [miniaturas, setMiniaturas] = useState({ logo: null, foto: null, fotoDaMarca: null })
   const canvas = useRef(null)
   const area = useRef(null)
@@ -489,19 +490,30 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
             </div>
           </div>
 
-          <div className="campo">
-            <span className="campo__rotulo">Fotos (opcional)</span>
-            <p className="campo__ajuda">Até 4 fotos do produto, do serviço ou do dia a dia. A IA olha cada uma e escolhe qual abre a peça{video ? '; no vídeo em cenas, entram todas' : ''}.</p>
-            <Imagens negocioId={negocioId} valor={fotos} onChange={setFotos} maximo={4} tipo="peca-foto" texto="Adicionar foto" previa />
-          </div>
+          <div className="criar__mais">
+            <button type="button" className="criar__mais-botao" aria-expanded={maisOpcoes} aria-controls="mais-opcoes" onClick={() => setMaisOpcoes((v) => !v)}>
+              <span>Mais opções</span>
+              <span className="criar__mais-resumo">{fotos.length ? `${fotos.length} foto${fotos.length > 1 ? 's' : ''}` : 'Sem foto'} · {layout === 'ia' ? 'layout pela IA' : `layout ${(NOMES_DOS_MODELOS[layout] || layout).toLowerCase()}`}</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+            </button>
+            {maisOpcoes && (
+              <div id="mais-opcoes" className="criar__mais-corpo">
+              <div className="campo">
+                <span className="campo__rotulo">Fotos (opcional)</span>
+                <p className="campo__ajuda">Até 4 fotos do produto, do serviço ou do dia a dia. A IA olha cada uma e escolhe qual abre a peça{video ? '; no vídeo em cenas, entram todas' : ''}.</p>
+                <Imagens negocioId={negocioId} valor={fotos} onChange={setFotos} maximo={4} tipo="peca-foto" texto="Adicionar foto" previa />
+              </div>
 
-          <div className="campo">
-            <span className="campo__rotulo">Layout</span>
-            <p className="campo__ajuda">Escolha um jeito para a arte ou deixe a IA decidir. Dá para trocar depois.</p>
-            <Layouts
-              sugeridos={sugeridos} escolhido={layout} onEscolher={setLayout} tipo={tipoPercebido}
-              perfil={perfil} formato={formato} video={video} {...miniaturas}
-            />
+              <div className="campo">
+                <span className="campo__rotulo">Layout</span>
+                <p className="campo__ajuda">Escolha um jeito para a arte ou deixe a IA decidir. Dá para trocar depois.</p>
+                <Layouts
+                  sugeridos={sugeridos} escolhido={layout} onEscolher={setLayout} tipo={tipoPercebido}
+                  perfil={perfil} formato={formato} video={video} {...miniaturas}
+                />
+              </div>
+              </div>
+            )}
           </div>
 
           {erro && <p className="campo__erro" role="alert">{erro}</p>}

@@ -13,7 +13,7 @@ function Miniatura({ caminho, onTirar }) {
 }
 
 // Envia na hora para o storage privado e guarda só o caminho no perfil.
-export default function Imagens({ negocioId, valor, onChange, maximo, tipo, texto, onArquivo }) {
+export default function Imagens({ negocioId, valor, onChange, maximo, tipo, texto, onArquivo, previa = false }) {
   const lista = maximo === 1 ? (valor ? [valor] : []) : valor
   const [enviando, setEnviando] = useState(false)
   const [erro, setErro] = useState('')
@@ -28,7 +28,7 @@ export default function Imagens({ negocioId, valor, onChange, maximo, tipo, text
       const novos = []
       for (const arquivo of arquivos) {
         if (arquivo.size > 10 * 1024 * 1024) throw new Error('grande')
-        novos.push(await enviarImagem(negocioId, arquivo, tipo))
+        novos.push(await enviarImagem(negocioId, arquivo, tipo, { previa }))
       }
       onChange(maximo === 1 ? novos[0] : [...lista, ...novos])
       onArquivo?.(arquivos[0])

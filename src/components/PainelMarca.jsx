@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { enderecoDaImagem } from '../lib/perfil.js'
+import { fonteDa } from '../lib/fontes.js'
 import './PainelMarca.css'
 
 // A marca do jeito que fica guardada, em cartões. Cada cartão abre a edição da parte dele.
@@ -63,6 +64,7 @@ export default function PainelMarca({ perfil, versao, onEditar }) {
               <span key={c} className="painel__cor"><span style={{ background: c }} /><span className="mono">{c.toUpperCase()}</span></span>
             ))}
           </span>
+          <Linha rotulo="Fonte dos títulos" valor={fonteDa(i.fonte).nome} />
           {i.fotos.length > 0 && (
             <span className="painel__fotos">{i.fotos.slice(0, 4).map((f) => <Imagem key={f} caminho={f} className="painel__foto" />)}</span>
           )}

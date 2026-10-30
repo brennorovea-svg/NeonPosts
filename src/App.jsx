@@ -18,7 +18,7 @@ const MARCA_DE_EXEMPLO = {
   dados: { endereco: '', horario: 'Seg a Sex, 9h às 19h', whatsapp: '11999392800', instagram: '@neon.scripts', site: 'neonscripts.com.br', itens: [{ nome: 'Sites', preco: '1000' }] },
 }
 const MARCA_NARUA = {
-  identidade: { nome: 'Narua', ramo: 'Food truck de comida asiática de rua', cores: ['#E73334', '#F6AF43', '#181818'], logo: '/teste/logo.png', fotos: [] },
+  identidade: { nome: 'Narua', ramo: 'Food truck de comida asiática de rua', cores: ['#E73334', '#F6AF43', '#181818'], fonte: 'divertida', logo: '/teste/logo.png', fotos: [] },
   voz: { tom: ['Divertido', 'Direto', 'Acolhedor'], tratamento: 'você', usa: 'o Narua, nós do Narua, comida asiática de rua', evita: 'miojo, comida japonesa, comparar com outros food trucks, prometer entrega ou tempo de espera', exemplos: '', emoji: 'pouco' },
   padrao: { tipos: ['Cardápio ou catálogo', 'Promoção', 'Aviso de horário', 'Bastidores', 'Novidade'], feedPorSemana: 3, storiesPorSemana: 5, hashtags: '#narua #foodtruck #comidaasiatica #caieiras', chamada: 'Vem pro Narua' },
   dados: {

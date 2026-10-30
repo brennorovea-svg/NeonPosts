@@ -156,7 +156,7 @@
 .layouts__carrossel .layouts__opcao { width: calc((100% - 20px) / 2.6); }
 .layouts__carrossel--story .layouts__opcao { width: calc((100% - 30px) / 3.4); }
 .layouts__selo {
-  position: absolute; left: 8px; top: 8px; padding: 4px 8px; border-radius: 999px;
+  display: inline-block; margin-left: 6px; vertical-align: 1px; padding: 3px 7px; border-radius: 999px;
   font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: #FFFFFF; background: rgba(91, 63, 224, .92);
 }
 .layouts__opcao {

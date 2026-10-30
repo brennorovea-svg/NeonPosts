@@ -49,11 +49,12 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, onAti
   const [novo, setNovo] = useState({ titulo: '', redes: ['instagram'], formatos: ['post'], hora: '12:00', lembrete: 10 })
   // Liga ou desliga uma opção da lista, sem deixar a lista vazia.
   const alternar = (chave, valor) => setNovo((n) => ({ ...n, [chave]: n[chave].includes(valor) ? (n[chave].length > 1 ? n[chave].filter((v) => v !== valor) : n[chave]) : [...n[chave], valor] }))
-  const [mudandoDia, setMudandoDia] = useState(null) // id do item com o campo de data aberto
+  const [editando, setEditando] = useState(null) // { id, titulo, rede, formato, dia, hora } do item em edição
   const [erro, setErro] = useState('')
   const [arrastando, setArrastando] = useState(null)
   const [ocupado, setOcupado] = useState(null) // id do item sendo compartilhado
   const [avisoPost, setAvisoPost] = useState('')
+  const [confirmando, setConfirmando] = useState(null) // id do item esperando "postou?" depois do compartilhar
   const pecaPorId = useMemo(() => Object.fromEntries((pecas || []).map((p) => [p.id, p])), [pecas])
   const porDia = useMemo(() => {
     const mapa = {}
@@ -88,7 +89,7 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, onAti
     setDia(chave)
     setPlanejando(comForm)
     setErro('')
-    setMudandoDia(null)
+    setEditando(null); setConfirmando(null)
     const d = juntarDiaEHora(chave, '12:00')
     setSemana(inicioDaSemana(d))
     window.scrollTo({ top: 0 })
@@ -96,7 +97,7 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, onAti
 
   async function tentar(acao) {
     setErro('')
-    try { await acao(); onMudou() } catch { setErro('Não deu para salvar agora. Confira a internet e tente de novo.') }
+    try { await acao(); onMudou(); return true } catch { setErro('Não deu para salvar agora. Confira a internet e tente de novo.'); return false }
   }
 
   function planejar() {
@@ -119,6 +120,17 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, onAti
     setArrastando(null)
     if (!item || chaveDoDia(new Date(item.quando)) === chave) return
     tentar(() => mudarAgenda(item.id, { quando: juntarDiaEHora(chave, horaDe(new Date(item.quando))) }))
+  }
+
+  // Editar: título, rede, formato (só sem peça), dia e hora de uma marcação. Mudou a hora, o aviso volta a valer.
+  async function salvarEdicao(item) {
+    const e = editando
+    const quando = juntarDiaEHora(e.dia, e.hora)
+    const mudou = quando.getTime() !== new Date(item.quando).getTime()
+    const deu = await tentar(() => mudarAgenda(item.id, { titulo: e.titulo.trim().slice(0, 120), rede: e.rede, formato: e.formato, quando, ...(mudou ? { avisado_em: null } : {}) }))
+    if (!deu) return
+    setEditando(null)
+    if (mudou) setDia(chaveDoDia(quando))
   }
 
   // Postar agora: baixa a arte, copia a legenda e abre o compartilhar do aparelho.
@@ -144,8 +156,8 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, onAti
         setTimeout(() => URL.revokeObjectURL(link.href), 4000)
         setAvisoPost('Arte baixada e legenda copiada. Agora é só postar na rede.')
       }
-      await mudarAgenda(item.id, { postado_em: new Date().toISOString() })
-      onMudou()
+      // Só vira "Postada" quando a pessoa confirma: o compartilhar abrir não quer dizer que postou (Brenno, 30/10).
+      setConfirmando(item.id)
     } catch {
       setErro('Não deu para abrir a peça agora. Tente de novo.')
     } finally {
@@ -337,7 +349,18 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, onAti
                   <span className="planner__cartao-nota">{avisos ? 'Na hora, o aviso abre o compartilhar com a legenda copiada.' : 'Ative os avisos para receber o lembrete.'}</span>
                 </div>
               )}
+              {confirmando === item.id && !item.postado_em && (
+                <div className="planner__confirmar" role="group" aria-label="Postou?">
+                  <strong>Postou?</strong>
+                  <span>Se já foi para a rede, marca como postada. Se não, fica como estava.</span>
+                  <div className="planner__confirmar-acoes">
+                    <button type="button" className="botao botao--primario" onClick={async () => { if (await tentar(() => mudarAgenda(item.id, { postado_em: new Date().toISOString() }))) setConfirmando(null) }}>Sim, postei</button>
+                    <button type="button" className="botao botao--fantasma" onClick={() => setConfirmando(null)}>Ainda não</button>
+                  </div>
+                </div>
+              )}
               <div className="planner__cartao-acoes">
+                {item.postado_em && <button type="button" className="botao botao--fantasma" onClick={() => tentar(() => mudarAgenda(item.id, { postado_em: null }))}>Não postei</button>}
                 {peca ? (
                   <>
                     {!item.postado_em && <button type="button" className="botao botao--destaque" disabled={ocupado === item.id} onClick={() => postar(item)}>{ocupado === item.id ? 'Abrindo...' : 'Postar agora'}</button>}
@@ -346,14 +369,48 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, onAti
                 ) : (
                   <button type="button" className="botao botao--destaque" onClick={() => onCriar({ agendaId: item.id, titulo: item.titulo, formato: item.formato, quando })}>Criar a peça</button>
                 )}
-                <button type="button" className="botao botao--fantasma" onClick={() => setMudandoDia(mudandoDia === item.id ? null : item.id)}>Mudar o dia</button>
+                <button type="button" className="botao botao--fantasma" aria-expanded={editando?.id === item.id} onClick={() => setEditando(editando?.id === item.id ? null : { id: item.id, titulo: item.titulo, rede: item.rede, formato: item.formato, dia: chaveDoDia(quando), hora: horaDe(quando) })}>Editar</button>
                 <button type="button" className="botao botao--fantasma" onClick={() => tentar(() => tirarDaAgenda(item.id))}>Tirar</button>
               </div>
-              {mudandoDia === item.id && (
-                <div className="planner__mudar">
-                  <input type="date" aria-label="Novo dia" defaultValue={chaveDoDia(quando)} onChange={(e) => { if (e.target.value) { tentar(() => mudarAgenda(item.id, { quando: juntarDiaEHora(e.target.value, horaDe(quando)), avisado_em: null })); setMudandoDia(null) } }} />
-                  <input type="time" aria-label="Nova hora" defaultValue={horaDe(quando)} onChange={(e) => { if (e.target.value) tentar(() => mudarAgenda(item.id, { quando: juntarDiaEHora(chaveDoDia(quando), e.target.value), avisado_em: null })) }} />
-                </div>
+              {editando?.id === item.id && (
+                <form className="planner__editar" onSubmit={(e) => { e.preventDefault(); salvarEdicao(item) }}>
+                  <div className="campo">
+                    <label htmlFor={`editar-titulo-${item.id}`}>Título</label>
+                    <input id={`editar-titulo-${item.id}`} value={editando.titulo} maxLength={120} onChange={(e) => setEditando((v) => ({ ...v, titulo: e.target.value }))} />
+                  </div>
+                  <div className="campo">
+                    <span className="campo__rotulo">Onde vai postar</span>
+                    <div className="fichas">
+                      {Object.entries(REDES).map(([chave, r]) => (
+                        <button key={chave} type="button" className="ficha" aria-pressed={editando.rede === chave} onClick={() => setEditando((v) => ({ ...v, rede: chave }))}><Ponto rede={chave} />{r.nome}</button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="planner__form-linha">
+                    {!peca && (
+                      <div className="campo">
+                        <span className="campo__rotulo">Formato</span>
+                        <div className="fichas">
+                          {[['post', 'Post'], ['story', 'Story']].map(([v, r]) => (
+                            <button key={v} type="button" className="ficha" aria-pressed={editando.formato === v} onClick={() => setEditando((x) => ({ ...x, formato: v }))}>{r}</button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <div className="campo campo--curto">
+                      <label htmlFor={`editar-dia-${item.id}`}>Dia</label>
+                      <input id={`editar-dia-${item.id}`} type="date" value={editando.dia} onChange={(e) => setEditando((v) => ({ ...v, dia: e.target.value }))} />
+                    </div>
+                    <div className="campo campo--curto">
+                      <label htmlFor={`editar-hora-${item.id}`}>Hora</label>
+                      <input id={`editar-hora-${item.id}`} type="time" value={editando.hora} onChange={(e) => setEditando((v) => ({ ...v, hora: e.target.value }))} />
+                    </div>
+                  </div>
+                  <div className="planner__acoes-linha">
+                    <button type="button" className="botao botao--fantasma" onClick={() => setEditando(null)}>Cancelar</button>
+                    <button type="submit" className="botao botao--primario" disabled={!editando.titulo.trim() || !editando.dia || !editando.hora}>Salvar</button>
+                  </div>
+                </form>
               )}
             </div>
           </article>

@@ -6,7 +6,7 @@ import DeuProblema from '../components/DeuProblema.jsx'
 import NaoEMinhaMarca from '../components/NaoEMinhaMarca.jsx'
 import { sugerirLayouts, tipoDoPedido } from '../lib/sugerir.js'
 import { DURACAO, duracaoDe, gravar, tocar } from '../lib/video.js'
-import { listaDeNomes, MARCADORES, marcadoresDe, preencher } from '../lib/marcadores.js'
+import { dadosEmTexto, listaDeNomes, MARCADORES, marcadoresDe, perguntasAntes, preencher } from '../lib/marcadores.js'
 import { enderecoDaImagem, salvarPerfil } from '../lib/perfil.js'
 import { acordarIA, escolherVersao, gerarPeca, guardarImagem, salvarTexto } from '../lib/pecas.js'
 import { carregarImagem, desenhar, NOMES_DOS_MODELOS, paraArquivo, prepararFontes, SO_NO_VIDEO } from '../lib/desenhar.js'
@@ -196,13 +196,30 @@ const GERAL = {
   exemplos: EXEMPLOS,
 }
 
-export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, onSair, onPerfil, onCriou }) {
+// Sugestões de quando postar: hoje às 18h (se ainda der), amanhã ao meio-dia, ou escolher.
+function sugestoesDeQuando() {
+  const agora = new Date()
+  const hoje = new Date(agora); hoje.setHours(18, 0, 0, 0)
+  const amanha = new Date(agora); amanha.setDate(amanha.getDate() + 1); amanha.setHours(12, 0, 0, 0)
+  const lista = []
+  if (hoje > agora) lista.push(['Hoje às 18h', hoje])
+  lista.push(['Amanhã ao meio-dia', amanha])
+  return lista
+}
+const paraInput = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+const quandoPorExtenso = (d) => d.toLocaleString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
+
+export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, onSair, onPerfil, onCriou, onAgendar, noPlanner = false }) {
   const [pedido, setPedido] = useState('')
   const [tipo, setTipo] = useState(null)
   const [formato, setFormato] = useState(formatoInicial === 'story' ? 'story' : 'post')
   const [video, setVideo] = useState(false)
   const [gravando, setGravando] = useState(null) // null ou de 0 a 1
   const [avisoVideo, setAvisoVideo] = useState('')
+  const [avisoPost, setAvisoPost] = useState('')
+  const [agendado, setAgendado] = useState(null) // Date quando a peça já entrou no planner, 'depois' se dispensou
+  const [escolhendoQuando, setEscolhendoQuando] = useState(false)
+  const [quandoEscolhido, setQuandoEscolhido] = useState(() => paraInput(sugestoesDeQuando().at(-1)[1]))
   // Vídeo gravado esperando o segundo toque: o celular só abre o compartilhar logo depois de um toque.
   const [videoPronto, setVideoPronto] = useState(null)
   const [dadosFaltando, setDadosFaltando] = useState({}) // { '[HORÁRIO]': 'sábado, 9h às 13h' }
@@ -220,6 +237,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
   const [imagens, setImagens] = useState({ logo: null, fotos: [], pronto: false })
   const [layout, setLayout] = useState('ia') // 'ia' ou um dos modelos
   const [rodada, setRodada] = useState(0) // muda a cada "Ver outros exemplos"
+  const [maisOpcoes, setMaisOpcoes] = useState(false) // fotos e layout ficam guardados até a pessoa pedir
   const [miniaturas, setMiniaturas] = useState({ logo: null, foto: null, fotoDaMarca: null })
   const canvas = useRef(null)
   const area = useRef(null)
@@ -304,11 +322,13 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
     try {
       const r = await gerarPeca(refazer
         ? { refazer: peca.id, formato: peca.formato, video: video && peca.formato === 'story', pedido: pedidoNovo.trim(), ajuste: ajuste.trim() }
-        : { pedido: pedido.trim(), formato, video, fotos, modelo: layout === 'ia' ? undefined : layout })
+        : { pedido: pedido.trim() + dadosEmTexto(dadosFaltando), formato, video, fotos, modelo: layout === 'ia' ? undefined : layout })
       setAjustando(false)
       setAjuste('')
       setMexeuNoTexto(false)
       setHashtagsTexto(null)
+      setAvisoPost('')
+      if (!refazer) { setAgendado(null); setEscolhendoQuando(false) }
       setPeca(r.peca)
       setRestantes(r.refeitasRestantes)
       setEstado('revelando')
@@ -339,14 +359,19 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
       }
       arquivo = videoPronto
     } else arquivo = await paraArquivo(canvas.current, `${base}.png`)
+    // Um toque: a legenda vai junto no compartilhar e fica copiada; sem compartilhar, baixa a arte.
+    const legenda = `${roteiro.legenda}\n\n${roteiro.hashtags.join(' ')}`
+    try { await navigator.clipboard.writeText(legenda) } catch { /* sem a área de transferência, a legenda fica na tela */ }
+    setAvisoPost('')
     if (navigator.canShare?.({ files: [arquivo] })) {
-      try { await navigator.share({ files: [arquivo] }); return } catch (e) { if (e.name === 'AbortError') return }
+      try { await navigator.share({ files: [arquivo], text: legenda }); setAvisoPost('Legenda copiada. Se o app não colar sozinho, é só colar.'); return } catch (e) { if (e.name === 'AbortError') return }
     }
     const link = document.createElement('a')
     link.href = URL.createObjectURL(arquivo)
     link.download = arquivo.name
     link.click()
     setTimeout(() => URL.revokeObjectURL(link.href), 4000)
+    setAvisoPost('Arte baixada e legenda copiada. Agora é só postar na rede.')
   }
 
   // "Isso não é a minha marca": a regra entra no guia como versão nova do perfil, e a próxima peça já segue.
@@ -359,6 +384,17 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
       throw new Error('Não deu para salvar agora. Confira a internet e tente de novo.')
     }
     onPerfil?.(novo)
+  }
+
+  async function marcarQuando(data) {
+    setErro('')
+    try {
+      await onAgendar(peca, data)
+      setAgendado(data)
+      setEscolhendoQuando(false)
+    } catch {
+      setErro('Não deu para marcar no planner agora. Tente de novo.')
+    }
   }
 
   async function copiar() {
@@ -385,6 +421,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
   const comecos = perfil.padrao.tipos.map((t) => [t, TIPOS[t]?.comeco || `Post de ${t.toLowerCase()} sobre `])
   const guia = (tipo && TIPOS[tipo]) || GERAL
   const exemplos = sortear(guia.exemplos, rodada).slice(0, 3)
+  const antes = estado === 'pedido' ? perguntasAntes(pedido, perfil.dados) : []
   const semTexto = pedido.trim().length < 3 || (tipo && pedido.trim() === (TIPOS[tipo]?.comeco || '').trim())
 
   return (
@@ -424,6 +461,22 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
             )}
           </div>
 
+          {antes.length > 0 && (
+            <div className="criar__faltando">
+              <p className="criar__faltando-titulo">Esse post pede {listaDeNomes(antes)}. Me conta agora?</p>
+              <p className="criar__faltando-texto">A IA não inventa esse dado. Em branco, ela deixa um marcador para você preencher na peça pronta.</p>
+              {antes.map((m) => (
+                <div className="campo" key={m}>
+                  <label htmlFor={`antes-${m}`}>{MARCADORES[m].pergunta}</label>
+                  <input
+                    id={`antes-${m}`} maxLength={80} value={dadosFaltando[m] || ''} placeholder={MARCADORES[m].exemplo}
+                    onChange={(e) => setDadosFaltando((v) => ({ ...v, [m]: e.target.value }))}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+
           <div className="campo">
             <span className="campo__rotulo">Formato</span>
             <div className="criar__formatos" role="group" aria-label="Formato">
@@ -437,19 +490,30 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
             </div>
           </div>
 
-          <div className="campo">
-            <span className="campo__rotulo">Fotos (opcional)</span>
-            <p className="campo__ajuda">Até 4 fotos do produto, do serviço ou do dia a dia. A IA olha cada uma e escolhe qual abre a peça{video ? '; no vídeo em cenas, entram todas' : ''}.</p>
-            <Imagens negocioId={negocioId} valor={fotos} onChange={setFotos} maximo={4} tipo="peca-foto" texto="Adicionar foto" previa />
-          </div>
+          <div className="criar__mais">
+            <button type="button" className="criar__mais-botao" aria-expanded={maisOpcoes} aria-controls="mais-opcoes" onClick={() => setMaisOpcoes((v) => !v)}>
+              <span>Mais opções</span>
+              <span className="criar__mais-resumo">{fotos.length ? `${fotos.length} foto${fotos.length > 1 ? 's' : ''}` : 'Sem foto'} · {layout === 'ia' ? 'layout pela IA' : `layout ${(NOMES_DOS_MODELOS[layout] || layout).toLowerCase()}`}</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+            </button>
+            {maisOpcoes && (
+              <div id="mais-opcoes" className="criar__mais-corpo">
+              <div className="campo">
+                <span className="campo__rotulo">Fotos (opcional)</span>
+                <p className="campo__ajuda">Até 4 fotos do produto, do serviço ou do dia a dia. A IA olha cada uma e escolhe qual abre a peça{video ? '; no vídeo em cenas, entram todas' : ''}.</p>
+                <Imagens negocioId={negocioId} valor={fotos} onChange={setFotos} maximo={4} tipo="peca-foto" texto="Adicionar foto" previa />
+              </div>
 
-          <div className="campo">
-            <span className="campo__rotulo">Layout</span>
-            <p className="campo__ajuda">Escolha um jeito para a arte ou deixe a IA decidir. Dá para trocar depois.</p>
-            <Layouts
-              sugeridos={sugeridos} escolhido={layout} onEscolher={setLayout} tipo={tipoPercebido}
-              perfil={perfil} formato={formato} video={video} {...miniaturas}
-            />
+              <div className="campo">
+                <span className="campo__rotulo">Layout</span>
+                <p className="campo__ajuda">Escolha um jeito para a arte ou deixe a IA decidir. Dá para trocar depois.</p>
+                <Layouts
+                  sugeridos={sugeridos} escolhido={layout} onEscolher={setLayout} tipo={tipoPercebido}
+                  perfil={perfil} formato={formato} video={video} {...miniaturas}
+                />
+              </div>
+              </div>
+            )}
           </div>
 
           {erro && <p className="campo__erro" role="alert">{erro}</p>}
@@ -582,6 +646,32 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
               </ul>
             )}
 
+            {onAgendar && !noPlanner && !pecaInicial && agendado !== 'depois' && (
+              <div className="criar__quando">
+                {agendado ? (
+                  <p className="criar__quando-titulo">No planner: {quandoPorExtenso(agendado)}. A gente avisa na hora.</p>
+                ) : (
+                  <>
+                    <p className="criar__quando-titulo">Quando vai postar?</p>
+                    <p className="criar__quando-texto">A peça entra no planner e você recebe o lembrete na hora.</p>
+                    <div className="fichas">
+                      {sugestoesDeQuando().map(([rotulo, data]) => (
+                        <button key={rotulo} type="button" className="ficha" onClick={() => marcarQuando(data)}>{rotulo}</button>
+                      ))}
+                      <button type="button" className="ficha" aria-pressed={escolhendoQuando} onClick={() => setEscolhendoQuando((v) => !v)}>Escolher</button>
+                      <button type="button" className="ficha ficha--apagada" onClick={() => setAgendado('depois')}>Depois</button>
+                    </div>
+                    {escolhendoQuando && (
+                      <div className="criar__quando-escolher">
+                        <input type="datetime-local" aria-label="Dia e hora" value={quandoEscolhido} onChange={(e) => setQuandoEscolhido(e.target.value)} />
+                        <button type="button" className="botao botao--destaque" disabled={!quandoEscolhido} onClick={() => marcarQuando(new Date(quandoEscolhido))}>Marcar</button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
             <div className="criar__legenda">
               <div className="campo">
                 <label htmlFor="texto-legenda">Legenda</label>
@@ -596,7 +686,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
             {erro && <p className="campo__erro" role="alert">{erro}</p>}
             <div className="criar__acoes">
               <button type="button" className="botao botao--primario" onClick={baixar} disabled={gravando !== null || semDados.length > 0}>
-                {semDados.length > 0 ? `Preencha ${listaDeNomes(semDados)} para baixar` : gravando !== null ? `Gravando o vídeo... ${Math.ceil(duracaoDe(opcoesDoDesenho()) * (1 - gravando))} s` : video && peca.formato === 'story' ? (videoPronto ? 'Salvar vídeo e postar' : 'Gravar vídeo') : 'Baixar e postar'}
+                {semDados.length > 0 ? `Preencha ${listaDeNomes(semDados)} para baixar` : gravando !== null ? `Gravando o vídeo... ${Math.ceil(duracaoDe(opcoesDoDesenho()) * (1 - gravando))} s` : video && peca.formato === 'story' ? (videoPronto ? 'Postar vídeo' : 'Gravar vídeo') : 'Postar'}
               </button>
               {gravando !== null && (
                 <div className="criar__gravando" aria-hidden="true"><span style={{ transform: `scaleX(${gravando})` }} /></div>
@@ -604,12 +694,13 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
               {gravando !== null && <p className="criar__nota">Deixe esta tela aberta até terminar.</p>}
               {videoPronto && !avisoVideo && <p className="criar__nota">Vídeo pronto. Toque de novo para salvar.</p>}
               {avisoVideo && <p className="criar__nota criar__nota--aviso">{avisoVideo}</p>}
+              {avisoPost && <p className="criar__nota" role="status">{avisoPost}</p>}
               <button type="button" className="botao botao--destaque" onClick={copiar}>{copiou ? 'Legenda copiada' : 'Copiar legenda'}</button>
               <div className="criar__acoes-linha">
                 <button type="button" className="botao botao--fantasma" disabled={restantes <= 0 || ajustando} onClick={() => { setPedidoNovo(peca.pedido); setAjustando(true) }}>
                   Gerar de novo{restantes > 0 ? ` (${restantes})` : ''}
                 </button>
-                <button type="button" className="botao botao--fantasma" onClick={() => { setPeca(null); setPedido(''); setTipo(null); setFotos([]); setLayout('ia'); setAvisoVideo(''); setDadosFaltando({}); setEstado('pedido') }}>Criar outro</button>
+                <button type="button" className="botao botao--fantasma" onClick={() => { setPeca(null); setPedido(''); setTipo(null); setFotos([]); setLayout('ia'); setAvisoVideo(''); setAvisoPost(''); setDadosFaltando({}); setEstado('pedido') }}>Criar outro</button>
               </div>
               <p className="criar__nota">Gerar de novo não conta como peça nova.</p>
               <NaoEMinhaMarca

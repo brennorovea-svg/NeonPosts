@@ -316,6 +316,11 @@ export default function Area({ sessao, teste = false }) {
             pecaInicial={criando === 'nova' ? null : criando}
             formatoInicial={criarCom?.formato}
             onCriou={ligarAoPlanner}
+            noPlanner={Boolean(criarCom)}
+            onAgendar={async (peca, quando) => {
+              await agendar(negocio.id, { titulo: peca.roteiro?.titulo || peca.pedido, rede: 'instagram', formato: peca.formato === 'story' ? 'story' : 'post', quando, peca: peca.id })
+              recarregarAgenda()
+            }}
             onPerfil={(novo) => { setPerfil(novo); recarregar() }}
             onSair={(mudou) => {
               if (mudou) recarregarPecas()

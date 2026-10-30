@@ -55,6 +55,7 @@ export default function Area({ sessao, teste = false }) {
   const [avisos, setAvisos] = useState(avisosPermitidos())
   const [abrirItem, setAbrirItem] = useState(null) // marcação que veio pelo aviso
   const [criarCom, setCriarCom] = useState(null) // { agendaId, titulo, formato, quando } quando a peça nasce no planner
+  const [voltarPara, setVoltarPara] = useState(null) // dia do planner para reabrir ao sair de Criar
   const agendaAtual = useRef([])
   const usuario = sessao.user
   const primeiroNome = (usuario.user_metadata?.full_name || usuario.user_metadata?.name || '').split(' ')[0]
@@ -157,19 +158,6 @@ export default function Area({ sessao, teste = false }) {
     )
   }
 
-  if (criando && perfil) {
-    return (
-      <Criar
-        negocioId={negocio.id}
-        perfil={perfil}
-        pecaInicial={criando === 'nova' ? null : criando}
-        formatoInicial={criarCom?.formato}
-        onCriou={ligarAoPlanner}
-        onPerfil={(novo) => { setPerfil(novo); recarregar() }}
-        onSair={(mudou) => { if (mudou) recarregarPecas(); setCriando(null); setCriarCom(null); window.scrollTo({ top: 0 }) }}
-      />
-    )
-  }
 
   if (entrevista && perfil) {
     return (
@@ -222,6 +210,8 @@ export default function Area({ sessao, teste = false }) {
 
   const abaAtual = aba ?? (total === 4 ? 'planner' : 'marca')
   function ir(destino) {
+    // Trocar de aba pelo menu fecha a tela Criar, se estiver aberta.
+    if (destino !== 'criar') { setCriando(null); setCriarCom(null); setVoltarPara(null) }
     if (destino === 'plano') { setVendoPlanos(true); return }
     if (destino === 'criar') {
       if (total === 4 && usadas < limite) { setCriando('nova'); return }
@@ -310,7 +300,7 @@ export default function Area({ sessao, teste = false }) {
   return (
     <div className="area">
       <Menu aba={abaAtual} onIr={ir} nomeMarca={nomeMarca} usadas={usadas} limite={limite} onSair={() => supabase?.auth.signOut()} />
-      <div className="area__corpo">
+      <div className={`area__corpo${criando && perfil ? ' area__corpo--criar' : ''}`}>
         <header className="area__topo">
           <p className="marca area__marca">Neon<span>posts</span></p>
           <div className="area__direita">
@@ -319,6 +309,25 @@ export default function Area({ sessao, teste = false }) {
           </div>
         </header>
 
+        {criando && perfil ? (
+          <Criar
+            negocioId={negocio.id}
+            perfil={perfil}
+            pecaInicial={criando === 'nova' ? null : criando}
+            formatoInicial={criarCom?.formato}
+            onCriou={ligarAoPlanner}
+            onPerfil={(novo) => { setPerfil(novo); recarregar() }}
+            onSair={(mudou) => {
+              if (mudou) recarregarPecas()
+              // Quem veio do planner volta para o mesmo dia.
+              if (voltarPara) { setAbrirItem({ id: `volta-${Date.now()}`, quando: voltarPara }); setAba('planner') }
+              setVoltarPara(null)
+              setCriando(null)
+              setCriarCom(null)
+              window.scrollTo({ top: 0 })
+            }}
+          />
+        ) : (
         <main className={`area__conteudo area__conteudo--${abaAtual}${total === 4 ? ' area__conteudo--painel' : ''}`}>
           {aviso && <p className="area__aviso" role="status">{aviso}</p>}
           {negocio?.cancela_no_fim && negocio.renova_em && (
@@ -338,11 +347,12 @@ export default function Area({ sessao, teste = false }) {
               negocioId={negocio.id} perfil={perfil} itens={agenda} pecas={pecas}
               avisos={avisos} onAtivarAvisos={ativarAvisos}
               onMudou={recarregarAgenda} onFaixa={pedirFaixa} abrir={abrirItem}
-              onCriar={(com) => { if (usadas >= limite) { setVendoPlanos(true); return } setCriarCom(com); setCriando('nova') }}
-              onAbrirPeca={abrirPeca}
+              onCriar={(com) => { if (usadas >= limite) { setVendoPlanos(true); return } setCriarCom(com); setVoltarPara(com.quando); setCriando('nova') }}
+              onAbrirPeca={(p, quando) => { if (p) { setCriarCom(null); setVoltarPara(quando || null); setCriando(p) } }}
             />
           )}
         </main>
+        )}
       </div>
     </div>
   )

@@ -106,7 +106,7 @@ Deno.serve(async (req) => {
 
   if (!perfil) return erro('Conte a sua marca antes de criar um post.', 409)
   if (layout === 'foto' && !fotos.length) layout = ''
-  if (SO_NO_VIDEO.includes(layout) && !(video && formato === 'story')) layout = ''
+  if (SO_NO_VIDEO.includes(layout) && !video) layout = ''
 
   // A IA olha a cópia pequena de cada foto (feita no aparelho ao enviar). Sem cópia, escreve sem ver.
   const imagens = (await Promise.all(fotos.map(async (caminho) => {
@@ -134,7 +134,7 @@ Deno.serve(async (req) => {
         role: 'user',
         content: [
           ...imagens.map((data) => ({ type: 'image' as const, source: { type: 'base64' as const, media_type: 'image/jpeg' as const, data } })),
-          { type: 'text' as const, text: montarMensagem(perfil, pedido, formato, refeita && (refeita.versoes?.[refeita.escolhida ?? -1]?.roteiro || refeita.roteiro), ajuste, fotos.length, layout, video && formato === 'story', imagens.length) },
+          { type: 'text' as const, text: montarMensagem(perfil, pedido, formato, refeita && (refeita.versoes?.[refeita.escolhida ?? -1]?.roteiro || refeita.roteiro), ajuste, fotos.length, layout, video, imagens.length) },
         ],
       }],
     })
@@ -148,7 +148,7 @@ Deno.serve(async (req) => {
     return erro('A IA não respondeu agora. Tente de novo.', 502)
   }
 
-  const roteiro = conferir(bruto, perfil, pedido, layout, fotos.length, video && formato === 'story')
+  const roteiro = conferir(bruto, perfil, pedido, layout, fotos.length, video)
   // Ajuste que a IA não consegue fazer (trocar foto, layout, fonte) volta igual; avisa em vez de parecer que nada aconteceu.
   const base = refeita && (refeita.versoes?.[refeita.escolhida ?? -1]?.roteiro || refeita.roteiro) as Record<string, unknown> | null
   const igual = (k: string) => JSON.stringify(base?.[k] ?? null) === JSON.stringify((roteiro as Record<string, unknown>)[k] ?? null)

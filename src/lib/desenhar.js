@@ -1,6 +1,6 @@
 // Desenha a peça no próprio aparelho, num canvas de 1080 de largura.
-// Post 4:5 (1080x1350) e story 9:16 (1080x1920). Vinte modelos para post e story, mais o vídeo em cenas e os vinte
-// stories com movimento (historias.js), que só aparecem no vídeo. A IA escolhe o modelo e o jeito da arte
+// Post 4:5 (1080x1350) e story 9:16 (1080x1920). Layouts parados para post e story; os animados (os feitos para a foto,
+// o vídeo em cenas e os vinte stories com movimento de historias.js) só aparecem no animado, em post ou story. A IA escolhe o modelo e o jeito da arte
 // (palavra em destaque, tamanho do título, alinhamento e fundo).
 import { criarHistorias, NOMES_DAS_HISTORIAS } from './historias.js'
 
@@ -9,12 +9,28 @@ export const NOMES_DOS_MODELOS = {
   promo: 'Promoção', aviso: 'Aviso', bastidores: 'Bastidores', manchete: 'Manchete', lista: 'Lista',
   citacao: 'Citação', dividido: 'Dividido', foto: 'Foto inteira', cartao: 'Cartão',
   numero: 'Número', cupom: 'Cupom', agenda: 'Agenda', conversa: 'Conversa', mosaico: 'Mosaico', faixas: 'Faixas',
-  capa: 'Capa de revista', comparar: 'Antes e depois', tabela: 'Tabela', enquete: 'Enquete',
-  cenas: 'Vídeo em cenas',
+  capa: 'Capa de revista', comparar: 'Antes e depois', tabela: 'Tabela', enquete: 'Enquete', polaroid: 'Polaroid',
+  cenas: 'Em cenas',
+  zoom: 'Zoom lento', cortina: 'Cortina', cardfoto: 'Card que sobe', deslize: 'Antes e depois deslizando',
+  moldura: 'Moldura acesa', portas: 'Porta que abre', foco: 'Foco no produto',
   ...NOMES_DAS_HISTORIAS,
 }
-// Só aparece quando o formato é vídeo.
-export const SO_NO_VIDEO = ['cenas', ...Object.keys(NOMES_DAS_HISTORIAS)]
+// Animados feitos para a foto: só com foto, e só no animado.
+export const ANIMADOS_DA_FOTO = ['zoom', 'cortina', 'cardfoto', 'deslize', 'moldura', 'portas', 'foco', 'cenas']
+// Só aparece no animado (post 4:5 ou story 9:16 em vídeo).
+export const SO_NO_VIDEO = [...ANIMADOS_DA_FOTO, ...Object.keys(NOMES_DAS_HISTORIAS)]
+// Os três grupos do Criar (Brenno, 30/10): parado com foto, animado com foto e, sem foto, os da marca.
+export const PARADOS_COM_FOTO = ['foto', 'bastidores', 'capa', 'dividido', 'promo', 'mosaico', 'comparar', 'polaroid',
+  'numero', 'conversa', 'citacao', 'enquete', 'agenda', 'cupom', 'lista', 'tabela']
+export const PARADOS_DA_MARCA = ['promo', 'aviso', 'manchete', 'lista', 'citacao', 'dividido', 'cartao', 'numero', 'cupom',
+  'agenda', 'conversa', 'faixas', 'capa', 'comparar', 'tabela', 'enquete', 'bastidores', 'mosaico', 'foto']
+// Com foto, os stories com movimento também servem (a foto é o fundo e anda); só o "isso ou aquilo" não usa a foto.
+export const ANIMADOS_COM_FOTO = [...ANIMADOS_DA_FOTO, ...Object.keys(NOMES_DAS_HISTORIAS).filter((m) => m !== 'escolha')]
+export const ANIMADOS_DA_MARCA = ['cenas', ...Object.keys(NOMES_DAS_HISTORIAS)]
+export function layoutsDoGrupo(temFoto, animado) {
+  if (animado) return temFoto ? ANIMADOS_COM_FOTO : ANIMADOS_DA_MARCA
+  return temFoto ? PARADOS_COM_FOTO : PARADOS_DA_MARCA
+}
 import { fonteDa } from './fontes.js'
 
 const FONTE = '"Instrument Sans", system-ui, sans-serif'
@@ -706,7 +722,8 @@ function citacao(ctx, { L, A, story, c, r, logo, foto, nome }) {
 // Metade de cima com a foto (ou a cor da marca), metade de baixo com o texto.
 function dividido(ctx, { L, A, story, c, r, logo, foto, nome }) {
   // Título maior pede mais espaço: a foto encolhe para o texto crescer.
-  const corte = Math.round(A * ((story ? 0.42 : 0.46) - (escala(r) - 1) * 0.3))
+  // Com foto, ela fica com a maior parte do quadro (Brenno, 30/10).
+  const corte = Math.round(A * ((foto ? (story ? 0.52 : 0.56) : story ? 0.42 : 0.46) - (escala(r) - 1) * 0.3))
   const claro = r.arte?.fundo === 'claro'
   const tinta = claro ? '#111114' : '#FFFFFF'
   ctx.fillStyle = claro ? '#F6F4F9' : '#0D0D12'
@@ -1662,10 +1679,851 @@ const HISTORIAS = criarHistorias({
   marca, escala, lado, sobre, fonteDoBloco, FONTE, EMBARALHO, suave, sorteio, acender, confete,
 })
 
+// ---- Com a foto no centro (Brenno, 30/10) ----
+// Com foto, oito layouts parados que ignoravam a foto ganham a sua versão com ela (número, conversa, citação, enquete,
+// agenda, cupom, lista e tabela), mais a Polaroid. Regras: a foto ocupa a maior parte do quadro e o escuro fica só
+// atrás do texto, nunca um véu na foto inteira.
+
+// Foto inteira com o escuro só de `de` (0 a 1 da altura) para baixo, e uma sombra curta no topo para o selo.
+function fotoComEscuroEmbaixo(ctx, L, A, foto, de = 0.45, forca = 0.88) {
+  cobrir(ctx, foto, 0, 0, L, A)
+  const g = ctx.createLinearGradient(0, A * de, 0, A)
+  g.addColorStop(0, 'rgba(8,8,12,0)')
+  g.addColorStop(0.45, `rgba(8,8,12,${forca * 0.72})`)
+  g.addColorStop(1, `rgba(8,8,12,${forca})`)
+  ctx.fillStyle = g
+  ctx.fillRect(0, A * de, L, A * (1 - de))
+  const t = ctx.createLinearGradient(0, 0, 0, A * 0.16)
+  t.addColorStop(0, 'rgba(8,8,12,.32)')
+  t.addColorStop(1, 'rgba(8,8,12,0)')
+  ctx.fillStyle = t
+  ctx.fillRect(0, 0, L, A * 0.16)
+  sobre('#16161B')
+}
+
+// Desce o tamanho dos textos até o grupo caber; devolve o y onde o grupo começa (encostado no pé).
+function encostarEmbaixo(ctx, partes, { fim, limite }) {
+  const altura = () => partes.reduce((s, [texto, op, vao = 0]) => s + (texto ? medir(ctx, texto, op) + vao : 0), 0)
+  while (fim - altura() < limite && partes.some(([, op]) => op.tamanho > (op.peso === 400 ? 30 : 52))) {
+    for (const [, op] of partes) op.tamanho = Math.max(op.peso === 400 ? 30 : 52, op.tamanho - (op.peso === 400 ? 1 : 4))
+  }
+  return Math.max(limite, fim - altura())
+}
+
+function numeroComFoto(ctx, { L, A, story, c, r, logo, foto, nome }) {
+  const valor = String(r.numero || '').trim()
+  fotoComEscuroEmbaixo(ctx, L, A, foto, 0.32)
+  const m = 80, topo = story ? 230 : 70, base = story ? 330 : 80
+  const tinta = '#FFFFFF'
+  const al = lado(r)
+  selo(ctx, { logo, nome, x: ancora(al, m, L - m * 2), y: topo, altura: 64, alinhar: al })
+  const [, corpo, sufixo] = valor.match(/^(.*\d)(\D*)$/) || [null, valor, '']
+  const tOp = { x: m, largura: L - m * 2, tamanho: Math.round(84 * escala(r)), maxLinhas: 3, entre: 1.02, alinhar: al }
+  const aOp = { x: m, largura: L - m * 2, tamanho: 38, peso: 400, maxLinhas: 2, entre: 1.3, alinhar: al }
+  const fim = A - base - (r.chamada ? 150 : 0)
+  let t = story ? 360 : 300
+  const largura = () => {
+    ctx.font = `700 ${t}px ${FONTE}`
+    espacar(ctx, -t * 0.05)
+    const w1 = ctx.measureText(corpo).width
+    ctx.font = `700 ${Math.round(t * 0.46)}px ${FONTE}`
+    espacar(ctx, 0)
+    return w1 + ctx.measureText(sufixo).width
+  }
+  while (largura() > L - m * 2 && t > 120) t -= 10
+  const y0 = encostarEmbaixo(ctx, [[r.titulo, tOp, 24], [r.apoio, aOp]], { fim, limite: topo + 140 + t * 0.78 })
+  const baseNumero = y0 - 40
+  const w = largura()
+  const x0 = al === 'center' ? (L - w) / 2 : al === 'right' ? L - m - w : m
+  const conta = corpo.match(/^(\D*?)(\d{1,4})$/)
+  const iniConta = relogio ? espiar() : 0
+  animado(ctx, () => {
+    ctx.textBaseline = 'alphabetic'
+    ctx.textAlign = 'left'
+    ctx.font = `700 ${t}px ${FONTE}`
+    espacar(ctx, -t * 0.05)
+    ctx.fillStyle = r.cores?.destaque ? corPedida(r, 'destaque', tinta) : legivel(c[1], '#16161B')
+    const agora = relogio && conta ? conta[1] + Math.round(Number(conta[2]) * suave((relogio.t - iniConta) / 1.2)) : corpo
+    ctx.fillText(agora, x0, baseNumero)
+    const w1 = ctx.measureText(corpo).width
+    ctx.font = `700 ${Math.round(t * 0.46)}px ${FONTE}`
+    espacar(ctx, 0)
+    ctx.fillStyle = tinta
+    ctx.fillText(sufixo, x0 + w1 + t * 0.02, baseNumero)
+  }, { escala: 0.12, desloca: 0 }, x0 + w / 2, baseNumero - t * 0.4)
+  let y = bloco(ctx, r.titulo, { ...tOp, y: y0, cor: corPedida(r, 'titulo', tinta), ...marca(r, legivel(c[1], '#16161B')) })
+  bloco(ctx, r.apoio, { ...aOp, y: y + 24, cor: corPedida(r, 'texto', apagado(tinta)) })
+  pilulaCurta(ctx, r, { x: m, y: A - base - 104, largura: L - m * 2, alinhar: al, fundo: fundoPedido(r, c[0]), cor: textoSobre(fundoPedido(r, c[0])) })
+}
+
+function conversaComFoto(ctx, { L, A, story, c, r, logo, foto, nome }) {
+  fotoComEscuroEmbaixo(ctx, L, A, foto, 0.25, 0.9)
+  const m = 70, topo = story ? 230 : 70, base = story ? 330 : 80
+  selo(ctx, { logo, nome, x: m, y: topo, altura: 64 })
+  const larg = L - m * 2
+  const perguntas = (r.pontos || []).filter(Boolean).slice(0, story ? 3 : 2)
+  const fundoResposta = fundoPedido(r, c[0])
+  const tamR = Math.round(50 * escala(r))
+  const medida = (texto, tamanho, peso) => {
+    ctx.font = `${peso} ${tamanho}px ${FONTE}`
+    return quebrar(ctx, texto, larg * 0.8 - 72).slice(0, 4).length * tamanho * 1.25 + 56
+  }
+  const guardado = relogio
+  relogio = null
+  const total = perguntas.reduce((s, p) => s + medida(p, 40, 600) + 20, 0) + 26 + medida(r.titulo, tamR, 700)
+  relogio = guardado
+  let y = Math.max(topo + 150, A - base - (r.chamada ? 110 : 10) - total)
+  for (const p of perguntas) y += balao(ctx, p, { x: m, y, largura: larg * 0.8, tamanho: 40, peso: 600, fundo: 'rgba(255,255,255,.94)', cor: '#111114' }) + 20
+  y += 26
+  balao(ctx, r.titulo, { x: m, y, largura: larg * 0.8, tamanho: tamR, peso: 700, fundo: fundoResposta, cor: textoSobre(fundoResposta), direita: true })
+  chamadaEmTexto(ctx, r, { x: m, y: A - base, largura: larg, alinhar: 'right', cor: corPedida(r, 'destaque', legivel(c[1], '#16161B')) })
+}
+
+function citacaoComFoto(ctx, { L, A, story, c, r, logo, foto, nome }) {
+  fotoComEscuroEmbaixo(ctx, L, A, foto, 0.28, 0.9)
+  const m = 80, topo = story ? 230 : 70, base = story ? 330 : 90
+  const tinta = '#FFFFFF'
+  const al = lado(r)
+  selo(ctx, { logo, nome, x: ancora(al, m, L - m * 2), y: topo, altura: 64, alinhar: al })
+  const fala = { x: m, largura: L - m * 2, tamanho: Math.round(66 * escala(r)), peso: 600, maxLinhas: story ? 6 : 4, entre: 1.16, alinhar: al }
+  const fim = A - base - (r.autor ? 70 : 0)
+  const y0 = encostarEmbaixo(ctx, [[r.titulo, fala]], { fim, limite: topo + 300 })
+  const destaque = legivel(c[1], '#16161B')
+  animado(ctx, () => {
+    ctx.font = `700 260px ${FONTE}`
+    ctx.fillStyle = corPedida(r, 'destaque', destaque)
+    ctx.textAlign = al
+    ctx.textBaseline = 'alphabetic'
+    ctx.fillText('“', al === 'left' ? m - 10 : ancora(al, m, L - m * 2), y0 + 40)
+  }, { escala: 0.3, desloca: 0 }, al === 'left' ? m + 50 : ancora(al, m, L - m * 2), y0 - 40)
+  const y = bloco(ctx, r.titulo, { ...fala, y: y0 + 60, cor: corPedida(r, 'titulo', tinta), ...marca(r, destaque) })
+  if (r.autor) {
+    animado(ctx, () => {
+      ctx.font = `700 38px ${FONTE}`
+      ctx.fillStyle = apagado(tinta, 0.86)
+      ctx.textAlign = al
+      ctx.textBaseline = 'alphabetic'
+      ctx.fillText(`— ${r.autor}`, ancora(al, m, L - m * 2), y + 66)
+    })
+  }
+}
+
+function enqueteComFoto(ctx, { L, A, story, c, r, logo, foto, nome }) {
+  fotoComEscuroEmbaixo(ctx, L, A, foto, 0.3, 0.9)
+  const m = 80, topo = story ? 230 : 70, base = story ? 330 : 80
+  const tinta = '#FFFFFF'
+  selo(ctx, { logo, nome, x: m, y: topo, altura: 64 })
+  const opcoes = (r.pontos || []).filter(Boolean).slice(0, 4)
+  const hO = 104, vao = 18
+  const tOp = { x: m, largura: L - m * 2, tamanho: Math.round(76 * escala(r)), maxLinhas: 3, entre: 1.02 }
+  const fimOpcoes = A - base - (r.chamada ? 90 : 0)
+  const yOpcoes = fimOpcoes - opcoes.length * (hO + vao) + vao
+  const y0 = encostarEmbaixo(ctx, [[r.titulo, tOp, 40]], { fim: yOpcoes, limite: topo + 190 })
+  rotulo(ctx, 'Enquete', { x: m, y: y0 - 26, tamanho: 28, cor: legivel(c[1], '#16161B') })
+  bloco(ctx, r.titulo, { ...tOp, y: y0, cor: corPedida(r, 'titulo', tinta), ...marca(r, legivel(c[1], '#16161B')) })
+  opcoes.forEach((o, i) => {
+    const yo = yOpcoes + i * (hO + vao)
+    animado(ctx, () => {
+      arredondado(ctx, m, yo, L - m * 2, hO, hO / 2)
+      ctx.fillStyle = 'rgba(255,255,255,.16)'
+      ctx.fill()
+      ctx.lineWidth = 2
+      ctx.strokeStyle = 'rgba(255,255,255,.4)'
+      ctx.stroke()
+      ctx.beginPath()
+      ctx.arc(m + 56, yo + hO / 2, 28, 0, Math.PI * 2)
+      ctx.fillStyle = '#FFFFFF'
+      ctx.fill()
+      ctx.font = `700 30px ${FONTE}`
+      ctx.fillStyle = legivel(c[0], '#FFFFFF')
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText('ABCD'[i], m + 56, yo + hO / 2 + 1)
+      ctx.font = `600 40px ${FONTE}`
+      ctx.fillStyle = tinta
+      ctx.textAlign = 'left'
+      ctx.fillText(o, m + 110, yo + hO / 2 + 2, L - m * 2 - 150)
+    }, { desloca: 20 })
+  })
+  chamadaEmTexto(ctx, r, { x: m, y: A - base, largura: L - m * 2, alinhar: 'left', cor: corPedida(r, 'destaque', legivel(c[1], '#16161B')) })
+}
+
+function agendaComFoto(ctx, { L, A, story, c, r, logo, foto, nome }) {
+  fotoComEscuroEmbaixo(ctx, L, A, foto, 0.4)
+  const m = 80, topo = story ? 230 : 70, base = story ? 330 : 80
+  const tinta = '#FFFFFF'
+  selo(ctx, { logo, nome, x: m, y: topo, altura: 64 })
+  // Folha do calendário colada no canto, sobre a foto.
+  const lida = lerData(r.data)
+  const lf = story ? 270 : 230, af = story ? 300 : 256, xf = L - m - lf, yf = topo
+  animado(ctx, () => {
+    ctx.save()
+    ctx.shadowColor = 'rgba(0,0,0,.35)'
+    ctx.shadowBlur = 40
+    arredondado(ctx, xf, yf, lf, af, 28)
+    ctx.fillStyle = '#FFFFFF'
+    ctx.fill()
+    ctx.restore()
+    ctx.save()
+    arredondado(ctx, xf, yf, lf, af, 28)
+    ctx.clip()
+    ctx.fillStyle = fundoPedido(r, c[0])
+    ctx.fillRect(xf, yf, lf, 72)
+    ctx.restore()
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.font = `700 30px ${FONTE}`
+    espacar(ctx, 6)
+    ctx.fillStyle = textoSobre(fundoPedido(r, c[0]))
+    ctx.fillText(lida ? lida.mes.toUpperCase() : 'DATA', xf + lf / 2, yf + 38)
+    espacar(ctx, 0)
+    ctx.fillStyle = '#111114'
+    if (lida) {
+      ctx.font = `700 ${story ? 140 : 120}px ${FONTE}`
+      ctx.textBaseline = 'alphabetic'
+      ctx.fillText(lida.dia, xf + lf / 2, yf + 72 + (af - 72) * 0.68)
+      ctx.font = `400 30px ${FONTE}`
+      ctx.fillStyle = 'rgba(17,17,20,.6)'
+      ctx.fillText(lida.semana, xf + lf / 2, yf + af - 26)
+    } else {
+      ctx.font = `700 38px ${FONTE}`
+      quebrar(ctx, r.data || '[DATA]', lf - 30).slice(0, 3).forEach((l, i, ls) => ctx.fillText(l, xf + lf / 2, yf + 72 + (af - 72) / 2 + (i - (ls.length - 1) / 2) * 44))
+    }
+  }, { desloca: 0, escala: 0.1 }, xf + lf / 2, yf + af / 2)
+  const tOp = { x: m, largura: L - m * 2, tamanho: Math.round(84 * escala(r)), maxLinhas: 3, entre: 1.02 }
+  const hOp = { x: m, largura: L - m * 2, tamanho: 48, peso: 600, maxLinhas: 1, entre: 1.1 }
+  const aOp = { x: m, largura: L - m * 2, tamanho: 36, peso: 400, maxLinhas: 2, entre: 1.3 }
+  const quando = r.horario || (lida ? `${lida.semana}, ${lida.dia} de ${lida.mes}` : '')
+  const y0 = encostarEmbaixo(ctx, [[quando, hOp, 20], [r.titulo, tOp, 20], [r.apoio, aOp]], { fim: A - base - (r.chamada ? 140 : 0), limite: yf + af + 60 })
+  let y = bloco(ctx, quando, { ...hOp, y: y0, cor: legivel(c[1], '#16161B') })
+  y = bloco(ctx, r.titulo, { ...tOp, y: quando ? y + 20 : y0, cor: corPedida(r, 'titulo', tinta), ...marca(r, legivel(c[1], '#16161B')) })
+  bloco(ctx, r.apoio, { ...aOp, y: y + 20, cor: corPedida(r, 'texto', apagado(tinta)) })
+  pilulaCurta(ctx, r, { x: m, y: A - base - 104, largura: L - m * 2, fundo: '#FFFFFF', cor: '#111114' })
+}
+
+function cupomComFoto(ctx, { L, A, story, c, r, logo, foto, nome }) {
+  const fundo = fundoPedido(r, c[0])
+  ctx.fillStyle = fundo
+  ctx.fillRect(0, 0, L, A)
+  const corte = Math.round(A * (story ? 0.56 : 0.58))
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(0, 0, L, corte)
+  ctx.clip()
+  cobrir(ctx, foto, 0, 0, L, corte)
+  ctx.restore()
+  const m = 70, topo = story ? 230 : 60, base = story ? 330 : 70
+  selo(ctx, { logo, nome, x: m, y: topo, altura: 64 })
+  const codigo = String(r.cupom || '').trim() || '[CUPOM]'
+  const larg = L - m * 2, dentro = larg - 120
+  const tOp = { x: m + 60, largura: dentro, tamanho: Math.round(80 * escala(r)), maxLinhas: 2, entre: 0.98 }
+  const cima = 56 + medir(ctx, r.titulo, tOp) + 50
+  const h = cima + 50 + 110 + 56
+  const y0 = Math.min(corte - 140, A - base - h - (r.chamada ? 70 : 0))
+  const linha = y0 + cima
+  animado(ctx, () => {
+    ctx.save()
+    ctx.beginPath()
+    ctx.rect(0, 0, L, A)
+    ctx.moveTo(m + 40, linha)
+    ctx.arc(m, linha, 40, 0, Math.PI * 2)
+    ctx.moveTo(L - m + 40, linha)
+    ctx.arc(L - m, linha, 40, 0, Math.PI * 2)
+    ctx.clip('evenodd')
+    ctx.shadowColor = 'rgba(0,0,0,.3)'
+    ctx.shadowBlur = 50
+    arredondado(ctx, m, y0, larg, h, 36)
+    ctx.fillStyle = '#FFFFFF'
+    ctx.fill()
+    ctx.restore()
+    ctx.setLineDash([20, 14])
+    ctx.lineWidth = 5
+    ctx.strokeStyle = 'rgba(17,17,20,.18)'
+    ctx.beginPath()
+    ctx.moveTo(m + 60, linha)
+    ctx.lineTo(L - m - 60, linha)
+    ctx.stroke()
+    ctx.setLineDash([])
+  }, { desloca: 40 })
+  sobre('#FFFFFF')
+  const destaque = destaqueSobre('#111114', c)
+  bloco(ctx, r.titulo, { ...tOp, y: y0 + 56, cor: corPedida(r, 'titulo', '#111114'), ...marca(r, destaque) })
+  const yc = linha + 50
+  animado(ctx, () => {
+    ctx.font = `700 48px ${FONTE}`
+    espacar(ctx, 6)
+    const w = Math.min(ctx.measureText(codigo).width + 64, dentro * (r.data ? 0.62 : 1))
+    arredondado(ctx, m + 60, yc, w, 110, 20)
+    ctx.lineWidth = 5
+    ctx.strokeStyle = '#111114'
+    ctx.stroke()
+    ctx.fillStyle = '#111114'
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(codigo, m + 92, yc + 57, w - 64)
+    espacar(ctx, 0)
+    if (r.data) {
+      ctx.textAlign = 'right'
+      ctx.font = `400 28px ${FONTE}`
+      ctx.fillStyle = 'rgba(17,17,20,.6)'
+      ctx.fillText('Válido até', L - m - 60, yc + 34)
+      ctx.font = `700 38px ${FONTE}`
+      ctx.fillStyle = '#111114'
+      ctx.fillText(r.data, L - m - 60, yc + 80, dentro * 0.36)
+    }
+  }, { desloca: 20 })
+  sobre(fundo)
+  if (r.chamada) {
+    animado(ctx, () => {
+      ctx.font = `700 40px ${FONTE}`
+      ctx.fillStyle = textoSobre(fundo)
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'alphabetic'
+      ctx.fillText(`${r.chamada}  →`, L / 2, Math.min(A - base, y0 + h + 90), L - m * 2)
+    })
+  }
+}
+
+function listaComFoto(ctx, { L, A, story, c, r, logo, foto, nome }) {
+  const claro = r.arte?.fundo === 'claro'
+  const tinta = claro ? '#111114' : '#FFFFFF'
+  const fundo = claro ? '#F6F4F9' : '#0D0D12'
+  ctx.fillStyle = fundo
+  ctx.fillRect(0, 0, L, A)
+  const corte = Math.round(A * (story ? 0.46 : 0.44))
+  ctx.save()
+  arredondado(ctx, 0, -60, L, corte + 60, 60)
+  ctx.clip()
+  cobrir(ctx, foto, 0, 0, L, corte)
+  ctx.restore()
+  const m = 70, topo = story ? 230 : 60, base = story ? 330 : 70
+  selo(ctx, { logo, nome, x: m, y: topo, altura: 64 })
+  sobre(fundo)
+  const destaque = destaqueSobre(tinta, c)
+  const pontos = (r.pontos?.length ? r.pontos : [r.apoio]).filter(Boolean).slice(0, 4)
+  const tOp = { x: m, largura: L - m * 2, tamanho: Math.round(70 * escala(r)), maxLinhas: 2, entre: 1.02 }
+  const pOp = { x: m + 90, largura: L - m * 2 - 90, tamanho: 40, peso: 600, maxLinhas: 2, entre: 1.15 }
+  const fim = A - base - (r.chamada ? 130 : 0)
+  const altura = () => medir(ctx, r.titulo, tOp) + 30 + pontos.reduce((s, p) => s + medir(ctx, p, pOp) + 36, 0)
+  while (altura() > fim - (corte + 50) && (tOp.tamanho > 52 || pOp.tamanho > 30)) {
+    tOp.tamanho = Math.max(52, tOp.tamanho - 4)
+    pOp.tamanho = Math.max(30, pOp.tamanho - 2)
+  }
+  let y = bloco(ctx, r.titulo, { ...tOp, y: corte + 50, cor: corPedida(r, 'titulo', tinta), ...marca(r, destaque) }) + 30
+  pontos.forEach((p, i) => {
+    const yn = y
+    animado(ctx, () => {
+      ctx.font = `600 30px ${FONTE}`
+      ctx.fillStyle = corPedida(r, 'destaque', destaque)
+      ctx.textAlign = 'left'
+      ctx.textBaseline = 'alphabetic'
+      ctx.fillText(String(i + 1).padStart(2, '0'), m, yn + pOp.tamanho * 0.9)
+    }, { desloca: 0 })
+    y = bloco(ctx, p, { ...pOp, y, cor: corPedida(r, 'texto', tinta) }) + 18
+    ctx.fillStyle = apagado(tinta, 0.14)
+    ctx.fillRect(m, y, L - m * 2, 2)
+    y += 18
+  })
+  pilulaCurta(ctx, r, { x: m, y: A - base - 104, largura: L - m * 2, fundo: fundoPedido(r, c[0]), cor: textoSobre(fundoPedido(r, c[0])) })
+}
+
+function tabelaComFoto(ctx, { L, A, story, c, r, logo, foto, nome }) {
+  const coluna = Math.round(L * 0.5)
+  cobrir(ctx, foto, 0, 0, coluna, A)
+  const painel = misturar(c[2] || c[0], '#000000', luz(c[2] || c[0]) > 0.4 ? 0.65 : 0.25)
+  ctx.fillStyle = painel
+  ctx.fillRect(coluna, 0, L - coluna, A)
+  sobre(painel)
+  const tinta = textoSobre(painel)
+  const m = 56, x = coluna + m, larg = L - coluna - m * 2
+  const topo = story ? 230 : 70, base = story ? 330 : 80
+  selo(ctx, { logo, nome, x: m, y: topo, altura: 60 })
+  const itens = (r.itens?.length ? r.itens : (r.pontos || []).map((p) => ({ nome: p, preco: '' }))).filter((i) => i.nome).slice(0, story ? 7 : 5)
+  const tOp = { x, largura: larg, tamanho: Math.round(64 * escala(r)), maxLinhas: 3, entre: 1.02 }
+  const hI = 96
+  const total = medir(ctx, r.titulo, tOp) + 40 + itens.length * hI + (r.chamada ? 150 : 0)
+  let y = Math.max(topo, (A - total) / 2)
+  const destaque = legivel(c[1], painel)
+  y = bloco(ctx, r.titulo, { ...tOp, y, cor: corPedida(r, 'titulo', tinta), ...marca(r, destaque) }) + 40
+  for (const item of itens) {
+    const yi = y
+    animado(ctx, () => {
+      ctx.fillStyle = apagado(tinta, 0.18)
+      ctx.fillRect(x, yi + hI - 2, larg, 2)
+      ctx.font = `700 36px ${FONTE}`
+      ctx.textAlign = 'right'
+      ctx.textBaseline = 'alphabetic'
+      ctx.fillStyle = corPedida(r, 'destaque', destaque)
+      const preco = item.preco || ''
+      ctx.fillText(preco, x + larg, yi + 60)
+      const wp = preco ? ctx.measureText(preco).width + 20 : 0
+      ctx.font = `500 34px ${FONTE}`
+      ctx.textAlign = 'left'
+      ctx.fillStyle = tinta
+      ctx.fillText(item.nome, x, yi + 60, larg - wp)
+    }, { desloca: 14 })
+    y += hI
+  }
+  if (r.chamada) pilulaCurta(ctx, r, { x, y: Math.min(A - base - 104, y + 50), largura: larg, fundo: fundoPedido(r, c[0]), cor: textoSobre(fundoPedido(r, c[0])), tamanho: 34, altura: 92 })
+}
+
+// Promoção com foto: a foto inteira e um cartão de oferta embaixo, com os itens e o preço.
+function promoComFoto(ctx, { L, A, story, c, r, logo, foto, nome }) {
+  cobrir(ctx, foto, 0, 0, L, A)
+  const t = ctx.createLinearGradient(0, 0, 0, A * 0.16)
+  t.addColorStop(0, 'rgba(8,8,12,.32)')
+  t.addColorStop(1, 'rgba(8,8,12,0)')
+  ctx.fillStyle = t
+  ctx.fillRect(0, 0, L, A * 0.16)
+  const m = 60, topo = story ? 230 : 60, base = story ? 330 : 60
+  selo(ctx, { logo, nome, x: m, y: topo, altura: 64 })
+  const itens = (r.itens || []).slice(0, story ? 3 : 2)
+  const dentro = L - m * 2 - 100
+  const tOp = { x: m + 50, largura: dentro, tamanho: Math.round(72 * escala(r)), maxLinhas: 2, entre: 1.02 }
+  const aOp = { x: m + 50, largura: dentro, tamanho: 34, peso: 400, maxLinhas: 2, entre: 1.3 }
+  const hItens = itens.length * 84
+  const h = 56 + medir(ctx, r.titulo, tOp) + (r.apoio ? 16 + medir(ctx, r.apoio, aOp) : 0) + (hItens ? 30 + hItens : 0) + (r.chamada ? 130 : 30) + 20
+  const y0 = A - base - h
+  animado(ctx, () => {
+    ctx.save()
+    ctx.shadowColor = 'rgba(0,0,0,.3)'
+    ctx.shadowBlur = 50
+    arredondado(ctx, m, y0, L - m * 2, h, 36)
+    ctx.fillStyle = '#FFFFFF'
+    ctx.fill()
+    ctx.restore()
+  }, { desloca: 60 })
+  sobre('#FFFFFF')
+  const destaque = destaqueSobre('#111114', c)
+  let y = bloco(ctx, r.titulo, { ...tOp, y: y0 + 56, cor: corPedida(r, 'titulo', '#111114'), ...marca(r, destaque) })
+  if (r.apoio) y = bloco(ctx, r.apoio, { ...aOp, y: y + 16, cor: corPedida(r, 'texto', 'rgba(17,17,20,.7)') })
+  y += 30
+  for (const item of itens) {
+    const yi = y
+    animado(ctx, () => {
+      ctx.fillStyle = 'rgba(17,17,20,.1)'
+      ctx.fillRect(m + 50, yi, dentro, 2)
+      ctx.font = `600 36px ${FONTE}`
+      ctx.fillStyle = '#111114'
+      ctx.textAlign = 'left'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(item.nome, m + 50, yi + 44, dentro - 200)
+      ctx.font = `700 36px ${FONTE}`
+      const pw = ctx.measureText(item.preco).width + 40
+      arredondado(ctx, m + 50 + dentro - pw, yi + 16, pw, 58, 29)
+      ctx.fillStyle = c[0]
+      ctx.fill()
+      ctx.fillStyle = textoSobre(c[0])
+      ctx.textAlign = 'center'
+      ctx.fillText(item.preco, m + 50 + dentro - pw / 2, yi + 46)
+    }, { desloca: 12 })
+    y += 84
+  }
+  const fundo = fundoPedido(r, c[0])
+  pilulaCurta(ctx, r, { x: m + 50, y: y0 + h - 124, largura: dentro, fundo, cor: textoSobre(fundo), altura: 96, tamanho: 38 })
+}
+
+// Polaroid: a foto em moldura branca, levemente de lado, sobre a cor da marca; legenda escrita à mão.
+function polaroid(ctx, args) {
+  const { L, A, story, c, r, logo, foto, nome } = args
+  if (!foto) return fotoInteira(ctx, args)
+  const fundo = fundoPedido(r, c[1])
+  ctx.fillStyle = fundo
+  ctx.fillRect(0, 0, L, A)
+  brilho(ctx, L * 0.9, A * 0.1, L * 0.8, c[0], 0.35)
+  sobre(fundo)
+  const tinta = textoSobre(fundo)
+  const topo = story ? 230 : 60, base = story ? 330 : 70
+  const lado = story ? 760 : 640, pad = 34, rodape = 120
+  const xf = (L - lado - pad * 2) / 2, yf = topo + (story ? 110 : 20)
+  animado(ctx, () => {
+    ctx.save()
+    ctx.shadowColor = 'rgba(0,0,0,.35)'
+    ctx.shadowBlur = 50
+    ctx.shadowOffsetY = 18
+    ctx.fillStyle = '#FFFFFF'
+    ctx.fillRect(xf, yf, lado + pad * 2, lado + pad + rodape)
+    ctx.restore()
+    ctx.save()
+    ctx.beginPath()
+    ctx.rect(xf + pad, yf + pad, lado, lado)
+    ctx.clip()
+    cobrir(ctx, foto, xf + pad, yf + pad, lado, lado)
+    ctx.restore()
+    // Legenda à mão: o apoio quando é curto; senão, o trecho em destaque.
+    const legenda = String((r.apoio || '').length <= 32 && r.apoio ? r.apoio : r.arte?.destaque || '').trim()
+    if (legenda) {
+      ctx.font = `700 ${story ? 66 : 58}px "Caveat", ${FONTE}`
+      ctx.fillStyle = '#26262C'
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(legenda, L / 2, yf + pad + lado + rodape / 2 + 4, lado)
+    }
+  }, { desloca: 50, escala: 0.04 }, L / 2, yf + lado / 2)
+  const m = 80
+  const tOp = { x: m, largura: L - m * 2, tamanho: Math.round(76 * escala(r)), maxLinhas: 2, entre: 1.02, alinhar: 'center' }
+  const y0 = yf + lado + pad + rodape + 56
+  const y = bloco(ctx, r.titulo, { ...tOp, y: y0, cor: corPedida(r, 'titulo', tinta), ...marca(r, destaqueSobre(tinta, c)) })
+  if (r.chamada) chamadaEmTexto(ctx, r, { x: m, y: Math.min(A - base, y + 80), largura: L - m * 2, alinhar: 'center', cor: corPedida(r, 'texto', tinta) })
+  else selo(ctx, { logo, nome, x: L / 2, y: Math.min(A - base - 80, y + 30), altura: 56, alinhar: 'center', claro: tinta === '#FFFFFF' })
+}
+
+// Com foto, estes layouts desenham a sua versão com ela; sem foto, ficam como eram.
+const VERSAO_COM_FOTO = {
+  promo: () => promoComFoto,
+  numero: (a) => String(a.r.numero || '').trim() && numeroComFoto,
+  conversa: () => conversaComFoto, citacao: () => citacaoComFoto, enquete: () => enqueteComFoto,
+  agenda: () => agendaComFoto, cupom: () => cupomComFoto, lista: () => listaComFoto,
+  tabela: (a) => (a.r.itens?.length || a.r.pontos?.length) && tabelaComFoto,
+}
+
+// ---- Animados com foto (30/10) ----
+// A foto é a primeira coisa que se mexe; o texto entra depois, no pé. Só deslocamento, escala e opacidade.
+const momento = () => (relogio ? relogio.t : 1e3)
+const ir = (ini, dur) => suave((momento() - ini) / dur)
+// O próximo elemento do texto entra em `s` segundos.
+const aos = (s) => { if (relogio) relogio.ordem = (s - 0.35) / 0.32 }
+
+// Foto com zoom próprio (de `de` a `ate` no vídeo todo); parada, fica no `ate`.
+function fotoEmZoom(ctx, foto, x, y, l, a, de = 1, ate = 1.12, fx = 0.5, fy = 0.5) {
+  const p = relogio ? Math.min(1, relogio.t / relogio.total) : 1
+  const z = de + (ate - de) * p
+  const e = Math.max(l / foto.width, a / foto.height) * z
+  const w = foto.width * e, h = foto.height * e
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(x, y, l, a)
+  ctx.clip()
+  ctx.drawImage(foto, Math.min(x, Math.max(x + l - w, x + l / 2 - w * fx)), Math.min(y, Math.max(y + a - h, y + a / 2 - h * fy)), w, h)
+  ctx.restore()
+}
+
+// Texto no pé sobre a foto: rótulo, título, apoio e a chamada. Devolve o y onde o grupo começou.
+function textoNoPe(ctx, { L, A, story, c, r }, { de, tinta = '#FFFFFF', rotuloTexto = '', fim = null }) {
+  const m = 70, base = story ? 330 : 80
+  const tOp = { x: m, largura: L - m * 2, tamanho: Math.round(84 * escala(r)), maxLinhas: 3, entre: 1.02 }
+  const aOp = { x: m, largura: L - m * 2, tamanho: 38, peso: 400, maxLinhas: 2, entre: 1.3 }
+  const destaque = tinta === '#FFFFFF' ? legivel(c[1], '#16161B') : destaqueSobre(tinta, c)
+  aos(de)
+  const y0 = encostarEmbaixo(ctx, [[r.titulo, tOp, 20], [r.apoio, aOp]], { fim: fim ?? A - base - (r.chamada ? 140 : 0), limite: A * 0.45 })
+  if (rotuloTexto) rotulo(ctx, rotuloTexto, { x: m, y: y0 - 26, tamanho: 28, cor: destaque })
+  const y = bloco(ctx, r.titulo, { ...tOp, y: y0, cor: corPedida(r, 'titulo', tinta), ...marca(r, destaque) })
+  bloco(ctx, r.apoio, { ...aOp, y: y + 20, cor: corPedida(r, 'texto', apagado(tinta)) })
+  const fundo = tinta === '#FFFFFF' ? '#FFFFFF' : fundoPedido(r, c[0])
+  pilulaCurta(ctx, r, { x: m, y: A - base - 104, largura: L - m * 2, fundo, cor: textoSobre(fundo) })
+  return y0
+}
+
+function escuroEmbaixo(ctx, L, A, de = 0.4) {
+  const g = ctx.createLinearGradient(0, A * de, 0, A)
+  g.addColorStop(0, 'rgba(8,8,12,0)')
+  g.addColorStop(0.5, 'rgba(8,8,12,.62)')
+  g.addColorStop(1, 'rgba(8,8,12,.88)')
+  ctx.fillStyle = g
+  ctx.fillRect(0, A * de, L, A * (1 - de))
+  sobre('#16161B')
+}
+
+// Zoom lento: a foto aproxima devagar o vídeo todo; o texto sobe no pé.
+function zoomLento(ctx, a) {
+  const { L, A, story, logo, foto, nome } = a
+  if (!foto) return HISTORIAS.impacto(ctx, a)
+  fotoEmZoom(ctx, foto, 0, 0, L, A, 1, 1.14)
+  escuroEmbaixo(ctx, L, A, 0.38)
+  selo(ctx, { logo, nome, x: 70, y: story ? 230 : 60, altura: 60 })
+  textoNoPe(ctx, a, { de: 0.9 })
+}
+
+// Cortina: a cor da marca cobre a foto com o nome e sobe, revelando a foto.
+function cortina(ctx, a) {
+  const { L, A, story, c, r, logo, foto, nome } = a
+  if (!foto) return HISTORIAS.revelacao(ctx, a)
+  fotoEmZoom(ctx, foto, 0, 0, L, A, 1.1, 1)
+  escuroEmbaixo(ctx, L, A, 0.4)
+  selo(ctx, { logo, nome, x: 70, y: story ? 230 : 60, altura: 60 })
+  textoNoPe(ctx, a, { de: 2.2 })
+  const p = relogio ? ir(0.7, 1.1) : 1
+  if (p < 1) {
+    const fundo = fundoPedido(r, c[0])
+    ctx.save()
+    ctx.translate(0, -A * 1.01 * p)
+    ctx.fillStyle = fundo
+    ctx.fillRect(0, 0, L, A)
+    brilho(ctx, L * 0.8, A * 0.2, L * 0.7, c[1], 0.35)
+    ctx.font = fonteDoBloco(700, 120, 120)
+    ctx.fillStyle = textoSobre(fundo)
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(nome || '', L / 2, A / 2, L - 140)
+    ctx.restore()
+  }
+}
+
+// Card que sobe: a foto sobe num card sobre a cor da marca; o número (se houver) estala num selo.
+function cardQueSobe(ctx, a) {
+  const { L, A, story, c, r, logo, foto, nome } = a
+  if (!foto) return HISTORIAS.impacto(ctx, a)
+  const fundo = fundoPedido(r, c[0])
+  ctx.fillStyle = fundo
+  ctx.fillRect(0, 0, L, A)
+  brilho(ctx, L * 0.15, A * 0.85, L * 0.8, c[1], 0.4)
+  sobre(fundo)
+  const tinta = textoSobre(fundo)
+  const topo = story ? 230 : 60, base = story ? 330 : 80
+  selo(ctx, { logo, nome, x: L / 2, y: topo, altura: 56, alinhar: 'center', claro: tinta === '#FFFFFF' })
+  const m = 70
+  const tOp = { x: m, largura: L - m * 2, tamanho: Math.round(72 * escala(r)), maxLinhas: 2, entre: 1.02, alinhar: 'center' }
+  const hTexto = medir(ctx, r.titulo, tOp) + (r.chamada ? 150 : 30)
+  const yc = topo + 120
+  const hc = Math.max(320, A - base - hTexto - yc - 40)
+  const lc = Math.min(L - 180, hc * 0.8)
+  const xc = (L - lc) / 2
+  const p = relogio ? ir(0.2, 1.1) : 1
+  ctx.save()
+  ctx.globalAlpha = Math.min(1, p * 1.6)
+  const e = 0.92 + 0.08 * p
+  ctx.translate(L / 2, yc + hc / 2 + (1 - p) * A * 0.35)
+  ctx.scale(e, e)
+  ctx.translate(-L / 2, -(yc + hc / 2))
+  ctx.save()
+  ctx.shadowColor = 'rgba(0,0,0,.38)'
+  ctx.shadowBlur = 60
+  ctx.shadowOffsetY = 24
+  arredondado(ctx, xc, yc, lc, hc, 44)
+  ctx.fillStyle = '#FFFFFF'
+  ctx.fill()
+  ctx.restore()
+  ctx.save()
+  arredondado(ctx, xc, yc, lc, hc, 44)
+  ctx.clip()
+  fotoEmZoom(ctx, foto, xc, yc, lc, hc, 1, 1.1)
+  ctx.restore()
+  ctx.restore()
+  const valor = String(r.numero || '').trim()
+  if (valor) {
+    const s = relogio ? (() => { const q = (relogio.t - 1.3) / 0.45; return q < 0 ? 0 : q < 0.6 ? 0.4 + 0.72 * suave(q / 0.6) : 1.12 - 0.12 * suave((q - 0.6) / 0.4) })() : 1
+    if (s > 0) {
+      const raio = 120, cx = xc + lc - 40, cy = yc + 30
+      ctx.save()
+      ctx.translate(cx, cy)
+      ctx.scale(s, s)
+      ctx.beginPath()
+      ctx.arc(0, 0, raio, 0, Math.PI * 2)
+      ctx.fillStyle = c[1]
+      ctx.fill()
+      ctx.font = `700 ${Math.min(80, Math.round(300 / Math.max(2, valor.length)))}px ${FONTE}`
+      ctx.fillStyle = textoSobre(c[1])
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(valor, 0, 4, raio * 1.7)
+      ctx.restore()
+    }
+  }
+  aos(1.8)
+  const y = bloco(ctx, r.titulo, { ...tOp, y: yc + hc + 50, cor: corPedida(r, 'titulo', tinta), ...marca(r, destaqueSobre(tinta, c)) })
+  const fundoB = tinta === '#FFFFFF' ? '#FFFFFF' : '#111114'
+  pilulaCurta(ctx, r, { x: m, y: Math.min(A - base - 104, y + 36), largura: L - m * 2, alinhar: 'center', fundo: fundoB, cor: textoSobre(fundoB) })
+}
+
+// Antes e depois deslizando: a foto do depois entra pela direita e para no meio, sobre o antes (apagado).
+function deslize(ctx, a) {
+  const { L, A, story, fotos, foto } = a
+  if (!foto) return HISTORIAS.escolha(ctx, a)
+  const depois = fotos[0], antes = fotos[1] || fotos[0]
+  ctx.save()
+  ctx.filter = 'grayscale(.75) brightness(.85)'
+  fotoEmZoom(ctx, antes, 0, 0, L, A, 1.04, 1)
+  ctx.restore()
+  const p = relogio ? ir(0.5, 1.4) : 1
+  const x = L - (L / 2) * p
+  if (x < L) {
+    ctx.save()
+    ctx.beginPath()
+    ctx.rect(x, 0, L - x, A)
+    ctx.clip()
+    fotoEmZoom(ctx, depois, 0, 0, L, A, 1.04, 1)
+    ctx.restore()
+    ctx.fillStyle = '#FFFFFF'
+    ctx.fillRect(x - 4, 0, 8, A)
+  }
+  escuroEmbaixo(ctx, L, A, 0.45)
+  const topo = story ? 230 : 60
+  const etiqueta = (texto, ex, alinhar, alfa) => {
+    ctx.save()
+    ctx.globalAlpha = alfa
+    ctx.font = `700 30px ${FONTE}`
+    espacar(ctx, 6)
+    const w = ctx.measureText(texto).width + 48
+    const bx = alinhar === 'right' ? ex - w : ex
+    arredondado(ctx, bx, topo, w, 64, 32)
+    ctx.fillStyle = 'rgba(8,8,12,.6)'
+    ctx.fill()
+    ctx.fillStyle = '#FFFFFF'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(texto, bx + w / 2, topo + 34)
+    ctx.restore()
+  }
+  etiqueta('ANTES', 50, 'left', 1)
+  etiqueta('DEPOIS', L - 50, 'right', relogio ? ir(1.6, 0.4) : 1)
+  textoNoPe(ctx, a, { de: 2.0 })
+}
+
+// Moldura acesa: a foto num quadro e a borda acende como letreiro em volta dela.
+function moldura(ctx, a) {
+  const { L, A, story, c, r, logo, foto, nome } = a
+  if (!foto) return HISTORIAS.acende(ctx, a)
+  ctx.fillStyle = '#0D0D12'
+  ctx.fillRect(0, 0, L, A)
+  brilho(ctx, L * 0.5, A * 0.35, L * 0.9, c[0], 0.3)
+  sobre('#0D0D12')
+  const topo = story ? 230 : 60, base = story ? 330 : 80
+  selo(ctx, { logo, nome, x: L / 2, y: topo, altura: 52, alinhar: 'center' })
+  const m = 70
+  const tOp = { x: m, largura: L - m * 2, tamanho: Math.round(72 * escala(r)), maxLinhas: 2, entre: 1.02, alinhar: 'center' }
+  const hTexto = medir(ctx, r.titulo, tOp) + (r.chamada ? 150 : 30)
+  const yq = topo + 110
+  const hq = Math.max(320, A - base - hTexto - yq - 50)
+  const lq = Math.min(L - 180, hq * 0.8)
+  const xq = (L - lq) / 2
+  const aparece = relogio ? ir(0.1, 0.8) : 1
+  ctx.save()
+  ctx.globalAlpha = aparece
+  arredondado(ctx, xq, yq, lq, hq, 36)
+  ctx.save()
+  ctx.clip()
+  fotoEmZoom(ctx, foto, xq, yq, lq, hq, 1, 1.08)
+  ctx.restore()
+  ctx.restore()
+  const cor = legivel(c[1], '#0D0D12')
+  const luzNeon = acender(1.0, 0.9)
+  if (luzNeon > 0) {
+    ctx.save()
+    ctx.globalAlpha = luzNeon
+    ctx.shadowColor = cor
+    ctx.shadowBlur = 50
+    ctx.lineWidth = 12
+    ctx.strokeStyle = cor
+    arredondado(ctx, xq, yq, lq, hq, 36)
+    ctx.stroke()
+    ctx.shadowBlur = 16
+    ctx.lineWidth = 4
+    ctx.strokeStyle = '#FFFFFF'
+    ctx.stroke()
+    ctx.restore()
+  }
+  aos(1.9)
+  const y = bloco(ctx, r.titulo, { ...tOp, y: yq + hq + 56, cor: corPedida(r, 'titulo', '#FFFFFF'), ...marca(r, cor) })
+  pilulaCurta(ctx, r, { x: m, y: Math.min(A - base - 104, y + 36), largura: L - m * 2, alinhar: 'center', fundo: fundoPedido(r, c[0]), cor: textoSobre(fundoPedido(r, c[0])) })
+}
+
+// Porta que abre: dois painéis da marca se abrem para os lados e mostram a foto e a oferta.
+function portas(ctx, a) {
+  const { L, A, story, c, r, logo, foto, nome } = a
+  if (!foto) return HISTORIAS.impacto(ctx, a)
+  fotoEmZoom(ctx, foto, 0, 0, L, A, 1.08, 1)
+  escuroEmbaixo(ctx, L, A, 0.3)
+  selo(ctx, { logo, nome, x: 70, y: story ? 230 : 60, altura: 60 })
+  const valor = String(r.numero || '').trim()
+  aos(2.0)
+  if (valor) {
+    const base = story ? 330 : 80
+    const t = Math.min(story ? 300 : 240, Math.round(((L - 140) / Math.max(2, valor.length)) * 1.6))
+    const fimTexto = A - base - (r.chamada ? 140 : 0)
+    const tOp = { x: 70, largura: L - 140, tamanho: Math.round(76 * escala(r)), maxLinhas: 2, entre: 1.02 }
+    const y0 = fimTexto - medir(ctx, r.titulo, tOp)
+    animado(ctx, () => {
+      ctx.font = `700 ${t}px ${FONTE}`
+      espacar(ctx, -t * 0.04)
+      ctx.fillStyle = legivel(c[1], '#16161B')
+      ctx.textAlign = 'left'
+      ctx.textBaseline = 'alphabetic'
+      ctx.fillText(valor, 64, y0 - 30, L - 140)
+      espacar(ctx, 0)
+    }, { escala: 0.15, desloca: 0 }, L / 2, y0 - t * 0.4)
+    bloco(ctx, r.titulo, { ...tOp, y: y0, cor: corPedida(r, 'titulo', '#FFFFFF'), ...marca(r, legivel(c[1], '#16161B')) })
+    pilulaCurta(ctx, r, { x: 70, y: A - base - 104, largura: L - 140, fundo: '#FFFFFF', cor: '#111114' })
+  } else textoNoPe(ctx, a, { de: 2.0 })
+  const p = relogio ? ir(0.6, 1.2) : 1
+  if (p < 1) {
+    const fundo = fundoPedido(r, c[0])
+    for (const lado of [-1, 1]) {
+      ctx.save()
+      ctx.translate(lado * (L / 2) * 1.02 * p, 0)
+      ctx.beginPath()
+      ctx.rect(lado < 0 ? 0 : L / 2, 0, L / 2, A)
+      ctx.clip()
+      ctx.fillStyle = lado < 0 ? fundo : misturar(fundo, '#000000', 0.12)
+      ctx.fillRect(0, 0, L, A)
+      ctx.font = fonteDoBloco(700, 110, 110)
+      ctx.fillStyle = textoSobre(fundo)
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(nome || '', L / 2, A / 2, L - 140)
+      ctx.restore()
+    }
+    ctx.fillStyle = 'rgba(0,0,0,.25)'
+    ctx.fillRect(L / 2 - 2 + (L / 2) * p, 0, 4, A)
+    ctx.fillRect(L / 2 - 2 - (L / 2) * p, 0, 4, A)
+  }
+}
+
+// Foco no produto: começa no detalhe e abre para a foto toda; o primeiro item aponta o produto com o preço.
+function focoNoProduto(ctx, a) {
+  const { L, A, story, c, r, logo, foto, nome } = a
+  if (!foto) return HISTORIAS.vitrine(ctx, a)
+  const p = relogio ? ir(0.2, 2.2) : 1
+  const z = 1.7 - 0.7 * p
+  const e = Math.max(L / foto.width, A / foto.height) * z
+  const w = foto.width * e, h = foto.height * e
+  ctx.drawImage(foto, (L - w) / 2, (A - h) / 2 - (1 - p) * h * 0.05, w, h)
+  escuroEmbaixo(ctx, L, A, 0.45)
+  selo(ctx, { logo, nome, x: 70, y: story ? 230 : 60, altura: 60 })
+  const item = r.itens?.[0]
+  if (item?.nome) {
+    const s = relogio ? ir(2.5, 0.5) : 1
+    if (s > 0) {
+      const px = L * 0.3, py = A * (story ? 0.36 : 0.3)
+      ctx.save()
+      ctx.globalAlpha = s
+      ctx.translate(0, (1 - s) * -30)
+      ctx.font = `700 40px ${FONTE}`
+      const wn = ctx.measureText(item.nome).width
+      ctx.font = `700 40px ${FONTE}`
+      const wp = item.preco ? ctx.measureText(item.preco).width : 0
+      const bw = Math.min(L - px - 60, Math.max(wn, wp) + 68), bh = item.preco ? 140 : 92
+      ctx.shadowColor = 'rgba(0,0,0,.3)'
+      ctx.shadowBlur = 30
+      arredondado(ctx, px, py, bw, bh, 28)
+      ctx.fillStyle = '#FFFFFF'
+      ctx.fill()
+      ctx.shadowBlur = 0
+      ctx.beginPath()
+      ctx.moveTo(px + 50, py + bh)
+      ctx.lineTo(px + 74, py + bh + 26)
+      ctx.lineTo(px + 98, py + bh)
+      ctx.fill()
+      ctx.fillStyle = '#111114'
+      ctx.textAlign = 'left'
+      ctx.textBaseline = 'alphabetic'
+      ctx.fillText(item.nome, px + 34, py + 60, bw - 68)
+      if (item.preco) {
+        ctx.fillStyle = legivel(c[0], '#FFFFFF')
+        ctx.fillText(item.preco, px + 34, py + 112, bw - 68)
+      }
+      ctx.restore()
+    }
+  }
+  textoNoPe(ctx, a, { de: 3.0 })
+}
+
+// Os animados feitos para a foto (com os stories e o "cenas", só no vídeo).
+const ANIMADOS_FEITOS_PARA_FOTO = { zoom: zoomLento, cortina, cardfoto: cardQueSobe, deslize, moldura, portas, foco: focoNoProduto }
+
 const MODELOS = {
   promo, aviso, bastidores, manchete, lista, citacao, dividido, foto: fotoInteira, cartao,
-  numero, cupom, agenda, conversa, mosaico, faixas, capa, comparar, tabela, enquete, cenas,
-  ...HISTORIAS,
+  numero, cupom, agenda, conversa, mosaico, faixas, capa, comparar, tabela, enquete, polaroid, cenas,
+  ...HISTORIAS, ...ANIMADOS_FEITOS_PARA_FOTO,
 }
 
 // Marca d'água (W2): neonposts.com.br repetido na diagonal sobre a peça inteira, bem fraco.
@@ -1705,7 +2563,9 @@ export function desenhar(canvas, { formato, modelo, roteiro, cores, logo, foto, 
   fonteTitulo = fonteDa(fonte)
   const todas = fotos?.length ? fotos : foto ? [foto] : []
   try {
-    ;(MODELOS[modelo] || aviso)(ctx, { L, A, story: formato === 'story', c, r: roteiro, logo, foto: todas[0] || null, fotos: todas, nome })
+    const args = { L, A, story: formato === 'story', c, r: roteiro, logo, foto: todas[0] || null, fotos: todas, nome }
+    const comFoto = args.foto && VERSAO_COM_FOTO[modelo]?.(args)
+    ;(comFoto || MODELOS[modelo] || aviso)(ctx, args)
     marcaDagua(ctx, L, A)
   } finally {
     relogio = null

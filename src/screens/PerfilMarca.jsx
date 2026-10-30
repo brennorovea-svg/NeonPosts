@@ -109,7 +109,7 @@ const DicaContexto = createContext(null)
 
 function Recado({ id }) {
   const dica = useContext(DicaContexto)
-  if (dica?.campo !== id) return null
+  if (!dica || dica.campo !== id) return null
   return <p className="campo__dica" role="note"><strong>{dica.titulo}.</strong> {dica.porque}</p>
 }
 

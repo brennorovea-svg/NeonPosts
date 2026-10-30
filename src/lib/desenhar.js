@@ -1668,6 +1668,31 @@ const MODELOS = {
   ...HISTORIAS,
 }
 
+// Marca d'água (W2): neonposts.com.br repetido na diagonal sobre a peça inteira, bem fraco.
+// Sai em toda peça (imagem, vídeo, prévia), para ninguém levar a criação sem passar pelo app.
+// Clara com sombra escura, para aparecer igual em fundo claro e escuro. A inclinação é fixa, não anima.
+const MARCA_DAGUA = 'neonposts.com.br'
+function marcaDagua(ctx, L, A) {
+  ctx.save()
+  ctx.globalAlpha = 0.09
+  ctx.font = `600 36px ${FONTE}`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  espacar(ctx, 2)
+  ctx.translate(L / 2, A / 2)
+  ctx.rotate(-Math.PI / 6)
+  const passoX = 440, passoY = 210, alcance = Math.hypot(L, A) / 2 + passoX
+  for (let y = -alcance, linha = 0; y <= alcance; y += passoY, linha++) {
+    for (let x = -alcance + (linha % 2) * (passoX / 2); x <= alcance; x += passoX) {
+      ctx.fillStyle = '#000000'
+      ctx.fillText(MARCA_DAGUA, x + 2, y + 2)
+      ctx.fillStyle = '#FFFFFF'
+      ctx.fillText(MARCA_DAGUA, x, y)
+    }
+  }
+  ctx.restore()
+}
+
 export function desenhar(canvas, { formato, modelo, roteiro, cores, logo, foto, fotos, nome, fonte, tempo = null, total = 8 }) {
   const [L, A] = TAMANHOS[formato] || TAMANHOS.post
   canvas.width = L
@@ -1681,6 +1706,7 @@ export function desenhar(canvas, { formato, modelo, roteiro, cores, logo, foto, 
   const todas = fotos?.length ? fotos : foto ? [foto] : []
   try {
     ;(MODELOS[modelo] || aviso)(ctx, { L, A, story: formato === 'story', c, r: roteiro, logo, foto: todas[0] || null, fotos: todas, nome })
+    marcaDagua(ctx, L, A)
   } finally {
     relogio = null
     fonteTitulo = fonteDa()

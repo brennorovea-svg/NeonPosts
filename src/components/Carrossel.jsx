@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import './Carrossel.css'
 
 // Fileira que rola para o lado. No celular, arrasta com o dedo; no computador, setas.
-export default function Carrossel({ rotulo, className = '', children }) {
+// Quando `inicio` muda (ex.: outros layouts sugeridos), a fileira volta para o começo.
+export default function Carrossel({ rotulo, className = '', inicio = '', children }) {
   const trilho = useRef(null)
   const [pontas, setPontas] = useState({ inicio: true, fim: true })
 
@@ -16,6 +17,10 @@ export default function Carrossel({ rotulo, className = '', children }) {
     observar.observe(el)
     return () => { el.removeEventListener('scroll', medir); observar.disconnect() }
   }, [])
+
+  useEffect(() => {
+    if (trilho.current) trilho.current.scrollLeft = 0
+  }, [inicio])
 
   function andar(direcao) {
     const el = trilho.current

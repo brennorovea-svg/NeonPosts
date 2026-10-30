@@ -109,12 +109,11 @@ Deno.serve(async (req) => {
     return erro('A IA não respondeu agora. Tente de novo.', 502)
   }
 
-  const roteiro = conferir(bruto, perfil, pedido)
-  if (layout) roteiro.modelo = layout
+  const roteiro = conferir(bruto, perfil, pedido, layout)
   // Ajuste que a IA não consegue fazer (trocar foto, layout, fonte) volta igual; avisa em vez de parecer que nada aconteceu.
   const base = refeita && (refeita.versoes?.[refeita.escolhida ?? -1]?.roteiro || refeita.roteiro) as Record<string, unknown> | null
   const igual = (k: string) => JSON.stringify(base?.[k] ?? null) === JSON.stringify((roteiro as Record<string, unknown>)[k] ?? null)
-  if (ajuste && base && ['modelo', 'titulo', 'apoio', 'chamada', 'legenda', 'pontos', 'arte', 'cores'].every(igual)) {
+  if (ajuste && base && ['modelo', 'titulo', 'apoio', 'chamada', 'legenda', 'pontos', 'numero', 'cupom', 'data', 'horario', 'arte', 'cores'].every(igual)) {
     roteiro.avisos.push('Esse ajuste não mudou nada. Por aqui a IA muda o texto, as cores, o layout e o destaque; trocar a foto ou a fonte ainda não dá.')
   }
   const linha = {

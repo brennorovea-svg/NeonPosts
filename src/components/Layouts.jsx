@@ -33,7 +33,7 @@ export default function Layouts({ sugeridos, escolhido, onEscolher, tipo, perfil
           <span className="layouts__ajuda">Ela olha o seu pedido e decide a arte.</span>
         </span>
       </button>
-      <Carrossel rotulo="Layouts" className={`layouts__carrossel layouts__carrossel--${formato}`}>
+      <Carrossel rotulo="Layouts" inicio={sugeridos.join()} className={`layouts__carrossel layouts__carrossel--${formato}`}>
         {todosOsLayouts(sugeridos, Object.keys(NOMES_DOS_MODELOS)).map((modelo, i) => (
           <button
             key={`${modelo}-${formato}`} type="button" role="radio" aria-checked={escolhido === modelo}

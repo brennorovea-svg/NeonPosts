@@ -4,16 +4,16 @@
 
 // Para cada tipo, os 3 layouts que mais combinam, com foto e sem foto.
 const POR_TIPO = {
-  Promoção: { foto: ['promo', 'foto', 'dividido'], sem: ['promo', 'manchete', 'cartao'] },
-  Novidade: { foto: ['dividido', 'foto', 'manchete'], sem: ['manchete', 'cartao', 'aviso'] },
-  Bastidores: { foto: ['bastidores', 'foto', 'dividido'], sem: ['manchete', 'citacao', 'cartao'] },
-  Dica: { foto: ['lista', 'dividido', 'foto'], sem: ['lista', 'manchete', 'cartao'] },
-  'Cardápio ou catálogo': { foto: ['promo', 'dividido', 'lista'], sem: ['promo', 'lista', 'cartao'] },
-  Depoimento: { foto: ['citacao', 'foto', 'dividido'], sem: ['citacao', 'cartao', 'manchete'] },
-  'Aviso de horário': { foto: ['aviso', 'cartao', 'foto'], sem: ['aviso', 'cartao', 'manchete'] },
-  'Antes e depois': { foto: ['dividido', 'foto', 'bastidores'], sem: ['dividido', 'manchete', 'cartao'] },
+  Promoção: { foto: ['promo', 'mosaico', 'foto'], sem: ['promo', 'numero', 'cupom'] },
+  Novidade: { foto: ['capa', 'dividido', 'mosaico'], sem: ['manchete', 'faixas', 'cartao'] },
+  Bastidores: { foto: ['bastidores', 'mosaico', 'capa'], sem: ['manchete', 'conversa', 'citacao'] },
+  Dica: { foto: ['lista', 'dividido', 'foto'], sem: ['lista', 'enquete', 'manchete'] },
+  'Cardápio ou catálogo': { foto: ['tabela', 'promo', 'dividido'], sem: ['tabela', 'promo', 'lista'] },
+  Depoimento: { foto: ['citacao', 'foto', 'capa'], sem: ['citacao', 'conversa', 'cartao'] },
+  'Aviso de horário': { foto: ['agenda', 'aviso', 'cartao'], sem: ['agenda', 'aviso', 'cartao'] },
+  'Antes e depois': { foto: ['comparar', 'dividido', 'bastidores'], sem: ['comparar', 'dividido', 'manchete'] },
 }
-const GERAL = { foto: ['dividido', 'foto', 'manchete'], sem: ['manchete', 'cartao', 'aviso'] }
+const GERAL = { foto: ['dividido', 'capa', 'manchete'], sem: ['manchete', 'faixas', 'enquete'] }
 
 // Quando a pessoa escreve sem tocar numa ficha, o texto ainda diz o tipo.
 const PISTAS = [
@@ -59,14 +59,29 @@ export function roteiroDeAmostra(modelo, tipo, perfil, temFoto) {
   const a = AMOSTRA[tipo] || AMOSTRA_GERAL
   const itens = (perfil.dados.itens || []).filter((i) => i.nome).slice(0, 2)
     .map((i) => ({ nome: i.nome, preco: i.preco ? `R$ ${String(i.preco).replace(/^r\$\s*/i, '')}` : 'R$ --' }))
+  const nomes = (perfil.dados.itens || []).map((i) => i.nome).filter(Boolean)
+  const PONTOS = {
+    lista: ['Primeira dica', 'Segunda dica', 'Terceira dica'],
+    conversa: ['Vocês atendem no fim de semana?', 'Dá para pedir pelo WhatsApp?'],
+    faixas: nomes.length ? nomes.slice(0, 4) : (perfil.padrao.tipos || []).slice(0, 4),
+    comparar: ['Como era antes', 'Como ficou depois'],
+    enquete: ['Primeira opção', 'Segunda opção', 'Terceira opção'],
+    tabela: nomes.length ? [] : ['Seu produto', 'Outro produto'],
+  }
   return {
     modelo,
     titulo: a.titulo,
     apoio: a.apoio,
     chamada: perfil.padrao.chamada || 'Chama no WhatsApp',
-    itens: modelo === 'promo' ? (itens.length ? itens : [{ nome: 'Seu produto', preco: 'R$ --' }]) : [],
-    pontos: modelo === 'lista' ? ['Primeira dica', 'Segunda dica', 'Terceira dica'] : [],
+    itens: modelo === 'promo' ? (itens.length ? itens : [{ nome: 'Seu produto', preco: 'R$ --' }])
+      : modelo === 'tabela' ? (perfil.dados.itens || []).filter((i) => i.nome).slice(0, 4).map((i) => ({ nome: i.nome, preco: i.preco ? `R$ ${String(i.preco).replace(/^r\$\s*/i, '')}` : 'R$ --' }))
+      : [],
+    pontos: PONTOS[modelo] || [],
     autor: modelo === 'citacao' ? 'Cliente' : '',
+    numero: modelo === 'numero' ? '30%' : modelo === 'mosaico' ? '7 dias' : '',
+    cupom: modelo === 'cupom' ? 'BEMVINDO' : '',
+    data: ['agenda', 'cupom'].includes(modelo) ? '29/11' : '',
+    horario: modelo === 'agenda' ? '10h às 14h' : '',
     arte: { destaque: a.destaque, tamanho_titulo: 'normal', alinhamento: '', fundo: temFoto && ['manchete', 'cartao'].includes(modelo) ? 'foto' : '' },
     cores: {},
   }

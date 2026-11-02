@@ -206,14 +206,27 @@ function sugestoesDeQuando() {
   lista.push(['Amanhã ao meio-dia', amanha])
   return lista
 }
+// O Criar abre com o último formato e movimento que a pessoa usou (fica neste aparelho).
+const CHAVE_ESCOLHA = 'neonposts-ultima-escolha'
+function ultimaEscolha() {
+  try { const v = JSON.parse(localStorage.getItem(CHAVE_ESCOLHA) || '{}'); return { formato: v.formato === 'story' ? 'story' : 'post', video: Boolean(v.video) } } catch { return { formato: 'post', video: false } }
+}
+function guardarEscolha(formato, video) {
+  try { localStorage.setItem(CHAVE_ESCOLHA, JSON.stringify({ formato, video })) } catch { /* sem armazenamento, abre no padrão */ }
+}
+
+// O pedido guardado leva os dados respondidos no fim ("Use estes dados: ..."); na tela mostra só o que a pessoa escreveu.
+const semDadosDoPedido = (t) => String(t || '').split('\n\nUse estes dados:')[0]
+
 const paraInput = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 const quandoPorExtenso = (d) => d.toLocaleString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
 
 export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, videoInicial = false, marca = null, onCompletar, onSair, onPerfil, onCriou, onAgendar, noPlanner = false }) {
   const [pedido, setPedido] = useState('')
   const [tipo, setTipo] = useState(null)
-  const [formato, setFormato] = useState(formatoInicial === 'story' ? 'story' : 'post')
-  const [video, setVideo] = useState(Boolean(videoInicial))
+  // Veio do planner ou da vitrine: usa o que veio. Senão, a última escolha da pessoa.
+  const [formato, setFormato] = useState(() => (formatoInicial ? (formatoInicial === 'story' ? 'story' : 'post') : ultimaEscolha().formato))
+  const [video, setVideo] = useState(() => Boolean(videoInicial) || (!formatoInicial && ultimaEscolha().video))
   const [dispensouMarca, setDispensouMarca] = useState(false)
   const [gravando, setGravando] = useState(null) // null ou de 0 a 1
   const [avisoVideo, setAvisoVideo] = useState('')
@@ -224,6 +237,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
   // Vídeo gravado esperando o segundo toque: o celular só abre o compartilhar logo depois de um toque.
   const [videoPronto, setVideoPronto] = useState(null)
   const [dadosFaltando, setDadosFaltando] = useState({}) // { '[HORÁRIO]': 'sábado, 9h às 13h' }
+  const [respondidos, setRespondidos] = useState([]) // marcadores que a pessoa já respondeu antes de gerar: não pergunta de novo
   const [fotos, setFotos] = useState([])
   const foto = fotos[0] || null
   const [estado, setEstado] = useState(pecaInicial ? 'pronta' : 'pedido') // pedido | gerando | revelando | pronta
@@ -238,7 +252,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
   const [imagens, setImagens] = useState({ logo: null, fotos: [], pronto: false })
   const [layout, setLayout] = useState('ia') // 'ia' ou um dos modelos
   const [rodada, setRodada] = useState(0) // muda a cada "Ver outros exemplos"
-  const [maisOpcoes, setMaisOpcoes] = useState(false) // fotos e layout ficam guardados até a pessoa pedir
+  const [maisOpcoes, setMaisOpcoes] = useState(false) // formato, movimento e layout ficam guardados até a pessoa pedir
   const [miniaturas, setMiniaturas] = useState({ logo: null, foto: null, fotoDaMarca: null })
   const canvas = useRef(null)
   const area = useRef(null)
@@ -328,6 +342,10 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
       const r = await gerarPeca(refazer
         ? { refazer: peca.id, formato: peca.formato, video, pedido: pedidoNovo.trim(), ajuste: ajuste.trim() }
         : { pedido: pedido.trim() + dadosEmTexto(dadosFaltando), formato, video, fotos, modelo: layout === 'ia' ? undefined : layout })
+      if (!refazer) {
+        setRespondidos(Object.keys(dadosFaltando).filter((m) => (dadosFaltando[m] || '').trim()))
+        guardarEscolha(formato, video)
+      }
       setAjustando(false)
       setAjuste('')
       setMexeuNoTexto(false)
@@ -423,6 +441,8 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
   const faltando = marcadoresDe(roteiroDaIA)
   const roteiro = roteiroDaIA && preencher(roteiroDaIA, dadosFaltando)
   const semDados = faltando.filter((m) => !(dadosFaltando[m] || '').trim())
+  // Dado pedido uma vez só: o que a pessoa respondeu antes de gerar já entrou e não volta a ser perguntado.
+  const perguntarAgora = faltando.filter((m) => !respondidos.includes(m))
   function escolher(i) {
     const valor = i === versoes.length - 1 ? null : i
     setHashtagsTexto(null)
@@ -433,6 +453,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
   const guia = (tipo && TIPOS[tipo]) || GERAL
   const exemplos = sortear(guia.exemplos, rodada).slice(0, 3)
   const antes = estado === 'pedido' ? perguntasAntes(pedido, perfil.dados) : []
+  const resumoDasOpcoes = `${formato === 'story' ? 'Story 9:16' : 'Post 4:5'} · ${video ? 'animado' : 'parado'} · ${layout === 'ia' ? 'a IA escolhe o layout' : (NOMES_DOS_MODELOS[layout] || layout)}`
   const semTexto = pedido.trim().length < 3 || (tipo && pedido.trim() === (TIPOS[tipo]?.comeco || '').trim())
 
   return (
@@ -490,47 +511,47 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
 
           <div className="campo criar__foto">
             <span className="campo__rotulo">Foto</span>
-            <p className="campo__ajuda">A sua foto é o centro do post. Mande até 4 do produto, do serviço ou do dia a dia{video ? '; no animado em sequência, entram todas' : ''}. Sem foto, a gente usa um modelo com as cores e o logo da sua marca.</p>
+            <p className="campo__ajuda">A foto é o centro do post. Mande até 4. Sem foto, a gente usa um modelo com as cores e o logo da sua marca.</p>
             <Imagens negocioId={negocioId} valor={fotos} onChange={setFotos} maximo={4} tipo="peca-foto" texto="Adicionar foto" previa />
-          </div>
-
-          <div className="campo">
-            <span className="campo__rotulo">Formato</span>
-            <div className="criar__formatos" role="group" aria-label="Formato">
-              {FORMATOS.map(([valor, rotulo, medida]) => (
-                <button key={valor} type="button" className="criar__formato" aria-pressed={formato === valor} onClick={() => setFormato(valor)}>
-                  <span className={`criar__moldura criar__moldura--${valor}`} aria-hidden="true" />
-                  <strong>{rotulo}</strong>
-                  <span className="mono">{medida}</span>
-                </button>
-              ))}
-            </div>
-            <div className="criar__movimentos" role="group" aria-label="Movimento">
-              {MOVIMENTOS.map(([valor, rotulo, medida]) => (
-                <button key={rotulo} type="button" className="criar__movimento" aria-pressed={video === valor} onClick={() => setVideo(valor)}>
-                  <span className={`criar__sinal criar__sinal--${valor ? 'animado' : 'parado'}`} aria-hidden="true" />
-                  <strong>{rotulo}</strong>
-                  <span className="mono">{medida}</span>
-                </button>
-              ))}
-            </div>
           </div>
 
           <div className="criar__mais">
             <button type="button" className="criar__mais-botao" aria-expanded={maisOpcoes} aria-controls="mais-opcoes" onClick={() => setMaisOpcoes((v) => !v)}>
-              <span>Layout</span>
-              <span className="criar__mais-resumo">{layout === 'ia' ? 'a IA escolhe' : (NOMES_DOS_MODELOS[layout] || layout)}</span>
+              <span>Mais opções</span>
+              <span className="criar__mais-resumo">{resumoDasOpcoes}</span>
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
             </button>
             {maisOpcoes && (
               <div id="mais-opcoes" className="criar__mais-corpo">
-              <div className="campo">
-                <p className="campo__ajuda">Escolha um jeito para a arte ou deixe a IA decidir. Dá para trocar depois.</p>
-                <Layouts
-                  sugeridos={sugeridos} escolhido={layout} onEscolher={setLayout} tipo={tipoPercebido}
-                  perfil={perfil} formato={formato} animado={video} {...miniaturas}
-                />
-              </div>
+                <div className="campo">
+                  <span className="campo__rotulo">Formato</span>
+                  <div className="criar__formatos" role="group" aria-label="Formato">
+                    {FORMATOS.map(([valor, rotulo, medida]) => (
+                      <button key={valor} type="button" className="criar__formato" aria-pressed={formato === valor} onClick={() => setFormato(valor)}>
+                        <span className={`criar__moldura criar__moldura--${valor}`} aria-hidden="true" />
+                        <strong>{rotulo}</strong>
+                        <span className="mono">{medida}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="criar__movimentos" role="group" aria-label="Movimento">
+                    {MOVIMENTOS.map(([valor, rotulo, medida]) => (
+                      <button key={rotulo} type="button" className="criar__movimento" aria-pressed={video === valor} onClick={() => setVideo(valor)}>
+                        <span className={`criar__sinal criar__sinal--${valor ? 'animado' : 'parado'}`} aria-hidden="true" />
+                        <strong>{rotulo}</strong>
+                        <span className="mono">{medida}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="campo">
+                  <span className="campo__rotulo">Layout</span>
+                  <p className="campo__ajuda">Escolha um jeito para a arte ou deixe a IA decidir. Dá para trocar depois.</p>
+                  <Layouts
+                    sugeridos={sugeridos} escolhido={layout} onEscolher={setLayout} tipo={tipoPercebido}
+                    perfil={perfil} formato={formato} animado={video} {...miniaturas}
+                  />
+                </div>
               </div>
             )}
           </div>
@@ -563,6 +584,22 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
           </div>
 
           <div className="criar__painel">
+            {perguntarAgora.length > 0 && (
+              <div className="criar__faltando criar__faltando--pronto">
+                <p className="criar__faltando-titulo">Falta {listaDeNomes(perguntarAgora)}</p>
+                <p className="criar__faltando-texto">A IA não inventa esse dado. Escreva aqui e ele entra na arte e na legenda.</p>
+                {perguntarAgora.map((m) => (
+                  <div className="campo" key={m}>
+                    <label htmlFor={`falta-${m}`}>{MARCADORES[m].pergunta}</label>
+                    <input
+                      id={`falta-${m}`} maxLength={80} value={dadosFaltando[m] || ''} placeholder={MARCADORES[m].exemplo}
+                      onChange={(e) => setDadosFaltando((v) => ({ ...v, [m]: e.target.value }))}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+
             {ajustando ? (
               <div className="criar__ajustar">
                 <div className="campo">
@@ -585,7 +622,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
                 </div>
               </div>
             ) : (
-              <p className="criar__pedido">“{versoes[indice]?.pedido || peca.pedido}”</p>
+              <p className="criar__pedido">“{semDadosDoPedido(versoes[indice]?.pedido || peca.pedido)}”</p>
             )}
 
             {versoes.length > 1 && (
@@ -607,18 +644,18 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
               <p className="campo__ajuda">Mexa à vontade. A arte muda enquanto você digita.</p>
               <div className="campo">
                 <label htmlFor="texto-titulo">Título</label>
-                <input id="texto-titulo" maxLength={80} value={roteiroDaIA.titulo || ''} onChange={(e) => editarTexto('titulo', e.target.value)} />
+                <input id="texto-titulo" maxLength={80} value={roteiro.titulo || ''} onChange={(e) => editarTexto('titulo', e.target.value)} />
               </div>
               {'apoio' in roteiroDaIA && (
                 <div className="campo">
                   <label htmlFor="texto-apoio">Apoio</label>
-                  <textarea id="texto-apoio" rows={2} maxLength={200} value={roteiroDaIA.apoio || ''} onChange={(e) => editarTexto('apoio', e.target.value)} />
+                  <textarea id="texto-apoio" rows={2} maxLength={200} value={roteiro.apoio || ''} onChange={(e) => editarTexto('apoio', e.target.value)} />
                 </div>
               )}
               {'chamada' in roteiroDaIA && (
                 <div className="campo">
                   <label htmlFor="texto-chamada">Chamada</label>
-                  <input id="texto-chamada" maxLength={60} value={roteiroDaIA.chamada || ''} onChange={(e) => editarTexto('chamada', e.target.value)} />
+                  <input id="texto-chamada" maxLength={60} value={roteiro.chamada || ''} onChange={(e) => editarTexto('chamada', e.target.value)} />
                 </div>
               )}
             </div>
@@ -651,21 +688,6 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
               </div>
             </div>
 
-            {faltando.length > 0 && (
-              <div className="criar__faltando">
-                <p className="criar__faltando-titulo">Precisamos saber {listaDeNomes(faltando)} para gerar o seu {video ? 'vídeo' : peca.formato}</p>
-                <p className="criar__faltando-texto">A IA não inventa esse dado. O que você escrever aqui entra na arte e na legenda.</p>
-                {faltando.map((m) => (
-                  <div className="campo" key={m}>
-                    <label htmlFor={`falta-${m}`}>{MARCADORES[m].pergunta}</label>
-                    <input
-                      id={`falta-${m}`} maxLength={80} value={dadosFaltando[m] || ''} placeholder={MARCADORES[m].exemplo}
-                      onChange={(e) => setDadosFaltando((v) => ({ ...v, [m]: e.target.value }))}
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
             {roteiro.avisos?.length > 0 && (
               <ul className="criar__avisos">
                 {roteiro.avisos.map((a) => <li key={a}>{a}</li>)}
@@ -716,7 +738,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
             <div className="criar__legenda">
               <div className="campo">
                 <label htmlFor="texto-legenda">Legenda</label>
-                <textarea id="texto-legenda" rows={5} maxLength={2200} value={roteiroDaIA.legenda || ''} onChange={(e) => editarTexto('legenda', e.target.value)} />
+                <textarea id="texto-legenda" rows={5} maxLength={2200} value={roteiro.legenda || ''} onChange={(e) => editarTexto('legenda', e.target.value)} />
               </div>
               <div className="campo">
                 <label htmlFor="texto-hashtags">Hashtags</label>
@@ -726,8 +748,11 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
 
             {erro && <p className="campo__erro" role="alert">{erro}</p>}
             <div className="criar__acoes">
-              <button type="button" className="botao botao--primario" onClick={baixar} disabled={gravando !== null || semDados.length > 0}>
-                {semDados.length > 0 ? `Preencha ${listaDeNomes(semDados)} para baixar` : gravando !== null ? `Gravando o vídeo... ${Math.ceil(duracaoDe(opcoesDoDesenho()) * (1 - gravando))} s` : video ? (videoPronto ? 'Postar vídeo' : 'Gravar vídeo') : 'Postar'}
+              {semDados.length > 0 && gravando === null && (
+                <p className="criar__nota criar__nota--aviso">Sem {listaDeNomes(semDados)}, o post sai com {semDados.join(' e ')} escrito no lugar.</p>
+              )}
+              <button type="button" className="botao botao--primario" onClick={baixar} disabled={gravando !== null}>
+                {gravando !== null ? `Gravando o vídeo... ${Math.ceil(duracaoDe(opcoesDoDesenho()) * (1 - gravando))} s` : video ? (videoPronto ? 'Postar vídeo' : 'Gravar vídeo') : 'Postar'}
               </button>
               {gravando !== null && (
                 <div className="criar__gravando" aria-hidden="true"><span style={{ transform: `scaleX(${gravando})` }} /></div>
@@ -741,7 +766,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
                 <button type="button" className="botao botao--fantasma" disabled={restantes <= 0 || ajustando} onClick={() => { setPedidoNovo(peca.pedido); setAjustando(true) }}>
                   Gerar de novo{restantes > 0 ? ` (${restantes})` : ''}
                 </button>
-                <button type="button" className="botao botao--fantasma" onClick={() => { setPeca(null); setPedido(''); setTipo(null); setFotos([]); setLayout('ia'); setAvisoVideo(''); setAvisoPost(''); setDadosFaltando({}); setEstado('pedido') }}>Criar outro</button>
+                <button type="button" className="botao botao--fantasma" onClick={() => { setPeca(null); setPedido(''); setTipo(null); setFotos([]); setLayout('ia'); setAvisoVideo(''); setAvisoPost(''); setDadosFaltando({}); setRespondidos([]); setEstado('pedido') }}>Criar outro</button>
               </div>
               <p className="criar__nota">Gerar de novo não conta como post novo.</p>
               <NaoEMinhaMarca

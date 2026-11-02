@@ -32,7 +32,6 @@ const VAPID_ASSUNTO = Deno.env.get('VAPID_SUBJECT') || 'mailto:neonposts@neonscr
 const SEGREDO = Deno.env.get('AVISAR_SEGREDO') || ''
 if (VAPID_PUBLICA && VAPID_PRIVADA) webpush.setVapidDetails(VAPID_ASSUNTO, VAPID_PUBLICA, VAPID_PRIVADA)
 
-const REDES: Record<string, string> = { instagram: 'Instagram', facebook: 'Facebook', whatsapp: 'WhatsApp status', tiktok: 'TikTok', linkedin: 'LinkedIn' }
 const horaDe = (quando: string) => new Date(quando).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
 
 type Assinatura = { id: string; negocio: string; endpoint: string; p256dh: string; auth: string }
@@ -67,7 +66,7 @@ async function assinaturasDe(negocios: string[]) {
 async function hora() {
   const { data, error } = await banco.rpc('avisos_pendentes')
   if (error) return erro(error.message, 500)
-  const pendentes = (data || []) as { tipo: string; id: string; negocio: string; titulo: string; rede: string; formato: string; quando: string; peca: string | null }[]
+  const pendentes = (data || []) as { tipo: string; id: string; negocio: string; titulo: string; rede: string | null; formato: string; quando: string; peca: string | null }[]
   const assinaturas = await assinaturasDe([...new Set(pendentes.map((p) => p.negocio))])
   let enviados = 0
   const agora = new Date().toISOString()
@@ -76,7 +75,7 @@ async function hora() {
     // Marca como avisado mesmo sem celular, para o app aberto não avisar duas vezes e para não repetir amanhã.
     if (minhas.length) {
       enviados += await enviar(minhas, p.tipo === 'hora'
-        ? { titulo: `Hora de postar: ${p.titulo}`, corpo: `${REDES[p.rede] || p.rede} · ${p.formato === 'story' ? 'story' : 'post'} às ${horaDe(p.quando)}. Toque para abrir e postar.`, url: `./?agenda=${p.id}`, tag: `agenda-${p.id}` }
+        ? { titulo: `Hora de postar: ${p.titulo}`, corpo: `${p.formato === 'story' ? 'Story' : 'Post'} às ${horaDe(p.quando)}. Toque para abrir e postar.`, url: `./?agenda=${p.id}`, tag: `agenda-${p.id}` }
         : { titulo: `Amanhã tem ${p.titulo}`, corpo: 'O post ainda não existe. Toque para criar agora.', url: `./?agenda=${p.id}`, tag: `criar-${p.id}` })
       await banco.from('agenda').update(p.tipo === 'hora' ? { avisado_em: agora } : { lembrado_vespera_em: agora }).eq('id', p.id)
     } else if (p.tipo === 'vespera') {
@@ -119,8 +118,8 @@ Deno.serve(async (req) => {
   if (acao === 'celular') {
     let aviso: Aviso | null = null
     if (corpo.agenda) {
-      const { data: item } = await banco.from('agenda').select('id, titulo, rede').eq('id', corpo.agenda).eq('negocio', negocio.id).maybeSingle()
-      if (item) aviso = { titulo: `Pronto para postar: ${item.titulo}`, corpo: `${REDES[item.rede] || item.rede}. Toque para abrir e postar pelo celular.`, url: `./?agenda=${item.id}`, tag: `celular-${item.id}` }
+      const { data: item } = await banco.from('agenda').select('id, titulo').eq('id', corpo.agenda).eq('negocio', negocio.id).maybeSingle()
+      if (item) aviso = { titulo: `Pronto para postar: ${item.titulo}`, corpo: 'Toque para abrir e postar pelo celular.', url: `./?agenda=${item.id}`, tag: `celular-${item.id}` }
     } else if (corpo.peca) {
       const { data: peca } = await banco.from('pecas').select('id, roteiro').eq('id', corpo.peca).eq('negocio', negocio.id).maybeSingle()
       if (peca) aviso = { titulo: `Pronto para postar: ${(peca.roteiro as { titulo?: string })?.titulo || 'seu post'}`, corpo: 'Toque para abrir e postar pelo celular.', url: `./?peca=${peca.id}`, tag: `celular-${peca.id}` }

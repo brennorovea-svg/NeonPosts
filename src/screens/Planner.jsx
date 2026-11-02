@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
-import { agendar, chaveDoDia, formatosDaRede, horaDe, juntarDiaEHora, LEMBRETES, mudarAgenda, padraoDaSemana, REDES, tirarDaAgenda } from '../lib/agenda.js'
+import { agendar, chaveDoDia, horaDe, juntarDiaEHora, LEMBRETES, mudarAgenda, padraoDaSemana, tirarDaAgenda } from '../lib/agenda.js'
 import { avisosDisponiveis, avisosNegados } from '../lib/avisos.js'
 import { enderecoDaImagem } from '../lib/perfil.js'
 import { gerarGrade } from '../lib/preencher.js'
-import { avisoDoResultado, baixarArquivo, ehAnimado, entregar, legendaDe, nomeDoArquivo, opcoesDaPeca, passoNaRede, podeCompartilhar, prepararArquivo } from '../lib/publicar.js'
+import { avisoDoResultado, baixarArquivo, ehAnimado, entregar, legendaDe, nomeDoArquivo, opcoesDaPeca, podeCompartilhar, prepararArquivo } from '../lib/publicar.js'
 import { ehIphone, instalado } from '../lib/push.js'
 import Instalar from '../components/Instalar.jsx'
 import './Planner.css'
 
 // Planner: calendário do mês no computador, lista da semana no celular.
-// Cada marcação tem rede (cor), formato (quadrado = post, alto = story) e hora.
+// Cada marcação tem formato (quadrado = post, alto = story) e hora. Sem rede: quem escolhe o app é a pessoa, na hora de postar.
 // Tocar num dia abre o painel do dia: o que está marcado, criar a peça, postar agora.
 
 const DIAS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
@@ -23,7 +23,7 @@ const Forma = ({ formato }) => (
     {formato === 'story' ? <rect x="7" y="3" width="10" height="18" rx="2.5" /> : <rect x="3" y="3" width="18" height="18" rx="2.5" />}
   </svg>
 )
-const Ponto = ({ rede }) => <span className="planner__ponto" style={{ background: REDES[rede]?.cor }} aria-hidden="true" />
+const Ponto = () => <span className="planner__ponto" aria-hidden="true" />
 
 function Miniatura({ peca, formato }) {
   const [src, setSrc] = useState(null)
@@ -42,10 +42,10 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, push 
   const [visao, setVisao] = useState('mes') // no celular: 'mes' ou 'semana'
   const [dia, setDia] = useState(null) // chave do dia aberto
   const [planejando, setPlanejando] = useState(false)
-  const [novo, setNovo] = useState({ titulo: '', redes: ['instagram'], formatos: ['post'], hora: '12:00', lembrete: 10 })
+  const [novo, setNovo] = useState({ titulo: '', formatos: ['post'], hora: '12:00', lembrete: 10 })
   // Liga ou desliga uma opção da lista, sem deixar a lista vazia.
   const alternar = (chave, valor) => setNovo((n) => ({ ...n, [chave]: n[chave].includes(valor) ? (n[chave].length > 1 ? n[chave].filter((v) => v !== valor) : n[chave]) : [...n[chave], valor] }))
-  const [editando, setEditando] = useState(null) // { id, titulo, rede, formato, dia, hora } do item em edição
+  const [editando, setEditando] = useState(null) // { id, titulo, formato, dia, hora } do item em edição
   const [erro, setErro] = useState('')
   const [arrastando, setArrastando] = useState(null)
   const [excluindo, setExcluindo] = useState(null) // id do item esperando o segundo toque em Excluir
@@ -118,12 +118,10 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, push 
 
   function planejar() {
     if (!novo.titulo.trim()) { setErro('Dê um nome para a postagem.'); return }
-    // Uma marcação por rede e por formato escolhidos (post e story no Instagram viram duas).
+    // Uma marcação por formato escolhido (post e story viram duas).
     tentar(async () => {
-      for (const rede of novo.redes) {
-        for (const formato of [...new Set(formatosDaRede(rede, novo.formatos))]) {
-          await agendar(negocioId, { titulo: novo.titulo, rede, formato, quando: juntarDiaEHora(dia, novo.hora), lembrete_minutos: novo.lembrete })
-        }
+      for (const formato of novo.formatos) {
+        await agendar(negocioId, { titulo: novo.titulo, formato, quando: juntarDiaEHora(dia, novo.hora), lembrete_minutos: novo.lembrete })
       }
       setNovo((n) => ({ ...n, titulo: '' }))
       setPlanejando(false)
@@ -145,7 +143,7 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, push 
     const lista = sugestao.lista.filter((g) => !fora.includes(g.id))
     setMarcando(true)
     const deu = await tentar(async () => {
-      for (const g of lista) await agendar(negocioId, { titulo: g.titulo, rede: 'instagram', formato: g.formato, quando: g.quando })
+      for (const g of lista) await agendar(negocioId, { titulo: g.titulo, formato: g.formato, quando: g.quando })
     })
     setMarcando(false)
     if (deu) setSugestao(null)
@@ -159,12 +157,12 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, push 
     tentar(() => mudarAgenda(item.id, { quando: juntarDiaEHora(chave, horaDe(new Date(item.quando))) }))
   }
 
-  // Editar: título, rede, formato (só sem peça), dia e hora de uma marcação. Mudou a hora, o aviso volta a valer.
+  // Editar: título, formato (só sem peça), dia e hora de uma marcação. Mudou a hora, o aviso volta a valer.
   async function salvarEdicao(item) {
     const e = editando
     const quando = juntarDiaEHora(e.dia, e.hora)
     const mudou = quando.getTime() !== new Date(item.quando).getTime()
-    const deu = await tentar(() => mudarAgenda(item.id, { titulo: e.titulo.trim().slice(0, 120), rede: e.rede, formato: formatosDaRede(e.rede, [e.formato])[0], quando, ...(mudou ? { avisado_em: null } : {}) }))
+    const deu = await tentar(() => mudarAgenda(item.id, { titulo: e.titulo.trim().slice(0, 120), formato: e.formato, quando, ...(mudou ? { avisado_em: null } : {}) }))
     if (!deu) return
     setEditando(null)
     if (mudou) setDia(chaveDoDia(quando))
@@ -209,9 +207,6 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, push 
         <button type="button" className="botao botao--fantasma planner__hoje" onClick={() => { setMes(new Date(hoje.getFullYear(), hoje.getMonth(), 1)); setSemana(inicioDaSemana(hoje)); if (dia) setDia(chaveDoDia(hoje)) }}>Hoje</button>
       </div>
       <div className="planner__direita">
-        <ul className="planner__legenda" aria-label="Redes">
-          {Object.entries(REDES).map(([chave, r]) => <li key={chave}><Ponto rede={chave} />{r.nome}</li>)}
-        </ul>
         {!dia && (
           <div className="planner__visoes" role="group" aria-label="Ver por">
             <button type="button" className="planner__visao" aria-pressed={visao === 'mes'} onClick={() => setVisao('mes')}>Mês</button>
@@ -241,7 +236,7 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, push 
 
   const marcacao = (item, compacto = false) => (
     <span key={item.id} className={`planner__item${item.postado_em ? ' planner__item--postado' : ''}`} draggable={!compacto} onDragStart={() => setArrastando(item.id)} onDragEnd={() => setArrastando(null)}>
-      <Ponto rede={item.rede} />
+      {compacto && <Ponto />}
       {!compacto && <Forma formato={item.formato} />}
       {!compacto && <span className="planner__item-titulo">{item.titulo}</span>}
       {!compacto && <span className="mono planner__item-hora">{horaDe(new Date(item.quando))}</span>}
@@ -272,7 +267,7 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, push 
           </button>
         ))}
       </div>
-      <p className="planner__dica">Arraste um post para outro dia para mudar a data. O ponto é a rede; o quadrado é post, o retângulo alto é story.</p>
+      <p className="planner__dica">Arraste um post para outro dia para mudar a data. O quadrado é post, o retângulo alto é story.</p>
     </div>
   )
 
@@ -291,7 +286,7 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, push 
             <span className="planner__dia-itens">
               {doDia.map((i) => (
                 <span key={i.id} className={`planner__item${i.postado_em ? ' planner__item--postado' : ''}`}>
-                  <Ponto rede={i.rede} /><Forma formato={i.formato} /><span className="planner__item-titulo">{i.titulo}</span><span className="mono planner__item-hora">{horaDe(new Date(i.quando))}</span>
+                  <Forma formato={i.formato} /><span className="planner__item-titulo">{i.titulo}</span><span className="mono planner__item-hora">{horaDe(new Date(i.quando))}</span>
                 </span>
               ))}
               {doDia.length === 0 && <span className="planner__nada">Nada planejado</span>}
@@ -327,7 +322,7 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, push 
             arquivo = new File([await resposta.blob()], `${nome}.png`, { type: 'image/png' })
           } else {
             if (animado) marcar(item.id, { progresso: 0 })
-            const opcoes = await opcoesDaPeca(peca, perfil, item.rede)
+            const opcoes = await opcoesDaPeca(peca, perfil)
             ;({ arquivo } = await prepararArquivo(opcoes, { video: animado, nome, aoAvancar: (p) => marcar(item.id, { progresso: p }), sinal: controle.signal }))
           }
           if (!vivo) return
@@ -356,15 +351,6 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, push 
           <div className="campo">
             <label htmlFor="planner-titulo">O que vai postar</label>
             <input id="planner-titulo" maxLength={120} value={novo.titulo} autoFocus onChange={(e) => setNovo((n) => ({ ...n, titulo: e.target.value }))} placeholder="Ex.: promoção do combo de sexta" />
-          </div>
-          <div className="campo">
-            <span className="campo__rotulo">Onde vai postar</span>
-            <p className="campo__ajuda">Pode marcar mais de uma: cada rede vira uma marcação.</p>
-            <div className="fichas">
-              {Object.entries(REDES).map(([chave, r]) => (
-                <button key={chave} type="button" className="ficha" aria-pressed={novo.redes.includes(chave)} onClick={() => alternar('redes', chave)}><Ponto rede={chave} />{r.nome}</button>
-              ))}
-            </div>
           </div>
           <div className="planner__form-linha">
             <div className="campo">
@@ -401,8 +387,7 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, push 
             <Miniatura peca={peca} formato={item.formato} />
             <div className="planner__cartao-corpo">
               <div className="planner__cartao-tags">
-                <span className="planner__tag"><Ponto rede={item.rede} />{REDES[item.rede]?.nome}</span>
-                <span className="planner__tag">{REDES[item.rede]?.soVideo || (peca && ehAnimado(peca.modelo)) ? 'Vídeo' : item.formato === 'story' ? 'Story' : 'Post'}</span>
+                <span className="planner__tag">{peca && ehAnimado(peca.modelo) ? 'Animado' : item.formato === 'story' ? 'Story' : 'Post'}</span>
                 <span className="mono planner__cartao-hora">{horaDe(quando)}</span>
                 {item.postado_em && <span className="planner__tag planner__tag--ok">Postada</span>}
               </div>
@@ -419,9 +404,9 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, push 
               )}
               {confirmando?.id === item.id && !item.postado_em && (
                 <div className="planner__confirmar" role="group" aria-label="Postou?">
-                  <strong>{avisoDoResultado(confirmando.resultado, item.rede).titulo}</strong>
+                  <strong>{avisoDoResultado(confirmando.resultado).titulo}</strong>
                   <span>
-                    {avisoDoResultado(confirmando.resultado, item.rede).texto.replace('use o botão Copiar legenda', 'abra o post e toque em Copiar legenda')}
+                    {avisoDoResultado(confirmando.resultado).texto.replace('use o botão Copiar legenda', 'abra o post e toque em Copiar legenda')}
                     {!confirmando.resultado.startsWith('falhou') && ' Se já foi para a rede, marca como postada.'}
                   </span>
                   <div className="planner__confirmar-acoes">
@@ -441,7 +426,7 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, push 
                       const rotulo = pronto?.progresso != null ? `Preparando o vídeo... ${Math.round(pronto.progresso * 100)}%`
                         : pronto?.erro ? 'Não deu para preparar'
                         : !pronto?.arquivo ? 'Preparando...'
-                        : podeCompartilhar() ? `Postar no ${REDES[item.rede]?.nome || 'rede'}` : 'Baixar para postar'
+                        : podeCompartilhar() ? 'Postar' : 'Baixar para postar'
                       return (
                         <span className="planner__postar">
                           <button type="button" className="botao botao--destaque" disabled={!pronto?.arquivo} onClick={() => postar(item)}>{rotulo}</button>
@@ -457,9 +442,9 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, push 
                     <button type="button" className="botao botao--fantasma" onClick={() => onAbrirPeca(peca, quando)}>Abrir o post</button>
                   </>
                 ) : (
-                  <button type="button" className="botao botao--destaque" onClick={() => onCriar({ agendaId: item.id, titulo: item.titulo, formato: item.formato, rede: item.rede, quando })}>Criar o post</button>
+                  <button type="button" className="botao botao--destaque" onClick={() => onCriar({ agendaId: item.id, titulo: item.titulo, formato: item.formato, quando })}>Criar o post</button>
                 )}
-                <button type="button" className="botao botao--fantasma" aria-expanded={editando?.id === item.id} onClick={() => setEditando(editando?.id === item.id ? null : { id: item.id, titulo: item.titulo, rede: item.rede, formato: item.formato, dia: chaveDoDia(quando), hora: horaDe(quando) })}>Editar</button>
+                <button type="button" className="botao botao--fantasma" aria-expanded={editando?.id === item.id} onClick={() => setEditando(editando?.id === item.id ? null : { id: item.id, titulo: item.titulo, formato: item.formato, dia: chaveDoDia(quando), hora: horaDe(quando) })}>Editar</button>
                 {excluindo === item.id
                   ? <button type="button" className="botao botao--perigo" onClick={() => { setExcluindo(null); tentar(() => tirarDaAgenda(item.id)) }}>Confirmar exclusão</button>
                   : <button type="button" className="botao botao--perigo" onClick={() => setExcluindo(item.id)}>Excluir</button>}
@@ -469,14 +454,6 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, push 
                   <div className="campo">
                     <label htmlFor={`editar-titulo-${item.id}`}>Título</label>
                     <input id={`editar-titulo-${item.id}`} value={editando.titulo} maxLength={120} onChange={(e) => setEditando((v) => ({ ...v, titulo: e.target.value }))} />
-                  </div>
-                  <div className="campo">
-                    <span className="campo__rotulo">Onde vai postar</span>
-                    <div className="fichas">
-                      {Object.entries(REDES).map(([chave, r]) => (
-                        <button key={chave} type="button" className="ficha" aria-pressed={editando.rede === chave} onClick={() => setEditando((v) => ({ ...v, rede: chave }))}><Ponto rede={chave} />{r.nome}</button>
-                      ))}
-                    </div>
                   </div>
                   <div className="planner__form-linha">
                     {!peca && (

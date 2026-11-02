@@ -9,9 +9,8 @@ import { DURACAO, duracaoDe, tocar } from '../lib/video.js'
 import { dadosEmTexto, listaDeNomes, MARCADORES, marcadoresDe, perguntasAntes, preencher } from '../lib/marcadores.js'
 import { profissionalFeito, salvarPerfil } from '../lib/perfil.js'
 import { acordarIA, escolherVersao, gerarPeca, guardarImagem, salvarTexto } from '../lib/pecas.js'
-import { REDES } from '../lib/agenda.js'
 import { desenhar, layoutsDoGrupo, NOMES_DOS_MODELOS, paraArquivo, prepararFontes } from '../lib/desenhar.js'
-import { avisoDoResultado, baixarArquivo, baixarLegenda, entregar, imagemDe, nomeDoArquivo, passoNaRede, podeCompartilhar, prepararArquivo, textoDaLegenda } from '../lib/publicar.js'
+import { avisoDoResultado, baixarArquivo, baixarLegenda, entregar, imagemDe, nomeDoArquivo, podeCompartilhar, prepararArquivo, textoDaLegenda } from '../lib/publicar.js'
 import './Criar.css'
 
 const suave = (t) => 1 - Math.pow(1 - Math.min(1, Math.max(0, t)), 4)
@@ -92,6 +91,7 @@ const AJUSTES = ['Mais curto', 'Mais divertido', 'Outro título', 'Outro layout'
 
 const FORMATOS = [['post', 'Post', '4:5'], ['story', 'Story', '9:16']]
 // Parado ou animado vale para post e story (Brenno, 30/10). O animado a IA escreve igual, e o app anima e grava no aparelho.
+const TONS = [['normal', 'Normal'], ['profissional', 'Profissional']]
 const MOVIMENTOS = [[false, 'Parado', 'imagem'], [true, 'Animado', `vídeo ${DURACAO}-17s`]]
 
 // Para cada tipo que a marca posta: como o pedido começa, o que ele precisa dizer e exemplos.
@@ -271,10 +271,10 @@ function sugestoesDeQuando() {
 // O Criar abre com o último formato e movimento que a pessoa usou (fica neste aparelho).
 const CHAVE_ESCOLHA = 'neonposts-ultima-escolha'
 function ultimaEscolha() {
-  try { const v = JSON.parse(localStorage.getItem(CHAVE_ESCOLHA) || '{}'); return { formato: v.formato === 'story' ? 'story' : 'post', video: Boolean(v.video), rede: REDES[v.rede] ? v.rede : 'instagram', como: v.como === 'pessoa' ? 'pessoa' : 'empresa' } } catch { return { formato: 'post', video: false, rede: 'instagram', como: 'empresa' } }
+  try { const v = JSON.parse(localStorage.getItem(CHAVE_ESCOLHA) || '{}'); return { formato: v.formato === 'story' ? 'story' : 'post', video: Boolean(v.video), tom: v.tom === 'profissional' || v.rede === 'linkedin' ? 'profissional' : 'normal', como: v.como === 'pessoa' ? 'pessoa' : 'empresa' } } catch { return { formato: 'post', video: false, tom: 'normal', como: 'empresa' } }
 }
-function guardarEscolha(formato, video, rede, como = 'empresa') {
-  try { localStorage.setItem(CHAVE_ESCOLHA, JSON.stringify({ formato, video, rede, como })) } catch { /* sem armazenamento, abre no padrão */ }
+function guardarEscolha(formato, video, tom, como = 'empresa') {
+  try { localStorage.setItem(CHAVE_ESCOLHA, JSON.stringify({ formato, video, tom, como })) } catch { /* sem armazenamento, abre no padrão */ }
 }
 
 // O pedido guardado leva os dados respondidos no fim ("Use estes dados: ..."); na tela mostra só o que a pessoa escreveu.
@@ -283,22 +283,21 @@ const semDadosDoPedido = (t) => String(t || '').split('\n\nUse estes dados:')[0]
 const paraInput = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 const quandoPorExtenso = (d) => d.toLocaleString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
 
-export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, pedidoInicial = '', redeInicial = null, videoInicial = false, marca = null, onCompletar, onSair, onPerfil, onPerfilProfissional, onCriou, onAgendar, onPostou, onMandarParaCelular = null, noPlanner = false }) {
+export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, pedidoInicial = '', videoInicial = false, marca = null, onCompletar, onSair, onPerfil, onPerfilProfissional, onCriou, onAgendar, onPostou, onMandarParaCelular = null, noPlanner = false }) {
   // Veio do planner: o tema marcado já abre escrito, para a pessoa completar.
   const [pedido, setPedido] = useState(() => (pedidoInicial ? `${pedidoInicial.trim()}. ` : ''))
   const [tipo, setTipo] = useState(null)
   // Veio do planner ou da vitrine: usa o que veio. Senão, a última escolha da pessoa.
   const [formato, setFormato] = useState(() => (formatoInicial ? (formatoInicial === 'story' ? 'story' : 'post') : ultimaEscolha().formato))
   const [video, setVideo] = useState(() => Boolean(videoInicial) || (!formatoInicial && ultimaEscolha().video))
-  // Onde vai postar. No TikTok o post é sempre vídeo em pé (story animado), com a arte longe dos botões da rede.
-  const [rede, setRede] = useState(() => (REDES[redeInicial] ? redeInicial : formatoInicial ? 'instagram' : ultimaEscolha().rede))
-  const soVideo = Boolean(REDES[rede]?.soVideo)
-  useEffect(() => { if (soVideo) { setFormato('story'); setVideo(true) } }, [soVideo])
-  // No LinkedIn não tem story: é sempre post 4:5. E o post sai em nome da empresa ou da pessoa.
-  const soPost = Boolean(REDES[rede]?.soPost)
+  // Tom do texto (Brenno, 02/11): sem rede definida, quem escolhe o app é a pessoa na hora de postar.
+  // "Profissional" usa as regras do LinkedIn (texto mais longo, até 3 hashtags, número só com fonte),
+  // sai sempre em post 4:5 e pode falar em nome da empresa ou da pessoa.
+  const [tom, setTom] = useState(() => (formatoInicial ? 'normal' : ultimaEscolha().tom))
+  const linkedin = tom === 'profissional'
+  const soPost = linkedin
   useEffect(() => { if (soPost) setFormato('post') }, [soPost])
-  const linkedin = rede === 'linkedin'
-  const nomeDaRede = REDES[rede]?.nome || 'rede'
+  const redeDaIA = linkedin ? 'linkedin' : undefined
   const [como, setComo] = useState(() => ultimaEscolha().como)
   const comoPessoa = linkedin && como === 'pessoa'
   const faltaProfissional = comoPessoa && !profissionalFeito(perfil)
@@ -416,7 +415,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
   }, [peca, imagens, estado, video, dadosFaltando])
 
   function opcoesDoDesenho() {
-    return { formato: peca.formato, modelo: peca.modelo, roteiro, cores: perfil.identidade.cores, nome, fonte, logo: imagens.logo, fotos: imagens.fotos, rede: soVideo && peca.formato === 'story' ? rede : null }
+    return { formato: peca.formato, modelo: peca.modelo, roteiro, cores: perfil.identidade.cores, nome, fonte, logo: imagens.logo, fotos: imagens.fotos }
   }
 
   // Texto editado pelo dono: a arte redesenha a cada tecla e o banco recebe um pouco depois.
@@ -444,11 +443,11 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
     window.scrollTo({ top: 0 })
     try {
       const r = await gerarPeca(refazer
-        ? { refazer: peca.id, formato: peca.formato, video, rede, como: linkedin ? como : undefined, pedido: pedidoNovo.trim(), ajuste: ajuste.trim() }
-        : { pedido: pedido.trim() + dadosEmTexto(dadosFaltando), formato, video, fotos, rede, como: linkedin ? como : undefined, modelo: layout === 'ia' ? undefined : layout })
+        ? { refazer: peca.id, formato: peca.formato, video, rede: redeDaIA, como: linkedin ? como : undefined, pedido: pedidoNovo.trim(), ajuste: ajuste.trim() }
+        : { pedido: pedido.trim() + dadosEmTexto(dadosFaltando), formato, video, fotos, rede: redeDaIA, como: linkedin ? como : undefined, modelo: layout === 'ia' ? undefined : layout })
       if (!refazer) {
         setRespondidos(Object.keys(dadosFaltando).filter((m) => (dadosFaltando[m] || '').trim()))
-        guardarEscolha(formato, video, rede, como)
+        guardarEscolha(formato, video, tom, como)
       }
       setAjustando(false)
       setAjuste('')
@@ -486,7 +485,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
   // "Sim, postei": o post entra no planner como postado (ou a marcação que já existia vira postada).
   async function confirmarPostou() {
     try {
-      await onPostou?.(peca, rede, agendado instanceof Date ? agendado : null)
+      await onPostou?.(peca)
       setPostou(true)
       setResultado(null)
     } catch {
@@ -509,7 +508,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
   async function marcarQuando(data) {
     setErro('')
     try {
-      await onAgendar(peca, data, rede)
+      await onAgendar(peca, data)
       setAgendado(data)
       setEscolhendoQuando(false)
     } catch {
@@ -552,10 +551,10 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
   const guia = (tipo && (linkedin ? TIPOS_LINKEDIN : TIPOS)[tipo]) || (linkedin ? GERAL_LINKEDIN : GERAL)
   const exemplos = sortear(guia.exemplos, rodada).slice(0, 3)
   const antes = estado === 'pedido' ? perguntasAntes(pedido, perfil.dados) : []
-  const resumoDasOpcoes = `${REDES[rede]?.nome || 'Instagram'} · ${soVideo ? 'vídeo 9:16' : `${formato === 'story' ? 'Story 9:16' : 'Post 4:5'} · ${video ? 'animado' : 'parado'}`} · ${layout === 'ia' ? 'a IA escolhe o layout' : (NOMES_DOS_MODELOS[layout] || layout)}`
+  const resumoDasOpcoes = `${linkedin ? 'Tom profissional · ' : ''}${formato === 'story' ? 'Story 9:16' : 'Post 4:5'} · ${video ? 'animado' : 'parado'} · ${layout === 'ia' ? 'a IA escolhe o layout' : (NOMES_DOS_MODELOS[layout] || layout)}`
   const semTexto = pedido.trim().length < 3 || (tipo && pedido.trim() === ((linkedin ? TIPOS_LINKEDIN : TIPOS)[tipo]?.comeco || '').trim())
   const nomePessoa = perfil.profissional?.nome?.trim() || 'Você'
-  // Trocar de rede muda os tipos: a ficha marcada de outra rede sai.
+  // Trocar o tom muda os tipos: a ficha marcada do outro tom sai.
   useEffect(() => { setTipo(null) }, [linkedin])
 
   return (
@@ -570,7 +569,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
           <h1 className="criar__titulo">O que vamos postar hoje?</h1>
           {linkedin && (
             <div className="campo criar__como">
-              <span className="campo__rotulo">Postar no LinkedIn como</span>
+              <span className="campo__rotulo">Falar como</span>
               <div className="criar__como-opcoes" role="group" aria-label="Postar como">
                 <button type="button" aria-pressed={como === 'empresa'} onClick={() => setComo('empresa')}>Empresa<small>{nome || 'Sua marca'}</small></button>
                 <button type="button" aria-pressed={como === 'pessoa'} onClick={() => setComo('pessoa')}>Eu<small>{nomePessoa}</small></button>
@@ -580,7 +579,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
                 <div className="criar__faltando">
                   <p className="criar__faltando-titulo">Falta o seu perfil profissional</p>
                   <p className="criar__faltando-texto">Para postar em seu nome, a IA precisa do seu cargo e da sua carreira. Ela não inventa nenhum dos dois.</p>
-                  <button type="button" className="botao botao--destaque" onClick={() => { guardarEscolha(formato, video, rede, como); onPerfilProfissional?.() }}>Preencher meu perfil profissional</button>
+                  <button type="button" className="botao botao--destaque" onClick={() => { guardarEscolha(formato, video, tom, como); onPerfilProfissional?.() }}>Preencher meu perfil profissional</button>
                 </div>
               )}
             </div>
@@ -643,18 +642,15 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
             {maisOpcoes && (
               <div id="mais-opcoes" className="criar__mais-corpo">
                 <div className="campo">
-                  <span className="campo__rotulo">Onde vai postar</span>
-                  <div className="fichas" role="group" aria-label="Rede">
-                    {Object.entries(REDES).map(([chave, r]) => (
-                      <button key={chave} type="button" className="ficha" aria-pressed={rede === chave} onClick={() => setRede(chave)}>
-                        <span className="criar__rede-ponto" style={{ background: r.cor }} aria-hidden="true" />{r.nome}
-                      </button>
+                  <span className="campo__rotulo">Tom</span>
+                  <div className="fichas" role="group" aria-label="Tom">
+                    {TONS.map(([valor, rotulo]) => (
+                      <button key={valor} type="button" className="ficha" aria-pressed={tom === valor} onClick={() => setTom(valor)}>{rotulo}</button>
                     ))}
                   </div>
-                  {soVideo && <p className="campo__ajuda">No TikTok o post sai em vídeo em pé, com o texto longe dos botões da rede.</p>}
-                  {linkedin && <p className="campo__ajuda">No LinkedIn o post sai em 4:5, com texto mais longo e no máximo 3 hashtags.</p>}
+                  <p className="campo__ajuda">{linkedin ? 'Texto mais longo e sério, com no máximo 3 hashtags. Bom para o LinkedIn. Sai em post 4:5.' : 'Na voz da sua marca, com legenda curta. Serve para qualquer rede.'}</p>
                 </div>
-                {!soVideo && <div className="campo">
+                <div className="campo">
                   <span className="campo__rotulo">Formato</span>
                   <div className="criar__formatos" role="group" aria-label="Formato">
                     {formatosDaTela.map(([valor, rotulo, medida]) => (
@@ -674,7 +670,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
                       </button>
                     ))}
                   </div>
-                </div>}
+                </div>
                 <div className="campo">
                   <span className="campo__rotulo">Layout</span>
                   <p className="campo__ajuda">Escolha um jeito para a arte ou deixe a IA decidir. Dá para trocar depois.</p>
@@ -689,7 +685,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
 
           {erro && <p className="campo__erro" role="alert">{erro}</p>}
           <button type="button" className="botao botao--primario" disabled={pedido.trim().length < 3 || faltaProfissional} onClick={() => criar(false)}>
-            {soVideo ? `Criar vídeo para o ${REDES[rede].nome}` : linkedin ? `Criar post${video ? ' animado' : ''} para o LinkedIn` : <>Criar {formato === 'story' ? 'story' : 'post'}{video ? ' animado' : ''}</>}
+            {linkedin ? `Criar post${video ? ' animado' : ''} profissional` : <>Criar {formato === 'story' ? 'story' : 'post'}{video ? ' animado' : ''}</>}
           </button>
           <p className="criar__nota">Preço, endereço e horário saem só dos seus dados fixos. Nada inventado.</p>
           {erro && <DeuProblema contexto={{ Negócio: nome, Pedido: pedido.trim(), Formato: video ? 'vídeo' : formato, Erro: erro }} />}
@@ -817,9 +813,6 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
                 roteiro={roteiro} logo={imagens.logo} foto={imagens.fotos[0] || null} fotoDaMarca={miniaturas.fotoDaMarca}
               />
             </div>
-            {soVideo ? (
-              <p className="criar__nota">{REDES[rede].nome} · vídeo 9:16. A arte fica longe dos botões da rede.</p>
-            ) : (
             <div className="campo">
               <span className="campo__rotulo">Formato</span>
               <div className="fichas">
@@ -837,7 +830,6 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
                 ))}
               </div>
             </div>
-            )}
 
             {roteiro.avisos?.length > 0 && (
               <ul className="criar__avisos">
@@ -905,7 +897,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
               <button type="button" className="botao botao--primario" onClick={postar} disabled={!arquivo}>
                 {gravando !== null
                   ? `Preparando o vídeo... ${Math.ceil(duracaoDe(opcoesDoDesenho()) * (1 - gravando))} s`
-                  : !arquivo ? 'Preparando...' : podeCompartilhar() ? `Postar no ${nomeDaRede}` : `Baixar para postar no ${nomeDaRede}`}
+                  : !arquivo ? 'Preparando...' : podeCompartilhar() ? 'Postar' : 'Baixar para postar'}
               </button>
               {gravando !== null && (
                 <div className="criar__gravando" aria-hidden="true"><span style={{ transform: `scaleX(${gravando})` }} /></div>
@@ -915,8 +907,8 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
               {avisoPost && <p className="criar__nota" role="status">{avisoPost}</p>}
               {resultado && !postou && (
                 <div className="criar__postou" role="group" aria-label="Postou?">
-                  <strong>{avisoDoResultado(resultado, rede).titulo}</strong>
-                  <span>{avisoDoResultado(resultado, rede).texto}</span>
+                  <strong>{avisoDoResultado(resultado).titulo}</strong>
+                  <span>{avisoDoResultado(resultado).texto}</span>
                   <div className="criar__postou-acoes">
                     <button type="button" className="botao botao--primario" onClick={confirmarPostou}>Sim, postei</button>
                     <button type="button" className="botao botao--fantasma" onClick={() => setResultado(null)}>Ainda não</button>

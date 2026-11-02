@@ -1,4 +1,4 @@
-import { mudarAgenda, REDES } from './agenda.js'
+import { mudarAgenda } from './agenda.js'
 
 // Lembrete de postar: aviso do navegador na hora marcada (menos os minutos do lembrete).
 // Funciona com o app aberto numa aba ou instalado na tela inicial. Sem servidor de
@@ -51,7 +51,7 @@ export function vigiarAgenda(obterItens, onAbrir, onAvisou) {
       if (hora > agora || hora < agora - 60 * 60 * 1000) continue
       try {
         const n = new Notification(`Hora de postar: ${item.titulo}`, {
-          body: `${REDES[item.rede]?.nome || item.rede} · ${item.formato === 'story' ? 'story' : 'post'} às ${new Date(item.quando).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}. Toque para abrir e postar.`,
+          body: `${item.formato === 'story' ? 'Story' : 'Post'} às ${new Date(item.quando).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}. Toque para abrir e postar.`,
           icon: '/neonposts-icone-192.png',
           tag: `agenda-${item.id}`,
         })

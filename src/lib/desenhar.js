@@ -472,7 +472,7 @@ function pintarFundo(ctx, { L, A, c, foto, r, padrao = 'marca' }) {
 }
 const apagado = (tinta, a = 0.84) => comAlfa(tinta === '#FFFFFF' ? '#FFFFFF' : '#111114', a)
 // Cor de destaque que aparece bem sobre o fundo: no claro, o tom mais escuro da marca.
-const destaqueSobre = (tinta, c) => (tinta === '#FFFFFF' ? c[1] : (luz(c[0]) < 0.35 ? c[0] : misturar(c[0], '#000000', 0.4)))
+const destaqueSobre = (tinta, c) => (tinta === '#FFFFFF' ? legivel(c[1], '#FFFFFF') : (luz(c[0]) < 0.35 ? c[0] : misturar(c[0], '#000000', 0.4)))
 
 function promo(ctx, { L, A, story, c, r, logo, foto, nome }) {
   const tinta = textoSobre(c[0])
@@ -868,6 +868,11 @@ function chamadaEmTexto(ctx, r, { x, y, largura, alinhar, cor, tamanho = 40 }) {
 function pilulaCurta(ctx, r, { x, y, largura, alinhar = 'left', fundo, cor, altura = 104, tamanho = 40 }) {
   if (!r.chamada) return
   ctx.font = `700 ${tamanho}px ${FONTE}`
+  // Chamada longa em coluna estreita: a letra diminui até caber na pílula.
+  while (tamanho > 24 && ctx.measureText(r.chamada).width + 80 > largura) {
+    tamanho -= 2
+    ctx.font = `700 ${tamanho}px ${FONTE}`
+  }
   const w = Math.min(ctx.measureText(r.chamada).width + 110, largura)
   const px = alinhar === 'center' ? x + (largura - w) / 2 : alinhar === 'right' ? x + largura - w : x
   pilula(ctx, r.chamada, { x: px, y, largura: w, altura, tamanho, fundo, cor })
@@ -1742,7 +1747,7 @@ function numeroComFoto(ctx, { L, A, story, c, r, logo, foto, nome }) {
     ctx.textAlign = 'left'
     ctx.font = `700 ${t}px ${FONTE}`
     espacar(ctx, -t * 0.05)
-    ctx.fillStyle = r.cores?.destaque ? corPedida(r, 'destaque', tinta) : legivel(c[1], '#16161B')
+    ctx.fillStyle = r.cores?.destaque ? corPedida(r, 'destaque', tinta) : legivel(c[1], '#FFFFFF')
     const agora = relogio && conta ? conta[1] + Math.round(Number(conta[2]) * suave((relogio.t - iniConta) / 1.2)) : corpo
     ctx.fillText(agora, x0, baseNumero)
     const w1 = ctx.measureText(corpo).width
@@ -1751,7 +1756,7 @@ function numeroComFoto(ctx, { L, A, story, c, r, logo, foto, nome }) {
     ctx.fillStyle = tinta
     ctx.fillText(sufixo, x0 + w1 + t * 0.02, baseNumero)
   }, { escala: 0.12, desloca: 0 }, x0 + w / 2, baseNumero - t * 0.4)
-  let y = bloco(ctx, r.titulo, { ...tOp, y: y0, cor: corPedida(r, 'titulo', tinta), ...marca(r, legivel(c[1], '#16161B')) })
+  let y = bloco(ctx, r.titulo, { ...tOp, y: y0, cor: corPedida(r, 'titulo', tinta), ...marca(r, legivel(c[1], '#FFFFFF')) })
   bloco(ctx, r.apoio, { ...aOp, y: y + 24, cor: corPedida(r, 'texto', apagado(tinta)) })
   pilulaCurta(ctx, r, { x: m, y: A - base - 104, largura: L - m * 2, alinhar: al, fundo: fundoPedido(r, c[0]), cor: textoSobre(fundoPedido(r, c[0])) })
 }
@@ -1776,7 +1781,7 @@ function conversaComFoto(ctx, { L, A, story, c, r, logo, foto, nome }) {
   for (const p of perguntas) y += balao(ctx, p, { x: m, y, largura: larg * 0.8, tamanho: 40, peso: 600, fundo: 'rgba(255,255,255,.94)', cor: '#111114' }) + 20
   y += 26
   balao(ctx, r.titulo, { x: m, y, largura: larg * 0.8, tamanho: tamR, peso: 700, fundo: fundoResposta, cor: textoSobre(fundoResposta), direita: true })
-  chamadaEmTexto(ctx, r, { x: m, y: A - base, largura: larg, alinhar: 'right', cor: corPedida(r, 'destaque', legivel(c[1], '#16161B')) })
+  chamadaEmTexto(ctx, r, { x: m, y: A - base, largura: larg, alinhar: 'right', cor: corPedida(r, 'destaque', legivel(c[1], '#FFFFFF')) })
 }
 
 function citacaoComFoto(ctx, { L, A, story, c, r, logo, foto, nome }) {
@@ -1788,7 +1793,7 @@ function citacaoComFoto(ctx, { L, A, story, c, r, logo, foto, nome }) {
   const fala = { x: m, largura: L - m * 2, tamanho: Math.round(66 * escala(r)), peso: 600, maxLinhas: story ? 6 : 4, entre: 1.16, alinhar: al }
   const fim = A - base - (r.autor ? 70 : 0)
   const y0 = encostarEmbaixo(ctx, [[r.titulo, fala]], { fim, limite: topo + 300 })
-  const destaque = legivel(c[1], '#16161B')
+  const destaque = legivel(c[1], '#FFFFFF')
   animado(ctx, () => {
     ctx.font = `700 260px ${FONTE}`
     ctx.fillStyle = corPedida(r, 'destaque', destaque)
@@ -1819,8 +1824,8 @@ function enqueteComFoto(ctx, { L, A, story, c, r, logo, foto, nome }) {
   const fimOpcoes = A - base - (r.chamada ? 90 : 0)
   const yOpcoes = fimOpcoes - opcoes.length * (hO + vao) + vao
   const y0 = encostarEmbaixo(ctx, [[r.titulo, tOp, 40]], { fim: yOpcoes, limite: topo + 190 })
-  rotulo(ctx, 'Enquete', { x: m, y: y0 - 26, tamanho: 28, cor: legivel(c[1], '#16161B') })
-  bloco(ctx, r.titulo, { ...tOp, y: y0, cor: corPedida(r, 'titulo', tinta), ...marca(r, legivel(c[1], '#16161B')) })
+  rotulo(ctx, 'Enquete', { x: m, y: y0 - 26, tamanho: 28, cor: legivel(c[1], '#FFFFFF') })
+  bloco(ctx, r.titulo, { ...tOp, y: y0, cor: corPedida(r, 'titulo', tinta), ...marca(r, legivel(c[1], '#FFFFFF')) })
   opcoes.forEach((o, i) => {
     const yo = yOpcoes + i * (hO + vao)
     animado(ctx, () => {
@@ -1845,7 +1850,7 @@ function enqueteComFoto(ctx, { L, A, story, c, r, logo, foto, nome }) {
       ctx.fillText(o, m + 110, yo + hO / 2 + 2, L - m * 2 - 150)
     }, { desloca: 20 })
   })
-  chamadaEmTexto(ctx, r, { x: m, y: A - base, largura: L - m * 2, alinhar: 'left', cor: corPedida(r, 'destaque', legivel(c[1], '#16161B')) })
+  chamadaEmTexto(ctx, r, { x: m, y: A - base, largura: L - m * 2, alinhar: 'left', cor: corPedida(r, 'destaque', legivel(c[1], '#FFFFFF')) })
 }
 
 function agendaComFoto(ctx, { L, A, story, c, r, logo, foto, nome }) {
@@ -1895,8 +1900,8 @@ function agendaComFoto(ctx, { L, A, story, c, r, logo, foto, nome }) {
   const aOp = { x: m, largura: L - m * 2, tamanho: 36, peso: 400, maxLinhas: 2, entre: 1.3 }
   const quando = r.horario || (lida ? `${lida.semana}, ${lida.dia} de ${lida.mes}` : '')
   const y0 = encostarEmbaixo(ctx, [[quando, hOp, 20], [r.titulo, tOp, 20], [r.apoio, aOp]], { fim: A - base - (r.chamada ? 140 : 0), limite: yf + af + 60 })
-  let y = bloco(ctx, quando, { ...hOp, y: y0, cor: legivel(c[1], '#16161B') })
-  y = bloco(ctx, r.titulo, { ...tOp, y: quando ? y + 20 : y0, cor: corPedida(r, 'titulo', tinta), ...marca(r, legivel(c[1], '#16161B')) })
+  let y = bloco(ctx, quando, { ...hOp, y: y0, cor: legivel(c[1], '#FFFFFF') })
+  y = bloco(ctx, r.titulo, { ...tOp, y: quando ? y + 20 : y0, cor: corPedida(r, 'titulo', tinta), ...marca(r, legivel(c[1], '#FFFFFF')) })
   bloco(ctx, r.apoio, { ...aOp, y: y + 20, cor: corPedida(r, 'texto', apagado(tinta)) })
   pilulaCurta(ctx, r, { x: m, y: A - base - 104, largura: L - m * 2, fundo: '#FFFFFF', cor: '#111114' })
 }
@@ -2203,7 +2208,7 @@ function textoNoPe(ctx, { L, A, story, c, r }, { de, tinta = '#FFFFFF', rotuloTe
   const m = 70, base = story ? 330 : 80
   const tOp = { x: m, largura: L - m * 2, tamanho: Math.round(84 * escala(r)), maxLinhas: 3, entre: 1.02 }
   const aOp = { x: m, largura: L - m * 2, tamanho: 38, peso: 400, maxLinhas: 2, entre: 1.3 }
-  const destaque = tinta === '#FFFFFF' ? legivel(c[1], '#16161B') : destaqueSobre(tinta, c)
+  const destaque = tinta === '#FFFFFF' ? legivel(c[1], '#FFFFFF') : destaqueSobre(tinta, c)
   aos(de)
   const y0 = encostarEmbaixo(ctx, [[r.titulo, tOp, 20], [r.apoio, aOp]], { fim: fim ?? A - base - (r.chamada ? 140 : 0), limite: A * 0.45 })
   if (rotuloTexto) rotulo(ctx, rotuloTexto, { x: m, y: y0 - 26, tamanho: 28, cor: destaque })
@@ -2435,13 +2440,13 @@ function portas(ctx, a) {
     animado(ctx, () => {
       ctx.font = `700 ${t}px ${FONTE}`
       espacar(ctx, -t * 0.04)
-      ctx.fillStyle = legivel(c[1], '#16161B')
+      ctx.fillStyle = legivel(c[1], '#FFFFFF')
       ctx.textAlign = 'left'
       ctx.textBaseline = 'alphabetic'
       ctx.fillText(valor, 64, y0 - 30, L - 140)
       espacar(ctx, 0)
     }, { escala: 0.15, desloca: 0 }, L / 2, y0 - t * 0.4)
-    bloco(ctx, r.titulo, { ...tOp, y: y0, cor: corPedida(r, 'titulo', '#FFFFFF'), ...marca(r, legivel(c[1], '#16161B')) })
+    bloco(ctx, r.titulo, { ...tOp, y: y0, cor: corPedida(r, 'titulo', '#FFFFFF'), ...marca(r, legivel(c[1], '#FFFFFF')) })
     pilulaCurta(ctx, r, { x: 70, y: A - base - 104, largura: L - 140, fundo: '#FFFFFF', cor: '#111114' })
   } else textoNoPe(ctx, a, { de: 2.0 })
   const p = relogio ? ir(0.6, 1.2) : 1

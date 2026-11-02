@@ -18,7 +18,7 @@ export const SO_NO_VIDEO = ['cenas', ...HISTORIAS, ...ANIMADOS_DA_FOTO]
 // Com foto, o parado usa só layouts em que a foto é o centro; os outros viram o mais parecido com foto (Brenno, 30/10).
 const PARADOS_COM_FOTO = ['foto', 'bastidores', 'capa', 'dividido', 'promo', 'mosaico', 'comparar', 'polaroid',
   'numero', 'conversa', 'citacao', 'enquete', 'agenda', 'cupom', 'lista', 'tabela']
-const COM_FOTO: Record<string, string> = { aviso: 'dividido', manchete: 'foto', cartao: 'foto', faixas: 'mosaico', escolha: 'cardfoto' }
+const COM_FOTO: Record<string, string> = { aviso: 'foto', manchete: 'foto', cartao: 'foto', faixas: 'mosaico', escolha: 'cardfoto' }
 // Sem foto, os que precisam dela viram o da marca mais parecido.
 const SEM_FOTO: Record<string, string> = {
   polaroid: 'bastidores', zoom: 'impacto', cortina: 'revelacao', cardfoto: 'impacto', deslize: 'escolha', moldura: 'acende', portas: 'impacto', foco: 'vitrine',
@@ -100,7 +100,17 @@ Legenda
 Como escrever bem
 - A primeira linha da legenda é o gancho: uma pergunta, um benefício direto ou uma frase curta que faça parar de rolar. Evite aberturas gastas como "Chegou o dia" quando não forem exatamente o caso.
 - Fale do ganho de quem lê, com detalhes concretos do pedido e da marca. Se a frase serviria para qualquer negócio, reescreva.
-- Título da arte, apoio e legenda se completam; não repita a mesma frase.
+- Título da arte, apoio e legenda se completam; não repita a mesma frase. O apoio traz o que o título não disse (quando, onde, para quem, o próximo passo), nunca as mesmas palavras do título. Com a foto de fundo, apoio de até 14 palavras.
+- Não invente detalhes da história que não estão no pedido nem nos dados (o que o cliente sentiu, o que a criança lembrou, como foi o preparo). Conte só o que foi dito.
+
+Por tipo de post
+- Depoimento: a fala do cliente no "titulo", em primeira pessoa, como ele diria, e o nome em "autor" (ex.: "Marcos, paciente"). Se o pedido não trouxer a frase, escreva [FRASE DO CLIENTE] no título. No parado, use "citacao"; no vídeo, "estrelas" ou, com foto, "zoom".
+- Antes e depois: o "antes" descreve o ponto de partida sem julgar o cliente (nada de cabelo ruim, sem graça, feio, opaco). "Curvatura escondida" em vez de "cabelo sem definição".
+- Aviso de horário: o horário do pedido vai em "horario" e o dia em "data", além do texto. Mudança que ainda vai começar é "a partir de", nunca "desde". Atendimento de emergência leva o WhatsApp na chamada.
+- Promoção: com desconto em porcentagem, não ponha em "itens" o item com o preço cheio; o número do desconto vai em "numero". Combo sem preço no pedido: [SEU PREÇO] no apoio e "itens" vazio.
+- Enquete ou isso-ou-aquilo: a chamada pede o voto ("Vote no story", "Responda aqui"), nunca venda.
+- Bastidores: celebra o movimento e quem faz; nunca vira reclamação ou pedido para o cliente vir outro dia.
+- Quando o lugar muda por dia (food truck, feira), a arte diz onde e quando: no apoio ou na chamada.
 - Post de feed: legenda de 3 a 6 frases curtas, em parágrafos. Story: legenda de 1 ou 2 frases, porque a arte faz o trabalho.
 - Contato (WhatsApp, site, Instagram) só quando a chamada pedir, e escrito como está nos dados fixos.
 
@@ -116,7 +126,7 @@ Arte: você também decide como a peça é desenhada, para cada peça ter a sua 
 - "manchete": título enorme como protagonista, para novidade ou frase de impacto.
 - "lista": título e de 2 a 4 pontos numerados em "pontos", para dica, passo a passo ou o que está incluso.
 - "citacao": a fala de um cliente no "titulo", com o nome em "autor", para depoimento.
-- "dividido": foto em cima e texto embaixo, para lançamento ou produto.
+- "dividido": foto em cima e texto embaixo, para produto com preço (um item em "itens"). Novidade sem preço com foto: "foto", "capa" ou "polaroid".
 - "foto": foto inteira com um cartão de texto embaixo. Só com foto.
 - "cartao": cartão branco no meio, para convite, evento ou comunicado mais formal.
 - "numero": um número enorme é o protagonista (50%, 7 dias, 3x), com o título embaixo. Usa "numero".
@@ -433,6 +443,7 @@ export function conferir(bruto: Record<string, unknown>, perfil: Perfil, pedido:
 
   const naoDeu = ((bruto.nao_deu as string[] | undefined) || []).map((t) => String(t).trim().replace(/\.$/, '')).filter(Boolean).slice(0, 3)
   if (naoDeu.length) avisos.push(`Por aqui ainda não dá para ${naoDeu.join(', ')}. O resto do pedido foi atendido.${naoDeu.some((t) => /fonte|letra/i.test(t)) ? ' A fonte dos títulos você troca no perfil da marca.' : ''}`)
+  if (['comparar', 'deslize'].includes(roteiro.modelo) && fotos < 2) avisos.push('Envie a foto do antes e a do depois para o post mostrar a comparação.')
   if (trocados.size) avisos.push('A IA tentou escrever um dado que não está na sua marca. Trocamos por um marcador.')
   const tudo = [roteiro.titulo, roteiro.apoio, roteiro.chamada, roteiro.legenda, roteiro.numero, roteiro.cupom, roteiro.data, roteiro.horario, ...roteiro.pontos, ...roteiro.itens.map((i) => i.preco)].join(' ')
   for (const [marcador, texto] of Object.entries(MARCADORES)) {

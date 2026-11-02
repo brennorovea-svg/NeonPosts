@@ -221,8 +221,9 @@ const semDadosDoPedido = (t) => String(t || '').split('\n\nUse estes dados:')[0]
 const paraInput = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 const quandoPorExtenso = (d) => d.toLocaleString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
 
-export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, videoInicial = false, marca = null, onCompletar, onSair, onPerfil, onCriou, onAgendar, noPlanner = false }) {
-  const [pedido, setPedido] = useState('')
+export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, pedidoInicial = '', videoInicial = false, marca = null, onCompletar, onSair, onPerfil, onCriou, onAgendar, noPlanner = false }) {
+  // Veio do planner: o tema marcado já abre escrito, para a pessoa completar.
+  const [pedido, setPedido] = useState(() => (pedidoInicial ? `${pedidoInicial.trim()}. ` : ''))
   const [tipo, setTipo] = useState(null)
   // Veio do planner ou da vitrine: usa o que veio. Senão, a última escolha da pessoa.
   const [formato, setFormato] = useState(() => (formatoInicial ? (formatoInicial === 'story' ? 'story' : 'post') : ultimaEscolha().formato))

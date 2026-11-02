@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { agendar, chaveDoDia, horaDe, juntarDiaEHora, LEMBRETES, mudarAgenda, padraoDaSemana, REDES, tirarDaAgenda } from '../lib/agenda.js'
 import { avisosDisponiveis, avisosNegados } from '../lib/avisos.js'
 import { enderecoDaImagem } from '../lib/perfil.js'
+import { gerarGrade } from '../lib/preencher.js'
 import './Planner.css'
 
 // Planner: calendário do mês no computador, lista da semana no celular.
@@ -39,7 +40,7 @@ function Miniatura({ peca, formato }) {
   )
 }
 
-export default function Planner({ negocioId, perfil, itens, pecas, avisos, onAtivarAvisos, onMudou, onCriar, onAbrirPeca, onFaixa, abrir }) {
+export default function Planner({ negocioId, perfil, itens, pecas, avisos, onAtivarAvisos, onMudou, onCriar, onAbrirPeca, onFaixa, abrir, saldo = 0, onPlanos }) {
   const hoje = useMemo(() => new Date(), [])
   const [mes, setMes] = useState(new Date(hoje.getFullYear(), hoje.getMonth(), 1))
   const [semana, setSemana] = useState(inicioDaSemana(hoje))
@@ -56,6 +57,9 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, onAti
   const [avisoPost, setAvisoPost] = useState('')
   const [excluindo, setExcluindo] = useState(null) // id do item esperando o segundo toque em Excluir
   const [confirmando, setConfirmando] = useState(null) // id do item esperando "postou?" depois do compartilhar
+  const [sugestao, setSugestao] = useState(null) // Preencher o mês: a grade sugerida, esperando a pessoa aprovar
+  const [fora, setFora] = useState([]) // ids que a pessoa tirou da grade
+  const [marcando, setMarcando] = useState(false)
   const pecaPorId = useMemo(() => Object.fromEntries((pecas || []).map((p) => [p.id, p])), [pecas])
   const porDia = useMemo(() => {
     const mapa = {}
@@ -73,6 +77,7 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, onAti
   }, [abrir])
 
   useEffect(() => {
+    setSugestao(null) // a grade sugerida é do mês que estava aberto
     const fim = new Date(mes.getFullYear(), mes.getMonth() + 1, 1)
     onFaixa?.(somarDias(mes, -7), somarDias(fim, 7))
   }, [mes])
@@ -128,6 +133,27 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, onAti
       setNovo((n) => ({ ...n, titulo: '' }))
       setPlanejando(false)
     })
+  }
+
+  // Preencher o mês: o que sobra no plano, menos o que já está marcado e ainda sem post neste mês.
+  function abrirPreencher() {
+    const fimDoMes = new Date(mes.getFullYear(), mes.getMonth() + 1, 1)
+    const reservados = itens.filter((i) => !i.peca && !i.postado_em && new Date(i.quando) >= hoje && new Date(i.quando) < fimDoMes).length
+    const cabe = Math.max(0, saldo - reservados)
+    const doMes = itens.filter((i) => { const d = new Date(i.quando); return d.getMonth() === mes.getMonth() && d.getFullYear() === mes.getFullYear() })
+    setSugestao({ lista: gerarGrade({ perfil, itens: doMes, mes, saldo: cabe, hoje }), cabe })
+    setFora([])
+    setErro('')
+    window.scrollTo({ top: 0 })
+  }
+  async function marcarGrade() {
+    const lista = sugestao.lista.filter((g) => !fora.includes(g.id))
+    setMarcando(true)
+    const deu = await tentar(async () => {
+      for (const g of lista) await agendar(negocioId, { titulo: g.titulo, rede: 'instagram', formato: g.formato, quando: g.quando })
+    })
+    setMarcando(false)
+    if (deu) setSugestao(null)
   }
 
   function soltar(chave) {
@@ -218,7 +244,8 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, onAti
             <button type="button" className="planner__visao" aria-pressed={visao === 'semana'} onClick={() => setVisao('semana')}>Semana</button>
           </div>
         )}
-        <button type="button" className="botao botao--destaque planner__planejar" onClick={() => abrirDia(dia || chaveDoDia(hoje), true)}>Planejar post</button>
+        {!dia && !sugestao && <button type="button" className="botao botao--fantasma planner__preencher" onClick={abrirPreencher}>Preencher o mês</button>}
+        <button type="button" className="botao botao--destaque planner__planejar" onClick={() => { setSugestao(null); abrirDia(dia || chaveDoDia(hoje), true) }}>Planejar post</button>
       </div>
     </header>
   )
@@ -453,12 +480,66 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, onAti
     </section>
   )
 
+  const nomeDoMes = porExtenso(mes, { month: 'long' })
+  const ficam = sugestao ? sugestao.lista.filter((g) => !fora.includes(g.id)) : []
+  const semanasDaGrade = sugestao ? Object.entries(sugestao.lista.reduce((acc, g) => { const k = chaveDoDia(inicioDaSemana(juntarDiaEHora(g.dia, '12:00'))); (acc[k] ??= []).push(g); return acc }, {})) : []
+  const painelPreencher = sugestao && (
+    <section className="planner__preencher-painel" aria-label={`Preencher ${nomeDoMes}`}>
+      <header className="planner__painel-topo">
+        <div>
+          <h2 className="planner__painel-titulo">Preencher {nomeDoMes}</h2>
+          <p className="planner__painel-sub">
+            {sugestao.lista.length
+              ? `Pelo seu padrão (${padrao.posts} no feed e ${padrao.stories} stories por semana) e pelo que sobra no seu plano (${sugestao.cabe} ${sugestao.cabe === 1 ? 'post' : 'posts'}), a gente sugere esta grade. Desmarque o que não quiser.`
+              : sugestao.cabe <= 0
+                ? 'Seu plano não tem mais posts livres este mês. Os que já estão marcados ocupam o que sobrou.'
+                : padrao.posts + padrao.stories === 0
+                  ? 'Conte na sua marca quantos posts você faz por semana para a gente montar a grade.'
+                  : 'O mês já está cheio pelo seu padrão de postagem.'}
+          </p>
+        </div>
+      </header>
+      {semanasDaGrade.map(([inicio, lista]) => (
+        <div key={inicio} className="planner__grade-semana">
+          <p className="planner__grade-semana-titulo mono">Semana de {porExtenso(juntarDiaEHora(inicio, '12:00'), { day: 'numeric', month: 'short' })}</p>
+          <ul className="planner__grade-lista">
+            {lista.map((g) => {
+              const tirado = fora.includes(g.id)
+              const data = juntarDiaEHora(g.dia, g.hora)
+              return (
+                <li key={g.id} className={`planner__grade-item${tirado ? ' planner__grade-item--fora' : ''}`}>
+                  <span className="planner__grade-dia"><span className="mono">{data.getDate()}</span>{DIAS[(data.getDay() + 6) % 7]}</span>
+                  <Forma formato={g.formato} />
+                  <span className="planner__grade-texto">
+                    <strong>{g.titulo}</strong>
+                    <span className="mono">{g.formato === 'story' ? 'Story' : 'Post'} · {g.hora}</span>
+                  </span>
+                  <input type="checkbox" className="planner__grade-marca" checked={!tirado} aria-label={`Manter: ${g.titulo}, dia ${data.getDate()}`} onChange={() => setFora((f) => (tirado ? f.filter((x) => x !== g.id) : [...f, g.id]))} />
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      ))}
+      {sugestao.cabe <= 0 && onPlanos && <button type="button" className="botao botao--destaque" onClick={onPlanos}>Ver os planos</button>}
+      <p className="planner__dica">Cada dia vira um lembrete no planner. Na hora de criar, o tema já vem escrito no pedido.</p>
+      <div className="planner__acoes-linha">
+        <button type="button" className="botao botao--fantasma" onClick={() => setSugestao(null)}>Cancelar</button>
+        {sugestao.lista.length > 0 && (
+          <button type="button" className="botao botao--primario" disabled={!ficam.length || marcando} onClick={marcarGrade}>
+            {marcando ? 'Marcando...' : `Marcar ${ficam.length} no planner`}
+          </button>
+        )}
+      </div>
+    </section>
+  )
+
   return (
     <div className={`planner${dia ? ' planner--dia' : ''}`}>
       {cabecalho}
       {erro && <p className="campo__erro" role="alert">{erro}</p>}
       {avisoDeLembrete}
-      {dia ? (
+      {sugestao && !dia ? painelPreencher : dia ? (
         <div className="planner__duas">
           {lista}
           {painelDoDia}

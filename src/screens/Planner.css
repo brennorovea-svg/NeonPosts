@@ -28,6 +28,8 @@
 }
 .planner__visao[aria-pressed="true"] { background: var(--violeta); color: var(--neve); }
 .planner__planejar { width: auto; min-height: 44px; padding: 10px 16px; font-size: 15px; margin-left: auto; }
+.planner__preencher { width: auto; min-height: 44px; padding: 10px 16px; font-size: 15px; margin-left: auto; }
+.planner__preencher + .planner__planejar { margin-left: 0; }
 
 .planner__avisos {
   display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
@@ -206,3 +208,29 @@
 .planner__form .campo--curto { max-width: 160px; }
 @media (max-width: 1023px) { .planner--dia .planner__planejar { display: none; } }
 @media (min-width: 1024px) { .planner__nova { display: none; } }
+
+/* Preencher o mês: a grade sugerida, uma linha por dia, para aprovar antes de marcar. */
+.planner__preencher-painel { display: flex; flex-direction: column; gap: 18px; max-width: 760px; animation: aparecer 300ms var(--ease) both; }
+.planner__grade-semana { display: flex; flex-direction: column; gap: 8px; }
+.planner__grade-semana-titulo { margin: 0; font-size: 12px; color: var(--texto-2); text-transform: uppercase; letter-spacing: .06em; }
+.planner__grade-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.planner__grade-item {
+  display: flex; align-items: center; gap: 12px; padding: 10px 12px;
+  border: 1px solid var(--borda); border-radius: 12px;
+  transition: opacity var(--dur-controle) var(--ease);
+}
+.planner__grade-item--fora { opacity: .45; }
+.planner__grade-dia { display: flex; flex-direction: column; align-items: center; min-width: 34px; font-size: 11px; color: var(--texto-2); }
+.planner__grade-dia .mono { font-size: 17px; color: var(--neve); }
+.planner__grade-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.planner__grade-texto strong { font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.planner__grade-texto .mono { font-size: 12px; color: var(--texto-2); }
+.planner__grade-marca { width: 22px; height: 22px; accent-color: var(--violeta); cursor: pointer; flex: none; }
+@media (prefers-reduced-motion: reduce) { .planner__preencher-painel { animation: none; } .planner__grade-item { transition: none; } }
+/* Celular: Preencher o mês e Planejar post dividem uma linha embaixo de Mês/Semana. */
+@media (max-width: 1023px) {
+  .planner__preencher { flex: 1 1 calc(50% - 6px); margin-left: 0; order: 2; }
+  .planner__preencher + .planner__planejar { flex: 1 1 calc(50% - 6px); order: 2; }
+  .planner__direita:has(.planner__preencher) .planner__visoes { flex-basis: 100%; }
+  .planner__direita:has(.planner__preencher) .planner__visao { flex: 1; }
+}

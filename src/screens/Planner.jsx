@@ -3,7 +3,7 @@ import { agendar, chaveDoDia, formatosDaRede, horaDe, juntarDiaEHora, LEMBRETES,
 import { avisosDisponiveis, avisosNegados } from '../lib/avisos.js'
 import { enderecoDaImagem } from '../lib/perfil.js'
 import { gerarGrade } from '../lib/preencher.js'
-import { ehAnimado, entregar, legendaDe, nomeDoArquivo, opcoesDaPeca, passoNaRede, podeCompartilhar, prepararArquivo } from '../lib/publicar.js'
+import { avisoDoResultado, baixarArquivo, ehAnimado, entregar, legendaDe, nomeDoArquivo, opcoesDaPeca, passoNaRede, podeCompartilhar, prepararArquivo } from '../lib/publicar.js'
 import { ehIphone, instalado } from '../lib/push.js'
 import Instalar from '../components/Instalar.jsx'
 import './Planner.css'
@@ -419,19 +419,15 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, push 
               )}
               {confirmando?.id === item.id && !item.postado_em && (
                 <div className="planner__confirmar" role="group" aria-label="Postou?">
-                  <strong>
-                    {confirmando.resultado === 'compartilhou' ? 'Legenda copiada.'
-                      : confirmando.resultado === 'baixou' ? 'Arquivo baixado e legenda copiada.'
-                      : confirmando.resultado === 'baixou-sem-copiar' ? 'Arquivo baixado.' : 'Arquivo enviado.'}
-                  </strong>
+                  <strong>{avisoDoResultado(confirmando.resultado, item.rede).titulo}</strong>
                   <span>
-                    {confirmando.resultado.startsWith('baixou') ? `Mande o arquivo para o celular e poste de lá. ${passoNaRede(item.rede)}` : passoNaRede(item.rede)}
-                    {confirmando.resultado.endsWith('sem-copiar') && ' A legenda não copiou sozinha: abra o post e toque em Copiar legenda.'}
-                    {' '}Se já foi para a rede, marca como postada.
+                    {avisoDoResultado(confirmando.resultado, item.rede).texto.replace('use o botão Copiar legenda', 'abra o post e toque em Copiar legenda')}
+                    {!confirmando.resultado.startsWith('falhou') && ' Se já foi para a rede, marca como postada.'}
                   </span>
                   <div className="planner__confirmar-acoes">
                     <button type="button" className="botao botao--primario" onClick={async () => { if (await tentar(() => mudarAgenda(item.id, { postado_em: new Date().toISOString() }))) setConfirmando(null) }}>Sim, postei</button>
                     <button type="button" className="botao botao--fantasma" onClick={() => setConfirmando(null)}>Ainda não</button>
+                    {confirmando.resultado.startsWith('falhou') && prontos[item.id]?.arquivo && <button type="button" className="botao botao--fantasma" onClick={() => baixarArquivo(prontos[item.id].arquivo)}>Baixar o arquivo</button>}
                   </div>
                 </div>
               )}

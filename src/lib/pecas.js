@@ -28,7 +28,7 @@ export function acordarIA() {
   fetch(`${SUPABASE_URL}/functions/v1/gerar-peca`).catch(() => {})
 }
 
-export async function gerarPeca({ pedido, formato, video = false, fotos = [], refazer, ajuste, modelo, boas_vindas = false }) {
+export async function gerarPeca({ pedido, formato, video = false, fotos = [], refazer, ajuste, modelo, boas_vindas = false, rede }) {
   if (modoDeTeste()) {
     await new Promise((ok) => setTimeout(ok, 6000))
     const antiga = refazer && pecasDeTeste.find((p) => p.id === refazer)
@@ -56,7 +56,7 @@ export async function gerarPeca({ pedido, formato, video = false, fotos = [], re
     pecasDeTeste = [peca, ...pecasDeTeste.filter((p) => p.id !== peca.id)]
     return { peca, refeitasRestantes: 3 - peca.refeitas }
   }
-  const { data, error } = await supabase.functions.invoke('gerar-peca', { body: { pedido, formato, video, fotos, refazer, ajuste, modelo, boas_vindas } })
+  const { data, error } = await supabase.functions.invoke('gerar-peca', { body: { pedido, formato, video, fotos, refazer, ajuste, modelo, boas_vindas, rede } })
   if (error) {
     let mensagem = 'Não deu para criar agora. Tente de novo.'
     try { mensagem = (await error.context.json()).erro || mensagem } catch { /* resposta sem corpo */ }

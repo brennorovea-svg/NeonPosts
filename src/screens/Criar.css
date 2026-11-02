@@ -245,3 +245,5 @@
 .criar__marca-dica p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--texto-2); }
 .criar__faltando-titulo { margin: 0; font-size: 17px; font-weight: 700; color: #FFE69A; }
 .criar__faltando-texto { margin: -8px 0 0; font-size: 13px; color: var(--texto-2); }
+
+.criar__rede-ponto { width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; display: inline-block; vertical-align: middle; }

@@ -9,7 +9,10 @@ export const REDES = {
   instagram: { nome: 'Instagram', cor: '#A28BFF' },
   facebook: { nome: 'Facebook', cor: '#4FA3FF' },
   whatsapp: { nome: 'WhatsApp status', cor: '#FFC857' },
+  tiktok: { nome: 'TikTok', cor: '#5EE6C8', soVideo: true },
 }
+// O TikTok só aceita vídeo em pé: a marcação é sempre story (9:16) e o post sai animado.
+export const formatosDaRede = (rede, formatos) => (REDES[rede]?.soVideo ? ['story'] : formatos)
 export const LEMBRETES = [[0, 'Na hora'], [10, '10 min antes'], [30, '30 min antes'], [60, '1 h antes'], [1440, 'Um dia antes']]
 const COLUNAS = 'id, peca, titulo, rede, formato, quando, lembrete_minutos, avisado_em, postado_em'
 

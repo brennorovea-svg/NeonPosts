@@ -2,7 +2,7 @@ import { REDES } from '../lib/agenda.js'
 import './Redes.css'
 
 // Redes: por enquanto, só o modo lembrete. Conectar de verdade (postar sozinho)
-// é o Bloco 10, depois do lançamento.
+// é o Bloco 9.
 export default function Redes({ avisos, onAtivarAvisos }) {
   return (
     <section className="redes">

@@ -77,7 +77,7 @@ Deno.serve(async (req) => {
   const { data: negocio } = await banco.from('negocios').select('id, limite_pecas').eq('dono', conta.user.id).single()
   if (!negocio) return erro('Não achamos o seu negócio.', 404)
 
-  let corpo: { pedido?: string; formato?: string; video?: boolean; fotos?: string[]; refazer?: string; ajuste?: string; modelo?: string; calibrar?: boolean; regras?: string[]; carro_chefe?: string; boas_vindas?: boolean }
+  let corpo: { pedido?: string; formato?: string; video?: boolean; fotos?: string[]; refazer?: string; ajuste?: string; modelo?: string; calibrar?: boolean; regras?: string[]; carro_chefe?: string; boas_vindas?: boolean; rede?: string }
   try { corpo = await req.json() } catch { return erro('Pedido inválido.', 400) }
   if (corpo.calibrar) return calibrar(banco, negocio.id, corpo)
 
@@ -86,6 +86,7 @@ Deno.serve(async (req) => {
   let pedido = boasVindas ? PEDIDO_DE_BOAS_VINDAS : String(corpo.pedido || '').trim()
   let formato = corpo.formato === 'story' ? 'story' : 'post'
   const video = corpo.video === true
+  const rede = corpo.rede === 'tiktok' ? 'tiktok' : ''
   let fotos = (corpo.fotos || []).filter((f) => typeof f === 'string' && f.startsWith(`${negocio.id}/`)).slice(0, 4)
   let refeita: { id: string; pedido: string; refeitas: number; roteiro: Record<string, unknown>; versoes: { roteiro: Record<string, unknown> }[]; escolhida: number | null } | null = null
   const ajuste = String(corpo.ajuste || '').trim().slice(0, 300)
@@ -152,7 +153,7 @@ Deno.serve(async (req) => {
         role: 'user',
         content: [
           ...imagens.map((data) => ({ type: 'image' as const, source: { type: 'base64' as const, media_type: 'image/jpeg' as const, data } })),
-          { type: 'text' as const, text: montarMensagem(perfil, pedido, formato, refeita && (refeita.versoes?.[refeita.escolhida ?? -1]?.roteiro || refeita.roteiro), ajuste, fotos.length, layout, video, imagens.length) },
+          { type: 'text' as const, text: montarMensagem(perfil, pedido, formato, refeita && (refeita.versoes?.[refeita.escolhida ?? -1]?.roteiro || refeita.roteiro), ajuste, fotos.length, layout, video, imagens.length, rede) },
         ],
       }],
     })

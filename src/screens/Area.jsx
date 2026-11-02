@@ -143,7 +143,7 @@ export default function Area({ sessao, teste = false }) {
     if (!criarCom) return
     try {
       if (criarCom.agendaId) await mudarAgenda(criarCom.agendaId, { peca: peca.id })
-      else await agendar(negocio.id, { titulo: peca.roteiro?.titulo || criarCom.titulo || peca.pedido, rede: 'instagram', formato: peca.formato, quando: criarCom.quando, peca: peca.id })
+      else await agendar(negocio.id, { titulo: peca.roteiro?.titulo || criarCom.titulo || peca.pedido, rede: criarCom.rede || 'instagram', formato: peca.formato, quando: criarCom.quando, peca: peca.id })
       setCriarCom(null)
       recarregarAgenda()
     } catch { /* a peça existe; a pessoa marca no planner depois */ }
@@ -355,13 +355,14 @@ export default function Area({ sessao, teste = false }) {
             pecaInicial={criando === 'nova' ? null : criando}
             formatoInicial={criarCom?.formato}
             pedidoInicial={criarCom?.titulo}
+            redeInicial={criarCom?.rede}
             videoInicial={videoInicial}
             marca={{ feitas: total, proxima: proxima >= 0 ? PARTES[proxima] : null }}
             onCompletar={() => { setCriando(null); setVideoInicial(false); setEditando(proxima); window.scrollTo({ top: 0 }) }}
             onCriou={ligarAoPlanner}
             noPlanner={Boolean(criarCom)}
-            onAgendar={async (peca, quando) => {
-              await agendar(negocio.id, { titulo: peca.roteiro?.titulo || peca.pedido, rede: 'instagram', formato: peca.formato === 'story' ? 'story' : 'post', quando, peca: peca.id })
+            onAgendar={async (peca, quando, rede = 'instagram') => {
+              await agendar(negocio.id, { titulo: peca.roteiro?.titulo || peca.pedido, rede, formato: peca.formato === 'story' ? 'story' : 'post', quando, peca: peca.id })
               recarregarAgenda()
             }}
             onPerfil={(novo) => { setPerfil(novo); recarregar() }}

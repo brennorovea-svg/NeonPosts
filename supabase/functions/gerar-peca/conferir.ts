@@ -251,7 +251,7 @@ type Perfil = {
 }
 
 // `fotos`: quantas o dono mandou; `vistas`: quantas a IA recebe como imagem (as que têm cópia pequena).
-export function montarMensagem(perfil: Perfil, pedido: string, formato: string, anterior?: Record<string, unknown> | null, ajuste?: string, fotos = 0, layout = '', video = false, vistas = 0) {
+export function montarMensagem(perfil: Perfil, pedido: string, formato: string, anterior?: Record<string, unknown> | null, ajuste?: string, fotos = 0, layout = '', video = false, vistas = 0, rede = '') {
   // Do guia da marca vão só as regras; as respostas da entrevista ficam no perfil.
   const guia = (perfil.voz as { guia?: { regras?: string[] } }).guia
   const marca = {
@@ -270,6 +270,9 @@ export function montarMensagem(perfil: Perfil, pedido: string, formato: string, 
         ? `o dono mandou ${fotos} fotos; você vê as ${vistas} primeiras, antes deste texto`
         : `o dono mandou ${fotos === 1 ? '1 foto' : `${fotos} fotos`}, mas você não consegue vê-las: não descreva o que aparece nelas`
   let texto = `<marca>\n${JSON.stringify(marca, null, 2)}\n</marca>\n\n<formato>${formatoTexto}</formato>\n\n<foto>${fotoTexto}</foto>\n\n<pedido>\n${pedido}\n</pedido>`
+  if (rede === 'tiktok') {
+    texto += `\n\n<rede>TikTok</rede>\n\nEste vídeo vai para o TikTok. Título curto que prende nos primeiros segundos. Legenda curta (até 150 caracteres), com gancho na primeira frase e sem parágrafos longos. Use de 3 a 5 hashtags, misturando as da marca com temas do ramo.`
+  }
   if (layout) {
     texto += `\n\n<layout>${layout}</layout>\n\nO dono já escolheu o layout. Use "modelo": "${layout}" e escreva pensando nele: ${DICAS_DO_LAYOUT[layout] || ''} Você continua decidindo o destaque, o tamanho do título, o alinhamento e o fundo.`
   }

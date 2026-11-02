@@ -2574,7 +2574,42 @@ function marcaDagua(ctx, L, A) {
 let chamadaOculta = null
 const oculta = (texto) => Boolean(chamadaOculta) && String(texto).replace('\n', ': ') === chamadaOculta
 
-export function desenhar(canvas, { formato, modelo, roteiro, cores, logo, foto, fotos, nome, fonte, tempo = null, total = 8 }) {
+// TikTok: os botões cobrem o lado direito e a legenda cobre mais da parte de baixo que no Instagram.
+// O layout de story é desenhado inteiro um pouco menor, encostado à esquerda e para cima,
+// e o resto da tela é a própria arte ampliada, borrada e escurecida (barato o bastante para o vídeo).
+const TIKTOK = { escala: 0.84, x: 24, y: 60 }
+let quadroTikTok = null
+let miniTikTok = null
+function desenharParaTikTok(canvas, opcoes) {
+  const [L, A] = TAMANHOS.story
+  quadroTikTok ??= document.createElement('canvas')
+  miniTikTok ??= document.createElement('canvas')
+  desenhar(quadroTikTok, { ...opcoes, formato: 'story', rede: null })
+  canvas.width = L
+  canvas.height = A
+  const ctx = canvas.getContext('2d')
+  // Fundo: a arte reduzida a 36x64 e ampliada de volta vira um borrão suave.
+  miniTikTok.width = 36
+  miniTikTok.height = 64
+  const mini = miniTikTok.getContext('2d')
+  mini.imageSmoothingEnabled = true
+  mini.drawImage(quadroTikTok, 0, 0, 36, 64)
+  ctx.imageSmoothingEnabled = true
+  ctx.imageSmoothingQuality = 'high'
+  ctx.drawImage(miniTikTok, 0, 0, L, A)
+  ctx.fillStyle = 'rgba(0,0,0,.35)'
+  ctx.fillRect(0, 0, L, A)
+  const l = L * TIKTOK.escala, a = A * TIKTOK.escala
+  ctx.save()
+  ctx.shadowColor = 'rgba(0,0,0,.45)'
+  ctx.shadowBlur = 40
+  ctx.drawImage(quadroTikTok, TIKTOK.x, TIKTOK.y, l, a)
+  ctx.restore()
+}
+
+export function desenhar(canvas, opcoes) {
+  if (opcoes.rede === 'tiktok') return desenharParaTikTok(canvas, opcoes)
+  const { formato, modelo, roteiro, cores, logo, foto, fotos, nome, fonte, tempo = null, total = 8 } = opcoes
   const [L, A] = TAMANHOS[formato] || TAMANHOS.post
   canvas.width = L
   canvas.height = A

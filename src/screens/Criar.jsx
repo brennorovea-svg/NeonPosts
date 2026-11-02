@@ -9,6 +9,7 @@ import { DURACAO, duracaoDe, gravar, tocar } from '../lib/video.js'
 import { dadosEmTexto, listaDeNomes, MARCADORES, marcadoresDe, perguntasAntes, preencher } from '../lib/marcadores.js'
 import { enderecoDaImagem, salvarPerfil } from '../lib/perfil.js'
 import { acordarIA, escolherVersao, gerarPeca, guardarImagem, salvarTexto } from '../lib/pecas.js'
+import { REDES } from '../lib/agenda.js'
 import { carregarImagem, desenhar, layoutsDoGrupo, NOMES_DOS_MODELOS, paraArquivo, prepararFontes } from '../lib/desenhar.js'
 import './Criar.css'
 
@@ -209,10 +210,10 @@ function sugestoesDeQuando() {
 // O Criar abre com o último formato e movimento que a pessoa usou (fica neste aparelho).
 const CHAVE_ESCOLHA = 'neonposts-ultima-escolha'
 function ultimaEscolha() {
-  try { const v = JSON.parse(localStorage.getItem(CHAVE_ESCOLHA) || '{}'); return { formato: v.formato === 'story' ? 'story' : 'post', video: Boolean(v.video) } } catch { return { formato: 'post', video: false } }
+  try { const v = JSON.parse(localStorage.getItem(CHAVE_ESCOLHA) || '{}'); return { formato: v.formato === 'story' ? 'story' : 'post', video: Boolean(v.video), rede: REDES[v.rede] ? v.rede : 'instagram' } } catch { return { formato: 'post', video: false, rede: 'instagram' } }
 }
-function guardarEscolha(formato, video) {
-  try { localStorage.setItem(CHAVE_ESCOLHA, JSON.stringify({ formato, video })) } catch { /* sem armazenamento, abre no padrão */ }
+function guardarEscolha(formato, video, rede) {
+  try { localStorage.setItem(CHAVE_ESCOLHA, JSON.stringify({ formato, video, rede })) } catch { /* sem armazenamento, abre no padrão */ }
 }
 
 // O pedido guardado leva os dados respondidos no fim ("Use estes dados: ..."); na tela mostra só o que a pessoa escreveu.
@@ -221,13 +222,17 @@ const semDadosDoPedido = (t) => String(t || '').split('\n\nUse estes dados:')[0]
 const paraInput = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 const quandoPorExtenso = (d) => d.toLocaleString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
 
-export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, pedidoInicial = '', videoInicial = false, marca = null, onCompletar, onSair, onPerfil, onCriou, onAgendar, noPlanner = false }) {
+export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, pedidoInicial = '', redeInicial = null, videoInicial = false, marca = null, onCompletar, onSair, onPerfil, onCriou, onAgendar, noPlanner = false }) {
   // Veio do planner: o tema marcado já abre escrito, para a pessoa completar.
   const [pedido, setPedido] = useState(() => (pedidoInicial ? `${pedidoInicial.trim()}. ` : ''))
   const [tipo, setTipo] = useState(null)
   // Veio do planner ou da vitrine: usa o que veio. Senão, a última escolha da pessoa.
   const [formato, setFormato] = useState(() => (formatoInicial ? (formatoInicial === 'story' ? 'story' : 'post') : ultimaEscolha().formato))
   const [video, setVideo] = useState(() => Boolean(videoInicial) || (!formatoInicial && ultimaEscolha().video))
+  // Onde vai postar. No TikTok o post é sempre vídeo em pé (story animado), com a arte longe dos botões da rede.
+  const [rede, setRede] = useState(() => (REDES[redeInicial] ? redeInicial : formatoInicial ? 'instagram' : ultimaEscolha().rede))
+  const soVideo = Boolean(REDES[rede]?.soVideo)
+  useEffect(() => { if (soVideo) { setFormato('story'); setVideo(true) } }, [soVideo])
   const [dispensouMarca, setDispensouMarca] = useState(false)
   const [gravando, setGravando] = useState(null) // null ou de 0 a 1
   const [avisoVideo, setAvisoVideo] = useState('')
@@ -313,7 +318,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
   }, [peca, imagens, estado, video, dadosFaltando])
 
   function opcoesDoDesenho() {
-    return { formato: peca.formato, modelo: peca.modelo, roteiro, cores: perfil.identidade.cores, nome, fonte, logo: imagens.logo, fotos: imagens.fotos }
+    return { formato: peca.formato, modelo: peca.modelo, roteiro, cores: perfil.identidade.cores, nome, fonte, logo: imagens.logo, fotos: imagens.fotos, rede: soVideo && peca.formato === 'story' ? rede : null }
   }
 
   // Texto editado pelo dono: a arte redesenha a cada tecla e o banco recebe um pouco depois.
@@ -341,11 +346,11 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
     window.scrollTo({ top: 0 })
     try {
       const r = await gerarPeca(refazer
-        ? { refazer: peca.id, formato: peca.formato, video, pedido: pedidoNovo.trim(), ajuste: ajuste.trim() }
-        : { pedido: pedido.trim() + dadosEmTexto(dadosFaltando), formato, video, fotos, modelo: layout === 'ia' ? undefined : layout })
+        ? { refazer: peca.id, formato: peca.formato, video, rede, pedido: pedidoNovo.trim(), ajuste: ajuste.trim() }
+        : { pedido: pedido.trim() + dadosEmTexto(dadosFaltando), formato, video, fotos, rede, modelo: layout === 'ia' ? undefined : layout })
       if (!refazer) {
         setRespondidos(Object.keys(dadosFaltando).filter((m) => (dadosFaltando[m] || '').trim()))
-        guardarEscolha(formato, video)
+        guardarEscolha(formato, video, rede)
       }
       setAjustando(false)
       setAjuste('')
@@ -413,7 +418,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
   async function marcarQuando(data) {
     setErro('')
     try {
-      await onAgendar(peca, data)
+      await onAgendar(peca, data, rede)
       setAgendado(data)
       setEscolhendoQuando(false)
     } catch {
@@ -454,7 +459,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
   const guia = (tipo && TIPOS[tipo]) || GERAL
   const exemplos = sortear(guia.exemplos, rodada).slice(0, 3)
   const antes = estado === 'pedido' ? perguntasAntes(pedido, perfil.dados) : []
-  const resumoDasOpcoes = `${formato === 'story' ? 'Story 9:16' : 'Post 4:5'} · ${video ? 'animado' : 'parado'} · ${layout === 'ia' ? 'a IA escolhe o layout' : (NOMES_DOS_MODELOS[layout] || layout)}`
+  const resumoDasOpcoes = `${REDES[rede]?.nome || 'Instagram'} · ${soVideo ? 'vídeo 9:16' : `${formato === 'story' ? 'Story 9:16' : 'Post 4:5'} · ${video ? 'animado' : 'parado'}`} · ${layout === 'ia' ? 'a IA escolhe o layout' : (NOMES_DOS_MODELOS[layout] || layout)}`
   const semTexto = pedido.trim().length < 3 || (tipo && pedido.trim() === (TIPOS[tipo]?.comeco || '').trim())
 
   return (
@@ -525,6 +530,17 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
             {maisOpcoes && (
               <div id="mais-opcoes" className="criar__mais-corpo">
                 <div className="campo">
+                  <span className="campo__rotulo">Onde vai postar</span>
+                  <div className="fichas" role="group" aria-label="Rede">
+                    {Object.entries(REDES).map(([chave, r]) => (
+                      <button key={chave} type="button" className="ficha" aria-pressed={rede === chave} onClick={() => setRede(chave)}>
+                        <span className="criar__rede-ponto" style={{ background: r.cor }} aria-hidden="true" />{r.nome}
+                      </button>
+                    ))}
+                  </div>
+                  {soVideo && <p className="campo__ajuda">No TikTok o post sai em vídeo em pé, com o texto longe dos botões da rede.</p>}
+                </div>
+                {!soVideo && <div className="campo">
                   <span className="campo__rotulo">Formato</span>
                   <div className="criar__formatos" role="group" aria-label="Formato">
                     {FORMATOS.map(([valor, rotulo, medida]) => (
@@ -544,7 +560,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
                       </button>
                     ))}
                   </div>
-                </div>
+                </div>}
                 <div className="campo">
                   <span className="campo__rotulo">Layout</span>
                   <p className="campo__ajuda">Escolha um jeito para a arte ou deixe a IA decidir. Dá para trocar depois.</p>
@@ -559,7 +575,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
 
           {erro && <p className="campo__erro" role="alert">{erro}</p>}
           <button type="button" className="botao botao--primario" disabled={pedido.trim().length < 3} onClick={() => criar(false)}>
-            Criar {formato === 'story' ? 'story' : 'post'}{video ? ' animado' : ''}
+            {soVideo ? `Criar vídeo para o ${REDES[rede].nome}` : <>Criar {formato === 'story' ? 'story' : 'post'}{video ? ' animado' : ''}</>}
           </button>
           <p className="criar__nota">Preço, endereço e horário saem só dos seus dados fixos. Nada inventado.</p>
           {erro && <DeuProblema contexto={{ Negócio: nome, Pedido: pedido.trim(), Formato: video ? 'vídeo' : formato, Erro: erro }} />}
@@ -671,6 +687,9 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
                 roteiro={roteiro} logo={imagens.logo} foto={imagens.fotos[0] || null} fotoDaMarca={miniaturas.fotoDaMarca}
               />
             </div>
+            {soVideo ? (
+              <p className="criar__nota">{REDES[rede].nome} · vídeo 9:16. A arte fica longe dos botões da rede.</p>
+            ) : (
             <div className="campo">
               <span className="campo__rotulo">Formato</span>
               <div className="fichas">
@@ -688,6 +707,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
                 ))}
               </div>
             </div>
+            )}
 
             {roteiro.avisos?.length > 0 && (
               <ul className="criar__avisos">

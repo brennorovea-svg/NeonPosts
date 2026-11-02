@@ -8,9 +8,17 @@ export const PERFIL_VAZIO = {
   voz: { tom: [], tratamento: 'você', usa: '', evita: '', exemplos: '', emoji: 'pouco' },
   padrao: { tipos: [], feedPorSemana: 3, storiesPorSemana: 5, hashtags: '', chamada: '' },
   dados: { endereco: '', horario: '', whatsapp: '', instagram: '', site: '', itens: [] },
+  // Só para os posts do LinkedIn em nome da pessoa. Fica fora das 4 partes da marca.
+  profissional: { nome: '', cargo: '', carreira: '', resultados: '', temas: '', publico: '', nunca: '' },
 }
 
-const PARTES = ['identidade', 'voz', 'padrao', 'dados']
+const PARTES = ['identidade', 'voz', 'padrao', 'dados', 'profissional']
+
+// Dá para postar no LinkedIn como pessoa: tem o cargo e alguma coisa da carreira ou dos resultados.
+export const profissionalFeito = (perfil) => {
+  const p = perfil?.profissional || {}
+  return Boolean(p.cargo?.trim() && (p.carreira?.trim() || p.resultados?.trim()))
+}
 
 let memoriaDeTeste = null
 export function usarModoDeTeste(perfil = null) { memoriaDeTeste = { versao: perfil ? 1 : 0, perfil } }
@@ -37,7 +45,7 @@ export async function carregarPerfil(negocioId) {
   if (memoriaDeTeste) return { versao: memoriaDeTeste.versao, perfil: completar(memoriaDeTeste.perfil) }
   const { data, error } = await supabase
     .from('perfis_marca')
-    .select('versao, identidade, voz, padrao, dados')
+    .select('versao, identidade, voz, padrao, dados, profissional')
     .eq('negocio', negocioId)
     .order('versao', { ascending: false })
     .limit(1)

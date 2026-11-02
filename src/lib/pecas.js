@@ -28,7 +28,7 @@ export function acordarIA() {
   fetch(`${SUPABASE_URL}/functions/v1/gerar-peca`).catch(() => {})
 }
 
-export async function gerarPeca({ pedido, formato, video = false, fotos = [], refazer, ajuste, modelo, boas_vindas = false, rede }) {
+export async function gerarPeca({ pedido, formato, video = false, fotos = [], refazer, ajuste, modelo, boas_vindas = false, rede, como }) {
   if (modoDeTeste()) {
     await new Promise((ok) => setTimeout(ok, 6000))
     const antiga = refazer && pecasDeTeste.find((p) => p.id === refazer)
@@ -49,6 +49,8 @@ export async function gerarPeca({ pedido, formato, video = false, fotos = [], re
       // Pedido com "direita": simula alinhamento à direita em vermelho e verde claro, para ver o ajuste de contraste.
       ...(/direita/i.test(pedido || '') ? { roteiro: { ...ROTEIRO_DE_TESTE, titulo: 'Hora de vender muito', apoio: 'Prepare a loja para este fim de semana.', chamada: 'Chama no WhatsApp', arte: { alinhamento: 'direita', fundo: 'claro', tamanho_titulo: 'normal', destaque: '' }, cores: { titulo: '#E53935', texto: '#2ECC71' } } } : {}),
       ...(modelo === 'cenas' ? { roteiro: { ...ROTEIRO_DE_TESTE, modelo: 'cenas', titulo: 'Cardápio da semana', apoio: 'Feito na hora, do jeito que você gosta.', itens: [], pontos: ['Massa fininha feita aqui', 'Recheio que derrete', 'Sai quentinho do truck'], chamada: 'Vem pro Narua', ordem_fotos: [2, 1] } } : {}),
+      // LinkedIn: texto longo com gancho, até 3 hashtags e um resultado que a pessoa não informou.
+      ...(rede === 'linkedin' ? { roteiro: { ...ROTEIRO_DE_TESTE, modelo: 'manchete', titulo: 'Seis anos para a segunda loja', apoio: 'O que mudou entre a primeira fornada e a porta nova aberta.', itens: [], chamada: 'Conta nos comentários', legenda: `${como === 'pessoa' ? 'Levei 6 anos para ter coragem de abrir a segunda loja.' : 'A gente levou 6 anos para abrir a segunda loja.'}\n\n${como === 'pessoa' ? 'Comecei como chefe de produção, aprendendo a fazer pão de madrugada.' : 'Começamos com um balcão e uma fornada por dia.'} Hoje são [SEU RESULTADO] clientes por dia.\n\nO que aprendi no caminho: crescer devagar também é crescer. Cada contratação foi pensada, cada receita testada mais de uma vez.\n\nE você, qual foi o passo que mais demorou no seu negócio? Conta nos comentários.`, hashtags: ['#empreendedorismo', '#pequenosnegocios', '#gestao'], avisos: ['Falta o resultado: troque [SEU RESULTADO] antes de postar.'] } } : {}),
       ...(/sábado/i.test(pedido || '') ? { roteiro: { ...ROTEIRO_DE_TESTE, titulo: 'Agora também aos sábados', apoio: 'Atendimento no sábado: [HORÁRIO].', legenda: 'Agora a gente atende também aos sábados, [HORÁRIO]. Chama no WhatsApp.', avisos: ['Falta o horário: troque [HORÁRIO] antes de postar.'] } } : {}),
       imagem: null, refeitas: (antiga?.refeitas ?? -1) + 1, criado_em: new Date().toISOString(),
       versoes: antiga ? [...antiga.versoes, { pedido: antiga.pedido, roteiro: antiga.roteiro }] : [], escolhida: null,
@@ -56,7 +58,7 @@ export async function gerarPeca({ pedido, formato, video = false, fotos = [], re
     pecasDeTeste = [peca, ...pecasDeTeste.filter((p) => p.id !== peca.id)]
     return { peca, refeitasRestantes: 3 - peca.refeitas }
   }
-  const { data, error } = await supabase.functions.invoke('gerar-peca', { body: { pedido, formato, video, fotos, refazer, ajuste, modelo, boas_vindas, rede } })
+  const { data, error } = await supabase.functions.invoke('gerar-peca', { body: { pedido, formato, video, fotos, refazer, ajuste, modelo, boas_vindas, rede, como } })
   if (error) {
     let mensagem = 'Não deu para criar agora. Tente de novo.'
     try { mensagem = (await error.context.json()).erro || mensagem } catch { /* resposta sem corpo */ }

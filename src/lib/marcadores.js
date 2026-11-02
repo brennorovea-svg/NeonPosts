@@ -7,6 +7,7 @@ export const MARCADORES = {
   '[ENDEREÇO]': { nome: 'o endereço', pergunta: 'Qual o endereço?', exemplo: 'Ex.: Rua Augusta, 1200' },
   '[TELEFONE]': { nome: 'o telefone', pergunta: 'Qual o telefone?', exemplo: 'Ex.: (11) 99999-0000' },
   '[CUPOM]': { nome: 'o código do cupom', pergunta: 'Qual o código do cupom?', exemplo: 'Ex.: BEMVINDO10' },
+  '[SEU RESULTADO]': { nome: 'o resultado', pergunta: 'Qual o resultado, com o número?', exemplo: 'Ex.: 300 clientes por dia' },
 }
 
 // "o horário", "o horário e o preço", "a data, o horário e o preço".

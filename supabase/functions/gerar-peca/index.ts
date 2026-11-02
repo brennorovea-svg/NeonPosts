@@ -77,16 +77,18 @@ Deno.serve(async (req) => {
   const { data: negocio } = await banco.from('negocios').select('id, limite_pecas').eq('dono', conta.user.id).single()
   if (!negocio) return erro('Não achamos o seu negócio.', 404)
 
-  let corpo: { pedido?: string; formato?: string; video?: boolean; fotos?: string[]; refazer?: string; ajuste?: string; modelo?: string; calibrar?: boolean; regras?: string[]; carro_chefe?: string; boas_vindas?: boolean; rede?: string }
+  let corpo: { pedido?: string; formato?: string; video?: boolean; fotos?: string[]; refazer?: string; ajuste?: string; modelo?: string; calibrar?: boolean; regras?: string[]; carro_chefe?: string; boas_vindas?: boolean; rede?: string; como?: string }
   try { corpo = await req.json() } catch { return erro('Pedido inválido.', 400) }
   if (corpo.calibrar) return calibrar(banco, negocio.id, corpo)
 
   // Peça de boas-vindas: pedido fixo, uma por marca, não conta no limite (coluna cortesia).
   const boasVindas = corpo.boas_vindas === true && !corpo.refazer
   let pedido = boasVindas ? PEDIDO_DE_BOAS_VINDAS : String(corpo.pedido || '').trim()
-  let formato = corpo.formato === 'story' ? 'story' : 'post'
+  const rede = corpo.rede === 'tiktok' || corpo.rede === 'linkedin' ? corpo.rede : ''
+  // LinkedIn não tem story: é sempre post 4:5. "pessoa" escreve em nome do dono, com o perfil profissional.
+  let formato = corpo.formato === 'story' && rede !== 'linkedin' ? 'story' : 'post'
+  const como = rede === 'linkedin' && corpo.como === 'pessoa' ? 'pessoa' : rede === 'linkedin' ? 'empresa' : ''
   const video = corpo.video === true
-  const rede = corpo.rede === 'tiktok' ? 'tiktok' : ''
   let fotos = (corpo.fotos || []).filter((f) => typeof f === 'string' && f.startsWith(`${negocio.id}/`)).slice(0, 4)
   let refeita: { id: string; pedido: string; refeitas: number; roteiro: Record<string, unknown>; versoes: { roteiro: Record<string, unknown> }[]; escolhida: number | null } | null = null
   const ajuste = String(corpo.ajuste || '').trim().slice(0, 300)
@@ -95,7 +97,7 @@ Deno.serve(async (req) => {
 
   // Perfil e (peça antiga ou contagem do mês) saem do banco ao mesmo tempo.
   const [{ data: perfil }, anterior] = await Promise.all([
-    banco.from('perfis_marca').select('versao, identidade, voz, padrao, dados')
+    banco.from('perfis_marca').select('versao, identidade, voz, padrao, dados, profissional')
       .eq('negocio', negocio.id).order('versao', { ascending: false }).limit(1).maybeSingle(),
     corpo.refazer
       ? banco.from('pecas').select('id, pedido, formato, fotos, refeitas, roteiro, versoes, escolhida')
@@ -113,6 +115,7 @@ Deno.serve(async (req) => {
     refeita = data
     pedido = pedido || data.pedido
     formato = corpo.formato ? formato : data.formato
+    if (rede === 'linkedin') formato = 'post'
     fotos = data.fotos
   } else if (boasVindas) {
     if ((anterior.count ?? 0) > 0) return erro('O post de boas-vindas já foi criado. Escreva um pedido novo.', 409)
@@ -122,6 +125,9 @@ Deno.serve(async (req) => {
   if (pedido.length < 3 || pedido.length > 600) return erro('Escreva o pedido com 3 a 600 letras.', 400)
 
   if (!perfil) return erro('Conte a sua marca antes de criar um post.', 409)
+  // Em nome da pessoa, a IA precisa do perfil profissional: sem ele, inventaria cargo e carreira.
+  const profissional = como === 'pessoa' ? (perfil.profissional || {}) as Record<string, string> : null
+  if (profissional && !String(profissional.cargo || '').trim()) return erro('Preencha o seu perfil profissional para postar no LinkedIn em seu nome.', 409)
   if (layout === 'foto' && !fotos.length) layout = ''
   if (SO_NO_VIDEO.includes(layout) && !video) layout = ''
 
@@ -153,7 +159,7 @@ Deno.serve(async (req) => {
         role: 'user',
         content: [
           ...imagens.map((data) => ({ type: 'image' as const, source: { type: 'base64' as const, media_type: 'image/jpeg' as const, data } })),
-          { type: 'text' as const, text: montarMensagem(perfil, pedido, formato, refeita && (refeita.versoes?.[refeita.escolhida ?? -1]?.roteiro || refeita.roteiro), ajuste, fotos.length, layout, video, imagens.length, rede) },
+          { type: 'text' as const, text: montarMensagem(perfil, pedido, formato, refeita && (refeita.versoes?.[refeita.escolhida ?? -1]?.roteiro || refeita.roteiro), ajuste, fotos.length, layout, video, imagens.length, rede, profissional) },
         ],
       }],
     })
@@ -167,7 +173,7 @@ Deno.serve(async (req) => {
     return erro('A IA não respondeu agora. Tente de novo.', 502)
   }
 
-  const roteiro = conferir(bruto, perfil, pedido, layout, fotos.length, video)
+  const roteiro = conferir(bruto, perfil, pedido, layout, fotos.length, video, rede, profissional)
   // Ajuste que a IA não consegue fazer (trocar foto, layout, fonte) volta igual; avisa em vez de parecer que nada aconteceu.
   const base = refeita && (refeita.versoes?.[refeita.escolhida ?? -1]?.roteiro || refeita.roteiro) as Record<string, unknown> | null
   const igual = (k: string) => JSON.stringify(base?.[k] ?? null) === JSON.stringify((roteiro as Record<string, unknown>)[k] ?? null)

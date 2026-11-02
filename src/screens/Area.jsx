@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase.js'
-import { carregarPerfil, enderecoDaImagem, parteFeita, PERFIL_VAZIO } from '../lib/perfil.js'
+import { carregarPerfil, enderecoDaImagem, parteFeita, PERFIL_VAZIO, profissionalFeito } from '../lib/perfil.js'
 import { listarPecas, pecasDoMes } from '../lib/pecas.js'
 import { agendar, listarAgenda, mudarAgenda } from '../lib/agenda.js'
 import { avisosPermitidos, pedirAvisos, vigiarAgenda } from '../lib/avisos.js'
 import PerfilMarca, { PARTES } from './PerfilMarca.jsx'
+import PerfilProfissional from './PerfilProfissional.jsx'
 import Comecar from './Comecar.jsx'
 import Criar from './Criar.jsx'
 import Entrevista from './Entrevista.jsx'
@@ -43,6 +44,7 @@ export default function Area({ sessao, teste = false }) {
   const [perfil, setPerfil] = useState(null)
   const [versao, setVersao] = useState(0)
   const [editando, setEditando] = useState(null) // índice da parte aberta
+  const [profissional, setProfissional] = useState(false) // perfil profissional (LinkedIn) aberto
   const [entrevista, setEntrevista] = useState(null) // null, 'nova' ou 'revisar'
   const [dica, setDica] = useState(null) // dica que abriu a edição: o campo dela já vem em foco
   const [erro, setErro] = useState('')
@@ -196,6 +198,20 @@ export default function Area({ sessao, teste = false }) {
     )
   }
 
+  if (profissional && perfil) {
+    return (
+      <PerfilProfissional
+        negocioId={negocio.id}
+        perfilInicial={perfil}
+        onSair={(salvo) => {
+          if (salvo) { setPerfil(salvo); recarregar() }
+          setProfissional(false)
+          window.scrollTo({ top: 0 })
+        }}
+      />
+    )
+  }
+
   if (editando !== null && perfil) {
     return (
       <PerfilMarca
@@ -315,6 +331,16 @@ export default function Area({ sessao, teste = false }) {
         <button type="button" className="botao botao--destaque area__cta" onClick={() => setEditando(proxima)}>Continuar a marca: {PARTES[proxima].titulo}</button>
       )}
       {total === 4 && <DicasMarca dicas={dicas} forca={forca} onAbrir={(d) => { if (d.id === 'entrevista') return setEntrevista('nova'); setDica(d); setEditando(d.parte) }} />}
+      {podeCriar && (
+        <button type="button" className="area__passo area__profissional" onClick={() => setProfissional(true)}>
+          <span className="mono area__num">Extra</span>
+          <span className="area__passo-texto">
+            <strong>Perfil profissional</strong>
+            <span>Para postar no LinkedIn em seu nome, com a sua carreira e os seus resultados.</span>
+          </span>
+          <span className={`mono area__estado${profissionalFeito(perfil) ? ' area__estado--feito' : ''}`}>{profissionalFeito(perfil) ? 'Feito' : 'Opcional'}</span>
+        </button>
+      )}
       {total === 4 && <PainelMarca perfil={perfil} versao={versao} dicas={dicas} onEditar={setEditando} onGuia={() => setEntrevista(perfil.voz.guia?.regras?.length ? 'revisar' : 'nova')} />}
       <p className="area__email mono">
         {usuario.email}{versao > 0 && ` · marca na versão ${versao}`}
@@ -366,6 +392,7 @@ export default function Area({ sessao, teste = false }) {
               recarregarAgenda()
             }}
             onPerfil={(novo) => { setPerfil(novo); recarregar() }}
+            onPerfilProfissional={() => { setProfissional(true); window.scrollTo({ top: 0 }) }}
             onSair={(mudou) => {
               if (mudou) recarregarPecas()
               // Quem veio do planner volta para o mesmo dia.

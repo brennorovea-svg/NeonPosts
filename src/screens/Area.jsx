@@ -151,6 +151,15 @@ export default function Area({ sessao, teste = false }) {
     } catch { /* a peça existe; a pessoa marca no planner depois */ }
   }
 
+  // "Sim, postei" no Criar: a marcação da peça no planner vira postada; sem marcação, entra uma agora, já postada.
+  async function marcarPostada(peca, rede = 'instagram') {
+    const agora = new Date()
+    const marcada = agendaAtual.current.find((i) => i.peca === peca.id && !i.postado_em)
+    if (marcada) await mudarAgenda(marcada.id, { postado_em: agora.toISOString() })
+    else await agendar(negocio.id, { titulo: peca.roteiro?.titulo || peca.pedido, rede, formato: peca.formato === 'story' ? 'story' : 'post', quando: agora, peca: peca.id, postado_em: agora.toISOString() })
+    recarregarAgenda()
+  }
+
   // LGPD: antes de qualquer coisa, a pessoa aceita os Termos e a Privacidade (de novo quando a versão muda).
   if (!teste && negocio && !aceitouTermos(negocio)) {
     return (
@@ -387,6 +396,7 @@ export default function Area({ sessao, teste = false }) {
             onCompletar={() => { setCriando(null); setVideoInicial(false); setEditando(proxima); window.scrollTo({ top: 0 }) }}
             onCriou={ligarAoPlanner}
             noPlanner={Boolean(criarCom)}
+            onPostou={marcarPostada}
             onAgendar={async (peca, quando, rede = 'instagram') => {
               await agendar(negocio.id, { titulo: peca.roteiro?.titulo || peca.pedido, rede, formato: peca.formato === 'story' ? 'story' : 'post', quando, peca: peca.id })
               recarregarAgenda()

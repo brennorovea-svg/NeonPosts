@@ -210,6 +210,18 @@
 .criar__gravando { height: 4px; border-radius: 2px; background: var(--borda); overflow: hidden; margin-top: -4px; }
 .criar__gravando span { display: block; height: 100%; background: var(--violeta); transform-origin: left; }
 .criar__nota--aviso { color: #FFE69A; }
+.criar__nota--ok { color: #8DE8B0; }
+/* Depois de Postar: a legenda está copiada, o que fazer na rede, e "Postou?". */
+.criar__postou {
+  display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; border-radius: var(--raio-cartao);
+  background: rgba(123, 92, 255, .1); border: 1px solid rgba(123, 92, 255, .45);
+  font-size: 14px; color: var(--texto-2); line-height: 1.5;
+  animation: aparecer 400ms var(--ease) both;
+}
+.criar__postou strong { color: var(--neve); font-size: 15px; }
+.criar__postou-acoes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.criar__postou-acoes .botao { width: auto; min-height: 40px; padding: 8px 14px; font-size: 14px; }
+@media (prefers-reduced-motion: reduce) { .criar__postou { animation: none; } }
 
 /* Dados que faltam: o dono preenche aqui antes de baixar. */
 .criar__faltando {

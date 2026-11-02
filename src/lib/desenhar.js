@@ -2569,7 +2569,8 @@ function marcaDagua(ctx, L, A) {
   ctx.restore()
 }
 
-// No story, a chamada para o WhatsApp não é desenhada: o espaço do botão fica vazio para o adesivo de link do Instagram.
+// A chamada para o WhatsApp não é desenhada em nenhum formato (Brenno, 02/11): o contato vai só na legenda.
+// No story o espaço fica livre para o adesivo de link do Instagram.
 let chamadaOculta = null
 const oculta = (texto) => Boolean(chamadaOculta) && String(texto).replace('\n', ': ') === chamadaOculta
 
@@ -2583,10 +2584,12 @@ export function desenhar(canvas, { formato, modelo, roteiro, cores, logo, foto, 
   ctx.clearRect(0, 0, L, A)
   relogio = tempo === null ? null : { t: tempo, total, ordem: 0 }
   fonteTitulo = fonteDa(fonte)
-  chamadaOculta = formato === 'story' && /whats/i.test(roteiro?.chamada || '') ? roteiro.chamada : null
+  chamadaOculta = /whats/i.test(roteiro?.chamada || '') ? roteiro.chamada : null
   const todas = fotos?.length ? fotos : foto ? [foto] : []
   try {
-    const args = { L, A, story: formato === 'story', c, r: roteiro, logo, foto: todas[0] || null, fotos: todas, nome }
+    // Sem a chamada no roteiro, nenhum modelo desenha a cápsula nem reserva o espaço dela.
+    const r = chamadaOculta ? { ...roteiro, chamada: '' } : roteiro
+    const args = { L, A, story: formato === 'story', c, r, logo, foto: todas[0] || null, fotos: todas, nome }
     const comFoto = args.foto && VERSAO_COM_FOTO[modelo]?.(args)
     ;(comFoto || MODELOS[modelo] || aviso)(ctx, args)
     marcaDagua(ctx, L, A)

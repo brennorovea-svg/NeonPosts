@@ -185,7 +185,7 @@ O visual das peças que o cliente baixa vem do **perfil da marca do cliente** (c
 - Pílula de preço violeta, raio 999.
 - Logo do cliente no canto inferior direito.
 - **A IA nunca inventa preço, endereço, data ou horário.** Esses vêm dos dados fixos do cliente; sem o dado, aparece um marcador como `[SEU PREÇO]`.
-- Nas peças do cliente não aparece marca do Neonposts (no máximo, opcional, "feito com Neonposts" bem pequeno no plano gratuito, se existir).
+- Nas peças do cliente não aparece marca do Neonposts, com uma exceção: no plano Grátis toda peça leva a marca d'água "neonposts.com.br" na diagonal, bem fraca. Nos planos pagos (Essencial e Pro) a peça sai limpa.
 
 ## 10. Tom de voz do produto
 
@@ -251,5 +251,6 @@ O visual das peças que o cliente baixa vem do **perfil da marca do cliente** (c
 | 21:55 | Nome novo: **Neonposts**. Identidade visual mantida, só o nome muda |
 | 21:58 | Logo com **N maiúsculo**: Neonposts |
 | 28/10 01:48 | Nome oficial Neonposts; "Posts" só como apelido dentro do app; família Neon + palavra |
+| 02/11 | Marca d'água "neonposts.com.br" só no plano Grátis; Essencial e Pro saem sem (pedido do Brenno) |
 
 Pendente: domínio (qual extensão), INPI depois do MVP.

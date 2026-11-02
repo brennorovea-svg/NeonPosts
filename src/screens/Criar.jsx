@@ -91,7 +91,7 @@ const AJUSTES = ['Mais curto', 'Mais divertido', 'Outro título', 'Outro layout'
 
 const FORMATOS = [['post', 'Post', '4:5'], ['story', 'Story', '9:16']]
 // Parado ou animado vale para post e story (Brenno, 30/10). O animado a IA escreve igual, e o app anima e grava no aparelho.
-const TONS = [['normal', 'Normal'], ['profissional', 'Profissional']]
+const TONS = [['normal', 'Insta / TikTok'], ['profissional', 'LinkedIn']]
 const MOVIMENTOS = [[false, 'Parado', 'imagem'], [true, 'Animado', `vídeo ${DURACAO}-17s`]]
 
 // Para cada tipo que a marca posta: como o pedido começa, o que ele precisa dizer e exemplos.
@@ -551,7 +551,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
   const guia = (tipo && (linkedin ? TIPOS_LINKEDIN : TIPOS)[tipo]) || (linkedin ? GERAL_LINKEDIN : GERAL)
   const exemplos = sortear(guia.exemplos, rodada).slice(0, 3)
   const antes = estado === 'pedido' ? perguntasAntes(pedido, perfil.dados) : []
-  const resumoDasOpcoes = `${linkedin ? 'Tom profissional · ' : ''}${formato === 'story' ? 'Story 9:16' : 'Post 4:5'} · ${video ? 'animado' : 'parado'} · ${layout === 'ia' ? 'a IA escolhe o layout' : (NOMES_DOS_MODELOS[layout] || layout)}`
+  const resumoDasOpcoes = `${linkedin ? 'Tom corporativo · ' : ''}${formato === 'story' ? 'Story 9:16' : 'Post 4:5'} · ${video ? 'animado' : 'parado'} · ${layout === 'ia' ? 'a IA escolhe o layout' : (NOMES_DOS_MODELOS[layout] || layout)}`
   const semTexto = pedido.trim().length < 3 || (tipo && pedido.trim() === ((linkedin ? TIPOS_LINKEDIN : TIPOS)[tipo]?.comeco || '').trim())
   const nomePessoa = perfil.profissional?.nome?.trim() || 'Você'
   // Trocar o tom muda os tipos: a ficha marcada do outro tom sai.
@@ -648,7 +648,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
                       <button key={valor} type="button" className="ficha" aria-pressed={tom === valor} onClick={() => setTom(valor)}>{rotulo}</button>
                     ))}
                   </div>
-                  <p className="campo__ajuda">{linkedin ? 'Texto mais longo e sério, com no máximo 3 hashtags. Bom para o LinkedIn. Sai em post 4:5.' : 'Na voz da sua marca, com legenda curta. Serve para qualquer rede.'}</p>
+                  <p className="campo__ajuda">{linkedin ? 'Tom corporativo' : 'Tom despojado'}</p>
                 </div>
                 <div className="campo">
                   <span className="campo__rotulo">Formato</span>
@@ -685,7 +685,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
 
           {erro && <p className="campo__erro" role="alert">{erro}</p>}
           <button type="button" className="botao botao--primario" disabled={pedido.trim().length < 3 || faltaProfissional} onClick={() => criar(false)}>
-            {linkedin ? `Criar post${video ? ' animado' : ''} profissional` : <>Criar {formato === 'story' ? 'story' : 'post'}{video ? ' animado' : ''}</>}
+            {linkedin ? `Criar post${video ? ' animado' : ''} corporativo` : <>Criar {formato === 'story' ? 'story' : 'post'}{video ? ' animado' : ''}</>}
           </button>
           <p className="criar__nota">Preço, endereço e horário saem só dos seus dados fixos. Nada inventado.</p>
           {erro && <DeuProblema contexto={{ Negócio: nome, Pedido: pedido.trim(), Formato: video ? 'vídeo' : formato, Erro: erro }} />}

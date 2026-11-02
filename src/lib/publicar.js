@@ -18,7 +18,12 @@ export function roteiroDaPeca(peca) {
 export const textoDaLegenda = (r) => (r ? `${r.legenda || ''}\n\n${(r.hashtags || []).join(' ')}`.trim() : '')
 export const legendaDe = (peca) => textoDaLegenda(roteiroDaPeca(peca))
 
-export const nomeDoArquivo = (nome, peca, video) => `${nome || 'post'}-${video ? 'video' : peca.formato}`.replace(/\s+/g, '-').toLowerCase()
+// Nome do arquivo só com letras sem acento, números e hífen. O Chrome do Android recusa o
+// compartilhar (NotAllowedError) quando o nome traz vírgula, reticências ou acento, como nos
+// títulos do planner ("Necessário, mas super chato...").
+const limparNome = (texto) => (texto || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+  .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40).replace(/-+$/, '')
+export const nomeDoArquivo = (nome, peca, video) => `${limparNome(nome) || 'post'}-${video ? 'video' : peca.formato}`
 
 // Logo e fotos ficam guardadas por caminho: carregam uma vez e servem a todas as telas.
 const imagensGuardadas = new Map()

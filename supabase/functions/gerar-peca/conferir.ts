@@ -444,11 +444,6 @@ export function conferir(bruto: Record<string, unknown>, perfil: Perfil, pedido:
 
   const naoDeu = ((bruto.nao_deu as string[] | undefined) || []).map((t) => String(t).trim().replace(/\.$/, '')).filter(Boolean).slice(0, 3)
   if (naoDeu.length) avisos.push(`Por aqui ainda não dá para ${naoDeu.join(', ')}. O resto do pedido foi atendido.${naoDeu.some((t) => /fonte|letra/i.test(t)) ? ' A fonte dos títulos você troca no perfil da marca.' : ''}`)
-  // Chamada para o WhatsApp leva o número na arte: no story não tem link, e quem vê precisa saber para onde mandar.
-  const zap = String(perfil.dados.whatsapp || '').replace(/\D/g, '').replace(/^55(?=\d{10,11}$)/, '')
-  if (/whats/i.test(roteiro.chamada) && !/\d{4}/.test(roteiro.chamada) && /^\d{10,11}$/.test(zap)) {
-    roteiro.chamada = `${roteiro.chamada}: (${zap.slice(0, 2)}) ${zap.slice(2, -4)}-${zap.slice(-4)}`
-  }
   if (['comparar', 'deslize'].includes(roteiro.modelo) && fotos < 2) avisos.push('Envie a foto do antes e a do depois para o post mostrar a comparação.')
   if (trocados.size) avisos.push('A IA tentou escrever um dado que não está na sua marca. Trocamos por um marcador.')
   const tudo = [roteiro.titulo, roteiro.apoio, roteiro.chamada, roteiro.legenda, roteiro.numero, roteiro.cupom, roteiro.data, roteiro.horario, ...roteiro.pontos, ...roteiro.itens.map((i) => i.preco)].join(' ')

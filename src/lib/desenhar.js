@@ -345,6 +345,7 @@ function selo(ctx, { logo, nome, x, y, altura = 96, alinhar = 'left', claro = tr
 }
 
 function pilula(ctx, texto, { x, y, largura, altura = 112, fundo, cor, tamanho = 42, festa = null }) {
+  if (oculta(texto)) return
   ctx.save()
   if (relogio) {
     const ini = proximaEntrada() + 0.2
@@ -855,7 +856,7 @@ function rotulo(ctx, texto, { x, y, tamanho = 30, cor, alinhar = 'left', espaco 
 
 // Chamada em texto com seta, como no manchete.
 function chamadaEmTexto(ctx, r, { x, y, largura, alinhar, cor, tamanho = 40 }) {
-  if (!r.chamada) return
+  if (!r.chamada || oculta(r.chamada)) return
   animado(ctx, () => {
     ctx.font = `700 ${tamanho}px ${FONTE}`
     ctx.fillStyle = cor
@@ -1038,7 +1039,7 @@ function cupom(ctx, { L, A, story, c, r, logo, foto, nome }) {
     }
   }, { desloca: 20 })
   sobre(c[0])
-  if (r.chamada) {
+  if (r.chamada && !oculta(r.chamada)) {
     animado(ctx, () => {
       ctx.font = `700 42px ${FONTE}`
       ctx.fillStyle = tinta
@@ -1322,7 +1323,7 @@ function capa(ctx, { L, A, story, c, r, logo, foto, nome }) {
   const tOp = { x: m, largura: L - m * 2 - (r.chamada ? 120 : 0), tamanho: Math.round(116 * escala(r)), maxLinhas: 3, entre: 0.98, baseEmBaixo: true }
   bloco(ctx, r.titulo, { ...tOp, y: A - base, cor: corPedida(r, 'titulo', '#FFFFFF'), ...marca(r, legivel(c[0], '#FFFFFF')) })
   // Selo redondo com a chamada.
-  if (r.chamada) {
+  if (r.chamada && !oculta(r.chamada)) {
     const raio = 110, cx = L - m - raio + 20, cy = A - base - raio - 10
     animado(ctx, () => {
       ctx.beginPath()
@@ -2564,6 +2565,10 @@ function marcaDagua(ctx, L, A) {
   ctx.restore()
 }
 
+// No story, a chamada para o WhatsApp não é desenhada: o espaço do botão fica vazio para o adesivo de link do Instagram.
+let chamadaOculta = null
+const oculta = (texto) => Boolean(chamadaOculta) && String(texto).replace('\n', ': ') === chamadaOculta
+
 export function desenhar(canvas, { formato, modelo, roteiro, cores, logo, foto, fotos, nome, fonte, tempo = null, total = 8 }) {
   const [L, A] = TAMANHOS[formato] || TAMANHOS.post
   canvas.width = L
@@ -2574,6 +2579,7 @@ export function desenhar(canvas, { formato, modelo, roteiro, cores, logo, foto, 
   ctx.clearRect(0, 0, L, A)
   relogio = tempo === null ? null : { t: tempo, total, ordem: 0 }
   fonteTitulo = fonteDa(fonte)
+  chamadaOculta = formato === 'story' && /whats/i.test(roteiro?.chamada || '') ? roteiro.chamada : null
   const todas = fotos?.length ? fotos : foto ? [foto] : []
   try {
     const args = { L, A, story: formato === 'story', c, r: roteiro, logo, foto: todas[0] || null, fotos: todas, nome }
@@ -2583,6 +2589,7 @@ export function desenhar(canvas, { formato, modelo, roteiro, cores, logo, foto, 
   } finally {
     relogio = null
     fonteTitulo = fonteDa()
+    chamadaOculta = null
   }
 }
 

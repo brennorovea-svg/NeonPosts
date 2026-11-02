@@ -5,12 +5,13 @@ import Layouts from '../components/Layouts.jsx'
 import DeuProblema from '../components/DeuProblema.jsx'
 import NaoEMinhaMarca from '../components/NaoEMinhaMarca.jsx'
 import { sugerirLayouts, tipoDoPedido } from '../lib/sugerir.js'
-import { DURACAO, duracaoDe, gravar, tocar } from '../lib/video.js'
+import { DURACAO, duracaoDe, tocar } from '../lib/video.js'
 import { dadosEmTexto, listaDeNomes, MARCADORES, marcadoresDe, perguntasAntes, preencher } from '../lib/marcadores.js'
-import { enderecoDaImagem, profissionalFeito, salvarPerfil } from '../lib/perfil.js'
+import { profissionalFeito, salvarPerfil } from '../lib/perfil.js'
 import { acordarIA, escolherVersao, gerarPeca, guardarImagem, salvarTexto } from '../lib/pecas.js'
 import { REDES } from '../lib/agenda.js'
-import { carregarImagem, desenhar, layoutsDoGrupo, NOMES_DOS_MODELOS, paraArquivo, prepararFontes } from '../lib/desenhar.js'
+import { desenhar, layoutsDoGrupo, NOMES_DOS_MODELOS, paraArquivo, prepararFontes } from '../lib/desenhar.js'
+import { baixarLegenda, entregar, imagemDe, nomeDoArquivo, passoNaRede, podeCompartilhar, prepararArquivo, textoDaLegenda } from '../lib/publicar.js'
 import './Criar.css'
 
 const suave = (t) => 1 - Math.pow(1 - Math.min(1, Math.max(0, t)), 4)
@@ -19,14 +20,8 @@ const suave = (t) => 1 - Math.pow(1 - Math.min(1, Math.max(0, t)), 4)
 // a íris abre, dispara o flash e a faísca, e só então a peça aparece.
 // Enquanto a IA escreve, as fatias da lente acendem uma a uma (a última espera a peça).
 // Quando a peça chega, a última acende, a lente abre e vem o flash.
-// Logo e foto ficam guardadas por caminho: carregam enquanto a pessoa escreve,
-// e a peça já desenha na hora em que chega.
-const imagensGuardadas = new Map()
-function imagemDe(caminho) {
-  if (!caminho) return Promise.resolve(null)
-  if (!imagensGuardadas.has(caminho)) imagensGuardadas.set(caminho, enderecoDaImagem(caminho).then(carregarImagem))
-  return imagensGuardadas.get(caminho)
-}
+// Logo e foto ficam guardadas por caminho (publicar.js): carregam enquanto a pessoa
+// escreve, e a peça já desenha na hora em que chega.
 
 // Roteiro da versão escolhida (ou da mais nova) e as fotos na ordem que a IA devolveu (1, 2, 3...).
 function roteiroDaVersao(peca) {
@@ -37,6 +32,8 @@ function emOrdem(lista, ordem) {
   const escolhidas = [...new Set((ordem || []).map((n) => lista[n - 1]).filter(Boolean))]
   return [...escolhidas, ...lista.filter((c) => !escolhidas.includes(c))]
 }
+// O vídeo começa a gravar sozinho um pouco depois da última mudança na peça.
+const ESPERA_PARA_GRAVAR = 1200
 
 const PASSO_FATIA = 1.5
 function Lente({ pronta, onFim }) {
@@ -286,7 +283,7 @@ const semDadosDoPedido = (t) => String(t || '').split('\n\nUse estes dados:')[0]
 const paraInput = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 const quandoPorExtenso = (d) => d.toLocaleString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
 
-export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, pedidoInicial = '', redeInicial = null, videoInicial = false, marca = null, onCompletar, onSair, onPerfil, onPerfilProfissional, onCriou, onAgendar, noPlanner = false }) {
+export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, pedidoInicial = '', redeInicial = null, videoInicial = false, marca = null, onCompletar, onSair, onPerfil, onPerfilProfissional, onCriou, onAgendar, onPostou, noPlanner = false }) {
   // Veio do planner: o tema marcado já abre escrito, para a pessoa completar.
   const [pedido, setPedido] = useState(() => (pedidoInicial ? `${pedidoInicial.trim()}. ` : ''))
   const [tipo, setTipo] = useState(null)
@@ -301,6 +298,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
   const soPost = Boolean(REDES[rede]?.soPost)
   useEffect(() => { if (soPost) setFormato('post') }, [soPost])
   const linkedin = rede === 'linkedin'
+  const nomeDaRede = REDES[rede]?.nome || 'rede'
   const [como, setComo] = useState(() => ultimaEscolha().como)
   const comoPessoa = linkedin && como === 'pessoa'
   const faltaProfissional = comoPessoa && !profissionalFeito(perfil)
@@ -312,8 +310,10 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
   const [agendado, setAgendado] = useState(null) // Date quando a peça já entrou no planner, 'depois' se dispensou
   const [escolhendoQuando, setEscolhendoQuando] = useState(false)
   const [quandoEscolhido, setQuandoEscolhido] = useState(() => paraInput(sugestoesDeQuando().at(-1)[1]))
-  // Vídeo gravado esperando o segundo toque: o celular só abre o compartilhar logo depois de um toque.
-  const [videoPronto, setVideoPronto] = useState(null)
+  // Arquivo do post pronto antes do toque (PNG ou vídeo): o toque em Postar só copia e abre o compartilhar.
+  const [arquivo, setArquivo] = useState(null) // { arquivo: File, extensao }
+  const [resultado, setResultado] = useState(null) // depois de Postar: 'compartilhou' | 'baixou' | '...-sem-copiar'
+  const [postou, setPostou] = useState(false)
   const [dadosFaltando, setDadosFaltando] = useState({}) // { '[HORÁRIO]': 'sábado, 9h às 13h' }
   const [respondidos, setRespondidos] = useState([]) // marcadores que a pessoa já respondeu antes de gerar: não pergunta de novo
   const [fotos, setFotos] = useState([])
@@ -385,8 +385,33 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
     const t = setTimeout(async () => {
       try { await guardarImagem(peca, negocioId, await paraArquivo(quadro, 'peca.png')) } catch { /* o histórico fica sem miniatura */ }
     }, 600)
-    setVideoPronto(null)
-    return () => { clearTimeout(t); parar?.() }
+    // O arquivo do post fica pronto antes do toque. Parado: o PNG sai na hora.
+    // Animado: a gravação começa sozinha um pouco depois da última mudança, e a barra mostra o andamento.
+    let vivo = true
+    setArquivo(null)
+    setResultado(null)
+    const base = nomeDoArquivo(nome, peca, comVideo)
+    const controle = new AbortController()
+    let tGravar = null
+    if (!comVideo) {
+      paraArquivo(quadro, `${base}.png`).then((a) => vivo && setArquivo({ arquivo: a, extensao: 'png' }))
+    } else {
+      tGravar = setTimeout(async () => {
+        setGravando(0)
+        setAvisoVideo('')
+        try {
+          const r = await prepararArquivo(opcoes, { video: true, nome: base, aoAvancar: (p) => vivo && setGravando(p), sinal: controle.signal })
+          if (!vivo) return
+          setArquivo(r)
+          setAvisoVideo(r.extensao === 'webm' ? 'Este aparelho gravou em WebM. Se o Instagram não aceitar, poste pelo celular com Chrome ou Safari atualizado.' : '')
+        } catch (falha) {
+          if (vivo && falha.name !== 'AbortError') setErro(falha.message)
+        } finally {
+          if (vivo) setGravando(null)
+        }
+      }, ESPERA_PARA_GRAVAR)
+    }
+    return () => { vivo = false; clearTimeout(t); clearTimeout(tGravar); controle.abort(); parar?.() }
   }, [peca, imagens, estado, video, dadosFaltando])
 
   function opcoesDoDesenho() {
@@ -440,39 +465,26 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
     }
   }
 
-  async function baixar() {
-    const base = `${nome || 'post'}-${video ? 'video' : peca.formato}`.replace(/\s+/g, '-').toLowerCase()
-    let arquivo
-    if (video) {
-      if (!videoPronto) {
-        setErro('')
-        setGravando(0)
-        try {
-          const r = await gravar(opcoesDoDesenho(), base, setGravando)
-          setVideoPronto(r.arquivo)
-          setAvisoVideo(r.extensao === 'webm' ? 'Este aparelho gravou em WebM. Se o Instagram não aceitar, baixe pelo celular com Chrome ou Safari atualizado.' : '')
-        } catch (falha) {
-          setErro(falha.message)
-        } finally {
-          setGravando(null)
-        }
-        return
-      }
-      arquivo = videoPronto
-    } else arquivo = await paraArquivo(canvas.current, `${base}.png`)
-    // Um toque: a legenda vai junto no compartilhar e fica copiada; sem compartilhar, baixa a arte.
-    const legenda = `${roteiro.legenda}\n\n${roteiro.hashtags.join(' ')}`
-    try { await navigator.clipboard.writeText(legenda) } catch { /* sem a área de transferência, a legenda fica na tela */ }
+  // Um toque: a legenda fica copiada e o compartilhar do aparelho abre com o arquivo já pronto.
+  // Sem compartilhar (computador), baixa o arquivo. Depois, pergunta se postou.
+  async function postar() {
+    if (!arquivo) return
+    setErro('')
     setAvisoPost('')
-    if (navigator.canShare?.({ files: [arquivo] })) {
-      try { await navigator.share({ files: [arquivo], text: legenda }); setAvisoPost('Legenda copiada. Se o app não colar sozinho, é só colar.'); return } catch (e) { if (e.name === 'AbortError') return }
+    const r = await entregar(arquivo.arquivo, textoDaLegenda(roteiro))
+    if (r === 'cancelou') return
+    setResultado(r)
+  }
+
+  // "Sim, postei": o post entra no planner como postado (ou a marcação que já existia vira postada).
+  async function confirmarPostou() {
+    try {
+      await onPostou?.(peca, rede, agendado instanceof Date ? agendado : null)
+      setPostou(true)
+      setResultado(null)
+    } catch {
+      setErro('Não deu para marcar como postado agora. Tente de novo.')
     }
-    const link = document.createElement('a')
-    link.href = URL.createObjectURL(arquivo)
-    link.download = arquivo.name
-    link.click()
-    setTimeout(() => URL.revokeObjectURL(link.href), 4000)
-    setAvisoPost('Arte baixada e legenda copiada. Agora é só postar na rede.')
   }
 
   // "Isso não é a minha marca": a regra entra no guia como versão nova do perfil, e a próxima peça já segue.
@@ -883,22 +895,44 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
               {semDados.length > 0 && gravando === null && (
                 <p className="criar__nota criar__nota--aviso">Sem {listaDeNomes(semDados)}, o post sai com {semDados.join(' e ')} escrito no lugar.</p>
               )}
-              <button type="button" className="botao botao--primario" onClick={baixar} disabled={gravando !== null}>
-                {gravando !== null ? `Gravando o vídeo... ${Math.ceil(duracaoDe(opcoesDoDesenho()) * (1 - gravando))} s` : video ? (videoPronto ? 'Postar vídeo' : 'Gravar vídeo') : 'Postar'}
+              <button type="button" className="botao botao--primario" onClick={postar} disabled={!arquivo}>
+                {gravando !== null
+                  ? `Preparando o vídeo... ${Math.ceil(duracaoDe(opcoesDoDesenho()) * (1 - gravando))} s`
+                  : !arquivo ? 'Preparando...' : podeCompartilhar() ? `Postar no ${nomeDaRede}` : `Baixar para postar no ${nomeDaRede}`}
               </button>
               {gravando !== null && (
                 <div className="criar__gravando" aria-hidden="true"><span style={{ transform: `scaleX(${gravando})` }} /></div>
               )}
               {gravando !== null && <p className="criar__nota">Deixe esta tela aberta até terminar.</p>}
-              {videoPronto && !avisoVideo && <p className="criar__nota">Vídeo pronto. Toque de novo para salvar.</p>}
               {avisoVideo && <p className="criar__nota criar__nota--aviso">{avisoVideo}</p>}
               {avisoPost && <p className="criar__nota" role="status">{avisoPost}</p>}
+              {resultado && !postou && (
+                <div className="criar__postou" role="group" aria-label="Postou?">
+                  <strong>
+                    {resultado === 'compartilhou' ? 'Legenda copiada.'
+                      : resultado === 'baixou' ? 'Arquivo baixado e legenda copiada.'
+                      : resultado === 'baixou-sem-copiar' ? 'Arquivo baixado.' : 'Arquivo enviado.'}
+                  </strong>
+                  <span>
+                    {resultado.startsWith('baixou')
+                      ? `Mande o arquivo para o celular e poste de lá. ${passoNaRede(rede)}`
+                      : passoNaRede(rede)}
+                    {resultado.endsWith('sem-copiar') && ' A legenda não copiou sozinha: use o botão Copiar legenda.'}
+                  </span>
+                  <div className="criar__postou-acoes">
+                    <button type="button" className="botao botao--primario" onClick={confirmarPostou}>Sim, postei</button>
+                    <button type="button" className="botao botao--fantasma" onClick={() => setResultado(null)}>Ainda não</button>
+                    {resultado.startsWith('baixou') && <button type="button" className="botao botao--fantasma" onClick={() => baixarLegenda(textoDaLegenda(roteiro), nomeDoArquivo(nome, peca, video))}>Baixar legenda</button>}
+                  </div>
+                </div>
+              )}
+              {postou && <p className="criar__nota criar__nota--ok" role="status">Postado. Já está no planner como postado.</p>}
               <button type="button" className="botao botao--destaque" onClick={copiar}>{copiou ? 'Legenda copiada' : 'Copiar legenda'}</button>
               <div className="criar__acoes-linha">
                 <button type="button" className="botao botao--fantasma" disabled={restantes <= 0 || ajustando} onClick={() => { setPedidoNovo(peca.pedido); setAjustando(true) }}>
                   Gerar de novo{restantes > 0 ? ` (${restantes})` : ''}
                 </button>
-                <button type="button" className="botao botao--fantasma" onClick={() => { setPeca(null); setPedido(''); setTipo(null); setFotos([]); setLayout('ia'); setAvisoVideo(''); setAvisoPost(''); setDadosFaltando({}); setRespondidos([]); setEstado('pedido') }}>Criar outro</button>
+                <button type="button" className="botao botao--fantasma" onClick={() => { setPeca(null); setPedido(''); setTipo(null); setFotos([]); setLayout('ia'); setAvisoVideo(''); setAvisoPost(''); setResultado(null); setPostou(false); setDadosFaltando({}); setRespondidos([]); setEstado('pedido') }}>Criar outro</button>
               </div>
               <p className="criar__nota">Gerar de novo não conta como post novo.</p>
               <NaoEMinhaMarca

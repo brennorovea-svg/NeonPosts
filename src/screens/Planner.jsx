@@ -3,6 +3,7 @@ import { agendar, chaveDoDia, formatosDaRede, horaDe, juntarDiaEHora, LEMBRETES,
 import { avisosDisponiveis, avisosNegados } from '../lib/avisos.js'
 import { enderecoDaImagem } from '../lib/perfil.js'
 import { gerarGrade } from '../lib/preencher.js'
+import { ehAnimado, entregar, legendaDe, nomeDoArquivo, opcoesDaPeca, passoNaRede, podeCompartilhar, prepararArquivo } from '../lib/publicar.js'
 import './Planner.css'
 
 // Planner: calendário do mês no computador, lista da semana no celular.
@@ -21,14 +22,6 @@ const Forma = ({ formato }) => (
   </svg>
 )
 const Ponto = ({ rede }) => <span className="planner__ponto" style={{ background: REDES[rede]?.cor }} aria-hidden="true" />
-
-// Legenda da versão escolhida da peça (a mesma regra da tela Criar).
-function legendaDe(peca) {
-  if (!peca) return ''
-  const versoes = [...(peca.versoes || []), { roteiro: peca.roteiro }]
-  const r = versoes[Math.min(peca.escolhida ?? versoes.length - 1, versoes.length - 1)]?.roteiro
-  return r ? `${r.legenda || ''}\n\n${(r.hashtags || []).join(' ')}`.trim() : ''
-}
 
 function Miniatura({ peca, formato }) {
   const [src, setSrc] = useState(null)
@@ -53,10 +46,9 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, onAti
   const [editando, setEditando] = useState(null) // { id, titulo, rede, formato, dia, hora } do item em edição
   const [erro, setErro] = useState('')
   const [arrastando, setArrastando] = useState(null)
-  const [ocupado, setOcupado] = useState(null) // id do item sendo compartilhado
-  const [avisoPost, setAvisoPost] = useState('')
   const [excluindo, setExcluindo] = useState(null) // id do item esperando o segundo toque em Excluir
-  const [confirmando, setConfirmando] = useState(null) // id do item esperando "postou?" depois do compartilhar
+  const [confirmando, setConfirmando] = useState(null) // { id, resultado } do item esperando "postou?" depois do compartilhar
+  const [prontos, setProntos] = useState({}) // id da marcação -> { arquivo, progresso, erro }: o arquivo pronto antes do toque
   const [sugestao, setSugestao] = useState(null) // Preencher o mês: a grade sugerida, esperando a pessoa aprovar
   const [fora, setFora] = useState([]) // ids que a pessoa tirou da grade
   const [marcando, setMarcando] = useState(false)
@@ -175,36 +167,15 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, onAti
     if (mudou) setDia(chaveDoDia(quando))
   }
 
-  // Postar agora: baixa a arte, copia a legenda e abre o compartilhar do aparelho.
+  // Postar agora: com o arquivo já pronto, copia a legenda e abre o compartilhar do aparelho no mesmo toque.
   async function postar(item) {
-    const peca = pecaPorId[item.peca]
-    if (!peca?.imagem) { onAbrirPeca(peca, new Date(item.quando)); return }
-    setOcupado(item.id)
-    setAvisoPost('')
-    try {
-      const legenda = legendaDe(peca)
-      const resposta = await fetch(await enderecoDaImagem(peca.imagem))
-      const arquivo = new File([await resposta.blob()], `${item.titulo.replace(/\s+/g, '-').toLowerCase()}.png`, { type: 'image/png' })
-      try { await navigator.clipboard.writeText(legenda) } catch { /* sem a área de transferência, a legenda fica na tela */ }
-      let feito = false
-      if (navigator.canShare?.({ files: [arquivo] })) {
-        try { await navigator.share({ files: [arquivo], text: legenda }); feito = true } catch (e) { if (e.name === 'AbortError') return }
-      }
-      if (!feito) {
-        const link = document.createElement('a')
-        link.href = URL.createObjectURL(arquivo)
-        link.download = arquivo.name
-        link.click()
-        setTimeout(() => URL.revokeObjectURL(link.href), 4000)
-        setAvisoPost('Arte baixada e legenda copiada. Agora é só postar na rede.')
-      }
-      // Só vira "Postada" quando a pessoa confirma: o compartilhar abrir não quer dizer que postou (Brenno, 30/10).
-      setConfirmando(item.id)
-    } catch {
-      setErro('Não deu para abrir o post agora. Tente de novo.')
-    } finally {
-      setOcupado(null)
-    }
+    const pronto = prontos[item.id]
+    if (!pronto?.arquivo) return
+    setErro('')
+    const r = await entregar(pronto.arquivo, legendaDe(pecaPorId[item.peca]))
+    if (r === 'cancelou') return
+    // Só vira "Postada" quando a pessoa confirma: o compartilhar abrir não quer dizer que postou (Brenno, 30/10).
+    setConfirmando({ id: item.id, resultado: r })
   }
 
   const padrao = padraoDaSemana(perfil)
@@ -321,6 +292,43 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, onAti
   )
 
   const doDiaAberto = dia ? (porDia[dia] || []) : []
+
+  // Arquivo de cada post do dia pronto antes do toque: o PNG guardado sai na hora; o animado
+  // grava no aparelho, um por vez, com a barra. Assim o toque em Postar abre o compartilhar sem espera.
+  const assinaturaDoDia = doDiaAberto.map((i) => `${i.id}:${i.peca}:${i.postado_em || ''}`).join(',')
+  useEffect(() => {
+    setProntos({})
+    if (!dia) return
+    const controle = new AbortController()
+    let vivo = true
+    const marcar = (id, valor) => { if (vivo) setProntos((p) => ({ ...p, [id]: { ...(p[id] || {}), ...valor } })) }
+    const fila = doDiaAberto.filter((i) => i.peca && !i.postado_em && pecaPorId[i.peca])
+    fila.sort((a, b) => Number(ehAnimado(pecaPorId[a.peca].modelo)) - Number(ehAnimado(pecaPorId[b.peca].modelo)))
+    ;(async () => {
+      for (const item of fila) {
+        const peca = pecaPorId[item.peca]
+        const animado = ehAnimado(peca.modelo)
+        const nome = nomeDoArquivo(item.titulo, peca, animado)
+        try {
+          let arquivo
+          if (!animado && peca.imagem) {
+            const resposta = await fetch(await enderecoDaImagem(peca.imagem), { signal: controle.signal })
+            arquivo = new File([await resposta.blob()], `${nome}.png`, { type: 'image/png' })
+          } else {
+            if (animado) marcar(item.id, { progresso: 0 })
+            const opcoes = await opcoesDaPeca(peca, perfil, item.rede)
+            ;({ arquivo } = await prepararArquivo(opcoes, { video: animado, nome, aoAvancar: (p) => marcar(item.id, { progresso: p }), sinal: controle.signal }))
+          }
+          if (!vivo) return
+          marcar(item.id, { arquivo, progresso: null })
+        } catch (e) {
+          if (e.name === 'AbortError') return
+          marcar(item.id, { erro: true, progresso: null })
+        }
+      }
+    })()
+    return () => { vivo = false; controle.abort() }
+  }, [dia, assinaturaDoDia, pecas])
   const painelDoDia = dia && (
     <section className="planner__painel" aria-label={`Dia ${dia}`}>
       <header className="planner__painel-topo">
@@ -383,7 +391,7 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, onAti
             <div className="planner__cartao-corpo">
               <div className="planner__cartao-tags">
                 <span className="planner__tag"><Ponto rede={item.rede} />{REDES[item.rede]?.nome}</span>
-                <span className="planner__tag">{REDES[item.rede]?.soVideo ? 'Vídeo' : item.formato === 'story' ? 'Story' : 'Post'}</span>
+                <span className="planner__tag">{REDES[item.rede]?.soVideo || (peca && ehAnimado(peca.modelo)) ? 'Vídeo' : item.formato === 'story' ? 'Story' : 'Post'}</span>
                 <span className="mono planner__cartao-hora">{horaDe(quando)}</span>
                 {item.postado_em && <span className="planner__tag planner__tag--ok">Postada</span>}
               </div>
@@ -398,10 +406,18 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, onAti
                   <span className="planner__cartao-nota">{avisos ? 'Na hora, o aviso abre o compartilhar com a legenda copiada.' : 'Ative os avisos para receber o lembrete.'}</span>
                 </div>
               )}
-              {confirmando === item.id && !item.postado_em && (
+              {confirmando?.id === item.id && !item.postado_em && (
                 <div className="planner__confirmar" role="group" aria-label="Postou?">
-                  <strong>Postou?</strong>
-                  <span>Se já foi para a rede, marca como postada. Se não, fica como estava.</span>
+                  <strong>
+                    {confirmando.resultado === 'compartilhou' ? 'Legenda copiada.'
+                      : confirmando.resultado === 'baixou' ? 'Arquivo baixado e legenda copiada.'
+                      : confirmando.resultado === 'baixou-sem-copiar' ? 'Arquivo baixado.' : 'Arquivo enviado.'}
+                  </strong>
+                  <span>
+                    {confirmando.resultado.startsWith('baixou') ? `Mande o arquivo para o celular e poste de lá. ${passoNaRede(item.rede)}` : passoNaRede(item.rede)}
+                    {confirmando.resultado.endsWith('sem-copiar') && ' A legenda não copiou sozinha: abra o post e toque em Copiar legenda.'}
+                    {' '}Se já foi para a rede, marca como postada.
+                  </span>
                   <div className="planner__confirmar-acoes">
                     <button type="button" className="botao botao--primario" onClick={async () => { if (await tentar(() => mudarAgenda(item.id, { postado_em: new Date().toISOString() }))) setConfirmando(null) }}>Sim, postei</button>
                     <button type="button" className="botao botao--fantasma" onClick={() => setConfirmando(null)}>Ainda não</button>
@@ -411,7 +427,19 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, onAti
               <div className="planner__cartao-acoes">
                 {peca ? (
                   <>
-                    {!item.postado_em && <button type="button" className="botao botao--destaque" disabled={ocupado === item.id} onClick={() => postar(item)}>{ocupado === item.id ? 'Abrindo...' : 'Postar agora'}</button>}
+                    {!item.postado_em && (() => {
+                      const pronto = prontos[item.id]
+                      const rotulo = pronto?.progresso != null ? `Preparando o vídeo... ${Math.round(pronto.progresso * 100)}%`
+                        : pronto?.erro ? 'Não deu para preparar'
+                        : !pronto?.arquivo ? 'Preparando...'
+                        : podeCompartilhar() ? `Postar no ${REDES[item.rede]?.nome || 'rede'}` : 'Baixar para postar'
+                      return (
+                        <span className="planner__postar">
+                          <button type="button" className="botao botao--destaque" disabled={!pronto?.arquivo} onClick={() => postar(item)}>{rotulo}</button>
+                          {pronto?.progresso != null && <span className="planner__barra" aria-hidden="true"><span style={{ transform: `scaleX(${pronto.progresso})` }} /></span>}
+                        </span>
+                      )
+                    })()}
                     <button type="button" className="botao botao--fantasma" onClick={() => onAbrirPeca(peca, quando)}>Abrir o post</button>
                   </>
                 ) : (
@@ -476,7 +504,6 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, onAti
           <button type="button" className="botao botao--fantasma" onClick={() => { setNovo((n) => ({ ...n, formatos: [faltam.posts > 0 ? 'post' : 'story'] })); setPlanejando(true) }}>Planejar {faltam.posts > 0 ? 'um post' : 'um story'}</button>
         </div>
       )}
-      {avisoPost && <p className="planner__ok" role="status">{avisoPost}</p>}
     </section>
   )
 

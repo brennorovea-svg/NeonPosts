@@ -37,7 +37,8 @@ export function tocar(canvas, opcoes) {
 }
 
 // Grava os DURACAO segundos num canvas fora da tela. `aoAvancar` recebe de 0 a 1.
-export function gravar(opcoes, nome, aoAvancar = () => {}) {
+// `sinal` (AbortSignal) para a gravação no meio: a promessa falha com AbortError.
+export function gravar(opcoes, nome, aoAvancar = () => {}, sinal = null) {
   const formato = formatoDoVideo()
   if (!formato) return Promise.reject(new Error('Este aparelho não grava vídeo pelo navegador. Tente no Chrome ou no Safari atualizado.'))
   const canvas = document.createElement('canvas')
@@ -49,15 +50,21 @@ export function gravar(opcoes, nome, aoAvancar = () => {}) {
   gravador.ondataavailable = (e) => { if (e.data.size) partes.push(e.data) }
   return new Promise((ok, falha) => {
     let id
+    let cancelado = false
+    const abortar = () => { cancelado = true; cancelAnimationFrame(id); try { gravador.stop() } catch { /* já parou */ } }
+    if (sinal) { if (sinal.aborted) return abortar(); sinal.addEventListener('abort', abortar, { once: true }) }
     gravador.onerror = (e) => { cancelAnimationFrame(id); falha(e.error || new Error('Não deu para gravar o vídeo.')) }
     gravador.onstop = () => {
       fluxo.getTracks().forEach((t) => t.stop())
+      sinal?.removeEventListener('abort', abortar)
+      if (cancelado) { falha(Object.assign(new Error('Gravação cancelada.'), { name: 'AbortError' })); return }
       const tipo = formato.tipo.split(';')[0]
       ok({ arquivo: new File(partes, `${nome}.${formato.extensao}`, { type: tipo }), extensao: formato.extensao })
     }
     gravador.start(250)
     const inicio = performance.now()
     const quadro = (agora) => {
+      if (cancelado) return
       const t = (agora - inicio) / 1000
       desenhar(canvas, { ...opcoes, tempo: Math.min(t, total), total })
       aoAvancar(Math.min(1, t / total))

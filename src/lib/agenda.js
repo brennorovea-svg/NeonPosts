@@ -55,8 +55,9 @@ export async function listarAgenda(negocioId, de, ate) {
   return data
 }
 
-export async function agendar(negocioId, { titulo, rede, formato, quando, peca = null, lembrete_minutos = 10 }) {
-  const linha = { titulo: titulo.trim().slice(0, 120), rede, formato, quando: quando.toISOString(), peca, lembrete_minutos }
+// `postado_em` entra quando a pessoa já postou pelo Criar: o mês passa a contar o que saiu.
+export async function agendar(negocioId, { titulo, rede, formato, quando, peca = null, lembrete_minutos = 10, postado_em = null }) {
+  const linha = { titulo: titulo.trim().slice(0, 120), rede, formato, quando: quando.toISOString(), peca, lembrete_minutos, ...(postado_em ? { postado_em } : {}) }
   if (modoDeTeste()) {
     const item = { id: `agenda-${Date.now()}`, avisado_em: null, postado_em: null, ...linha }
     agendaDeTeste = [...(agendaDeTeste ?? exemploDeTeste()), item]

@@ -133,6 +133,9 @@
 .planner__cartao-nota { flex-basis: 100%; }
 .planner__cartao-acoes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 2px; }
 .planner__cartao-acoes .botao { width: auto; min-height: 40px; padding: 8px 14px; font-size: 14px; }
+.planner__postar { display: inline-flex; flex-direction: column; gap: 4px; }
+.planner__barra { display: block; height: 3px; border-radius: 2px; background: var(--borda); overflow: hidden; }
+.planner__barra span { display: block; height: 100%; background: var(--violeta); transform-origin: left; }
 .planner__confirmar {
   display: flex; flex-direction: column; gap: 4px; margin-top: 6px; padding: 14px;
   border: 1px solid var(--violeta); border-radius: 12px; background: rgba(123, 92, 255, .08);

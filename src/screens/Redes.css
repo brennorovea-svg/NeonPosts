@@ -1,6 +1,8 @@
 .redes { display: flex; flex-direction: column; gap: 16px; max-width: 640px; animation: aparecer 400ms var(--ease) both; }
 .redes__titulo { margin: 0; font-size: clamp(28px, 6vw, 36px); font-weight: 700; letter-spacing: -.03em; }
 .redes__texto { margin: 0; font-size: 15px; line-height: 1.55; color: var(--texto-2); }
+.redes__passos { margin: 0; padding: 0 0 0 20px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; line-height: 1.5; color: var(--texto-2); }
+.redes__passos strong { color: var(--neve); font-weight: 600; }
 .redes__lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .redes__rede { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: var(--raio-cartao); background: var(--painel); border: 1px solid var(--borda); }
 .redes__ponto { width: 10px; height: 10px; border-radius: 50%; }

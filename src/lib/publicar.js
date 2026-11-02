@@ -40,7 +40,7 @@ function emOrdem(lista, ordem) {
 }
 
 // Monta as opções do desenhar() a partir da peça e do perfil, com logo e fotos carregados.
-export async function opcoesDaPeca(peca, perfil, rede = null) {
+export async function opcoesDaPeca(peca, perfil) {
   const roteiro = roteiroDaPeca(peca)
   const caminhos = emOrdem(peca.fotos || [], roteiro?.ordem_fotos)
   if (!caminhos.length && peca.modelo === 'bastidores' && perfil.identidade.fotos?.[0]) caminhos.push(perfil.identidade.fotos[0])
@@ -48,7 +48,6 @@ export async function opcoesDaPeca(peca, perfil, rede = null) {
   return {
     formato: peca.formato, modelo: peca.modelo, roteiro, cores: perfil.identidade.cores, nome: perfil.identidade.nome,
     fonte: perfil.identidade.fonte, logo, fotos: fotos.filter(Boolean),
-    rede: rede === 'tiktok' && peca.formato === 'story' ? 'tiktok' : null,
   }
 }
 
@@ -108,12 +107,12 @@ export async function entregar(arquivo, legenda) {
 }
 
 // Título e texto do cartão "Postou?" para cada resultado do entregar().
-export function avisoDoResultado(resultado, rede) {
+export function avisoDoResultado(resultado) {
   const semCopiar = resultado.endsWith('-sem-copiar')
   const base = resultado.replace('-sem-copiar', '')
   const copiar = semCopiar ? ' A legenda não copiou sozinha: use o botão Copiar legenda.' : ''
-  if (base === 'compartilhou') return { titulo: semCopiar ? 'Arquivo enviado.' : 'Legenda copiada.', texto: passoNaRede(rede) + copiar }
-  if (base === 'baixou') return { titulo: semCopiar ? 'Arquivo baixado.' : 'Arquivo baixado e legenda copiada.', texto: `Mande o arquivo para o celular e poste de lá. ${passoNaRede(rede)}${copiar}` }
+  if (base === 'compartilhou') return { titulo: semCopiar ? 'Arquivo enviado.' : 'Legenda copiada.', texto: PASSO_NA_REDE + copiar }
+  if (base === 'baixou') return { titulo: semCopiar ? 'Arquivo baixado.' : 'Arquivo baixado e legenda copiada.', texto: `Mande o arquivo para o celular e poste de lá. ${PASSO_NA_REDE}${copiar}` }
   if (base === 'tipo') return { titulo: 'O arquivo foi baixado.', texto: `Este celular não compartilha esse arquivo pelo navegador. Abra a rede, escolha o arquivo na galeria e cole a legenda.${copiar}` }
   return { titulo: 'O compartilhar não abriu.', texto: `Toque em Postar de novo. Se não abrir, use Baixar o arquivo e escolha ele na galeria dentro da rede. (motivo: ${falha || 'desconhecido'})${copiar}` }
 }
@@ -131,13 +130,6 @@ export function baixarLegenda(legenda, nome) {
   baixarArquivo(new File([legenda], `${nome}-legenda.txt`, { type: 'text/plain' }))
 }
 
-// O que fazer na rede depois do compartilhar: o Instagram e os outros ignoram o texto
-// que vai junto, então a pessoa cola a legenda copiada.
-export const PASSO_NA_REDE = {
-  instagram: 'No Instagram, toque em Avançar e cole a legenda no campo de texto.',
-  facebook: 'No Facebook, cole a legenda no texto da publicação.',
-  whatsapp: 'No WhatsApp, escolha Status. A legenda copiada pode ir no texto, se quiser.',
-  tiktok: 'No TikTok, toque em Avançar e cole o texto na descrição.',
-  linkedin: 'No LinkedIn, cole o texto do post. Ele já está copiado.',
-}
-export const passoNaRede = (rede) => PASSO_NA_REDE[rede] || 'Na rede, cole a legenda copiada no texto do post.'
+// O que fazer depois do compartilhar: a pessoa escolhe o app ali. O Instagram e os outros
+// ignoram o texto que vai junto, então ela cola a legenda copiada.
+export const PASSO_NA_REDE = 'Escolha o app onde vai postar e cole a legenda no texto do post.'

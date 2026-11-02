@@ -1,22 +1,12 @@
 import { supabase } from './supabase.js'
 import { modoDeTeste } from './perfil.js'
 
-// Planner: postagens marcadas num dia e numa rede. A peça pode entrar depois.
-// Até as redes estarem conectadas (Bloco 10), quem posta é a pessoa: o app avisa
-// na hora e abre o compartilhar com a legenda copiada.
-
-export const REDES = {
-  instagram: { nome: 'Instagram', cor: '#A28BFF' },
-  facebook: { nome: 'Facebook', cor: '#4FA3FF' },
-  whatsapp: { nome: 'WhatsApp status', cor: '#FFC857' },
-  tiktok: { nome: 'TikTok', cor: '#5EE6C8', soVideo: true },
-  linkedin: { nome: 'LinkedIn', cor: '#F28C6B', soPost: true },
-}
-// O TikTok só aceita vídeo em pé: a marcação é sempre story (9:16) e o post sai animado.
-// O LinkedIn não tem story: a marcação é sempre post (4:5).
-export const formatosDaRede = (rede, formatos) => (REDES[rede]?.soVideo ? ['story'] : REDES[rede]?.soPost ? ['post'] : formatos)
+// Planner: postagens marcadas num dia. A peça pode entrar depois.
+// Sem rede definida (Brenno, 02/11): sem API oficial, quem posta é a pessoa. O app avisa
+// na hora e abre o compartilhar com a legenda copiada; a pessoa escolhe o app ali.
+// A coluna `rede` fica no banco, opcional (migração 0019), para quando as redes forem conectadas.
 export const LEMBRETES = [[0, 'Na hora'], [10, '10 min antes'], [30, '30 min antes'], [60, '1 h antes'], [1440, 'Um dia antes']]
-const COLUNAS = 'id, peca, titulo, rede, formato, quando, lembrete_minutos, avisado_em, postado_em'
+const COLUNAS = 'id, peca, titulo, formato, quando, lembrete_minutos, avisado_em, postado_em'
 
 // Datas no fuso da pessoa: a chave do dia é "2026-11-05".
 export const chaveDoDia = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -32,15 +22,15 @@ function exemploDeTeste() {
   const hoje = new Date()
   const em = (dias, hora, resto) => ({ id: `agenda-${dias}-${hora}`, peca: null, lembrete_minutos: 10, avisado_em: null, postado_em: null, quando: juntarDiaEHora(chaveDoDia(new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() + dias)), hora).toISOString(), ...resto })
   return [
-    em(-2, '12:00', { titulo: 'Yakissoba da semana', rede: 'instagram', formato: 'post', postado_em: new Date().toISOString() }),
-    em(1, '12:00', { titulo: 'Promoção do Big Poke', rede: 'instagram', formato: 'post' }),
-    em(3, '09:00', { titulo: 'Onde a gente está hoje', rede: 'instagram', formato: 'story' }),
-    em(3, '10:30', { titulo: 'Cardápio do dia', rede: 'whatsapp', formato: 'story' }),
-    em(5, '18:00', { titulo: 'Bastidores da cozinha', rede: 'facebook', formato: 'post' }),
-    em(8, '12:00', { titulo: 'Prato da semana', rede: 'instagram', formato: 'post' }),
-    em(12, '17:00', { titulo: 'Evento de sábado', rede: 'instagram', formato: 'post' }),
-    em(12, '17:00', { titulo: 'Evento de sábado', rede: 'facebook', formato: 'post' }),
-    em(19, '08:30', { titulo: 'Encomendas abertas', rede: 'whatsapp', formato: 'story' }),
+    em(-2, '12:00', { titulo: 'Yakissoba da semana', formato: 'post', postado_em: new Date().toISOString() }),
+    em(1, '12:00', { titulo: 'Promoção do Big Poke', formato: 'post' }),
+    em(3, '09:00', { titulo: 'Onde a gente está hoje', formato: 'story' }),
+    em(3, '10:30', { titulo: 'Cardápio do dia', formato: 'story' }),
+    em(5, '18:00', { titulo: 'Bastidores da cozinha', formato: 'post' }),
+    em(8, '12:00', { titulo: 'Prato da semana', formato: 'post' }),
+    em(12, '17:00', { titulo: 'Evento de sábado', formato: 'post' }),
+    em(12, '17:00', { titulo: 'Evento de sábado', formato: 'story' }),
+    em(19, '08:30', { titulo: 'Encomendas abertas', formato: 'story' }),
   ]
 }
 
@@ -56,8 +46,8 @@ export async function listarAgenda(negocioId, de, ate) {
 }
 
 // `postado_em` entra quando a pessoa já postou pelo Criar: o mês passa a contar o que saiu.
-export async function agendar(negocioId, { titulo, rede, formato, quando, peca = null, lembrete_minutos = 10, postado_em = null }) {
-  const linha = { titulo: titulo.trim().slice(0, 120), rede, formato, quando: quando.toISOString(), peca, lembrete_minutos, ...(postado_em ? { postado_em } : {}) }
+export async function agendar(negocioId, { titulo, formato, quando, peca = null, lembrete_minutos = 10, postado_em = null }) {
+  const linha = { titulo: titulo.trim().slice(0, 120), formato, quando: quando.toISOString(), peca, lembrete_minutos, ...(postado_em ? { postado_em } : {}) }
   if (modoDeTeste()) {
     const item = { id: `agenda-${Date.now()}`, avisado_em: null, postado_em: null, ...linha }
     agendaDeTeste = [...(agendaDeTeste ?? exemploDeTeste()), item]

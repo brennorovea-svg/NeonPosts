@@ -18,12 +18,15 @@ import Menu from '../components/Menu.jsx'
 import PainelMarca from '../components/PainelMarca.jsx'
 import DicasMarca from '../components/DicasMarca.jsx'
 import { dicasDaMarca } from '../lib/dicas.js'
-import { PLANOS, voltouDoPagamento } from '../lib/planos.js'
+import { PAGOS, PLANOS, voltouDoPagamento } from '../lib/planos.js'
+import { definirMarcaDagua } from '../lib/desenhar.js'
 import { aceitouTermos, TERMOS_VERSAO } from '../lib/termos.js'
 import './Area.css'
 
-// Só no modo de teste: ?limite=30 simula um plano maior, para ver o Preencher o mês com espaço.
-const NEGOCIO_DE_TESTE = { id: 'teste', nome: null, limite_pecas: Number(new URLSearchParams(location.search).get('limite')) || 5, plano: 'gratis' }
+// Só no modo de teste: ?limite=30 simula um plano maior, para ver o Preencher o mês com espaço;
+// ?plano=pro simula um plano pago (posts sem marca d'água).
+const PARAMETROS_DE_TESTE = new URLSearchParams(location.search)
+const NEGOCIO_DE_TESTE = { id: 'teste', nome: null, limite_pecas: Number(PARAMETROS_DE_TESTE.get('limite')) || 5, plano: PLANOS[PARAMETROS_DE_TESTE.get('plano')] ? PARAMETROS_DE_TESTE.get('plano') : 'gratis' }
 const COLUNAS = 'id, nome, limite_pecas, plano, assinatura_status, renova_em, cancela_no_fim, stripe_cliente, aceitou_termos_em, termos_versao'
 // Lido uma vez, ao abrir: ?pago=pro quando a pessoa volta da Stripe.
 const pagou = voltouDoPagamento()
@@ -65,6 +68,9 @@ export default function Area({ sessao, teste = false }) {
   const [criarCom, setCriarCom] = useState(null) // { agendaId, titulo, formato, quando } quando a peça nasce no planner
   const [voltarPara, setVoltarPara] = useState(null) // dia do planner para reabrir ao sair de Criar
   const agendaAtual = useRef([])
+  // Marca d'água só no Grátis. Fica definida antes das telas filhas desenharem (Criar, Planner, vídeo).
+  // Enquanto o negócio não carregou, vale a marca: nada sai sem ela por engano.
+  definirMarcaDagua(!PAGOS.includes(negocio?.plano))
   const usuario = sessao.user
   const primeiroNome = (usuario.user_metadata?.full_name || usuario.user_metadata?.name || '').split(' ')[0]
 

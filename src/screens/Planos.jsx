@@ -69,6 +69,7 @@ export default function Planos({ negocio, usadas, email, onSair, onTrocou }) {
                 </div>
                 <p className="planos__preco"><span>{p.preco}</span> por mês</p>
                 <p className="planos__pecas mono">{p.pecas} posts por mês</p>
+                <p className="planos__marca-dagua">{PAGOS.includes(chave) ? "Sem marca d'água" : "Com marca d'água neonposts.com.br"}</p>
                 {p.resumo && <p className="planos__resumo">{p.resumo}</p>}
                 {PAGOS.includes(chave) && (!eAtual || cancelada) && (
                   <button

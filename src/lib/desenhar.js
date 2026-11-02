@@ -2545,9 +2545,12 @@ const MODELOS = {
 }
 
 // Marca d'água (W2): neonposts.com.br repetido na diagonal sobre a peça inteira, bem fraco.
-// Sai em toda peça (imagem, vídeo, prévia), para ninguém levar a criação sem passar pelo app.
+// Sai em toda peça (imagem, vídeo, prévia) do plano Grátis, para ninguém levar a criação sem passar pelo app.
+// Nos planos pagos não sai: a Area liga e desliga com definirMarcaDagua() conforme o plano da conta.
 // Clara com sombra escura, para aparecer igual em fundo claro e escuro. A inclinação é fixa, não anima.
 const MARCA_DAGUA = 'neonposts.com.br'
+let comMarcaDagua = true
+export function definirMarcaDagua(ligada) { comMarcaDagua = ligada !== false }
 function marcaDagua(ctx, L, A) {
   ctx.save()
   ctx.globalAlpha = 0.09
@@ -2627,7 +2630,7 @@ export function desenhar(canvas, opcoes) {
     const args = { L, A, story: formato === 'story', c, r, logo, foto: todas[0] || null, fotos: todas, nome }
     const comFoto = args.foto && VERSAO_COM_FOTO[modelo]?.(args)
     ;(comFoto || MODELOS[modelo] || aviso)(ctx, args)
-    marcaDagua(ctx, L, A)
+    if (comMarcaDagua) marcaDagua(ctx, L, A)
   } finally {
     relogio = null
     fonteTitulo = fonteDa()

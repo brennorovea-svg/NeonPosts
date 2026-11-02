@@ -54,6 +54,7 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, onAti
   const [arrastando, setArrastando] = useState(null)
   const [ocupado, setOcupado] = useState(null) // id do item sendo compartilhado
   const [avisoPost, setAvisoPost] = useState('')
+  const [excluindo, setExcluindo] = useState(null) // id do item esperando o segundo toque em Excluir
   const [confirmando, setConfirmando] = useState(null) // id do item esperando "postou?" depois do compartilhar
   const pecaPorId = useMemo(() => Object.fromEntries((pecas || []).map((p) => [p.id, p])), [pecas])
   const porDia = useMemo(() => {
@@ -89,7 +90,7 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, onAti
     setDia(chave)
     setPlanejando(comForm)
     setErro('')
-    setEditando(null); setConfirmando(null)
+    setEditando(null); setConfirmando(null); setExcluindo(null)
     const d = juntarDiaEHora(chave, '12:00')
     setSemana(inicioDaSemana(d))
     window.scrollTo({ top: 0 })
@@ -98,7 +99,7 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, onAti
   // Fecha o dia e volta para o calendário do mês desse dia.
   function fecharDia() {
     if (dia) { const d = juntarDiaEHora(dia, '12:00'); setMes(new Date(d.getFullYear(), d.getMonth(), 1)) }
-    setDia(null); setPlanejando(false); setEditando(null); setConfirmando(null)
+    setDia(null); setPlanejando(false); setEditando(null); setConfirmando(null); setExcluindo(null)
     setVisao('mes')
   }
 
@@ -390,7 +391,9 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, onAti
                   <button type="button" className="botao botao--destaque" onClick={() => onCriar({ agendaId: item.id, titulo: item.titulo, formato: item.formato, quando })}>Criar o post</button>
                 )}
                 <button type="button" className="botao botao--fantasma" aria-expanded={editando?.id === item.id} onClick={() => setEditando(editando?.id === item.id ? null : { id: item.id, titulo: item.titulo, rede: item.rede, formato: item.formato, dia: chaveDoDia(quando), hora: horaDe(quando) })}>Editar</button>
-                <button type="button" className="botao botao--fantasma" onClick={() => tentar(() => tirarDaAgenda(item.id))}>Tirar</button>
+                {excluindo === item.id
+                  ? <button type="button" className="botao botao--perigo" onClick={() => { setExcluindo(null); tentar(() => tirarDaAgenda(item.id)) }}>Confirmar exclusão</button>
+                  : <button type="button" className="botao botao--perigo" onClick={() => setExcluindo(item.id)}>Excluir</button>}
               </div>
               {editando?.id === item.id && (
                 <form className="planner__editar" onSubmit={(e) => { e.preventDefault(); salvarEdicao(item) }}>

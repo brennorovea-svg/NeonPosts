@@ -18,6 +18,7 @@
 .botao:disabled { opacity: .5; cursor: default; transform: none; }
 .botao--primario { background: var(--neve); color: var(--grafite); }
 .botao--destaque { background: var(--violeta-escuro); color: #FFFFFF; }
+.botao--perigo { width: auto; min-height: 40px; padding: 8px 14px; background: var(--perigo); color: #FFFFFF; font-size: 14px; }
 .botao--fantasma {
   width: auto;
   min-height: 40px;

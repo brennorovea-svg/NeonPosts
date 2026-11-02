@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { assinar, gerenciar, PAGOS, PLANOS } from '../lib/planos.js'
+import Conta from '../components/Conta.jsx'
 import './Planos.css'
 
 const data = (iso) => new Date(iso).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' })
 
-export default function Planos({ negocio, usadas, onSair, onTrocou }) {
+export default function Planos({ negocio, usadas, email, onSair, onTrocou }) {
   const [esperando, setEsperando] = useState(null) // plano clicado ou 'portal'
   const [confirmar, setConfirmar] = useState(null) // troca de plano pede um segundo toque
   const [erro, setErro] = useState('')
@@ -45,7 +46,7 @@ export default function Planos({ negocio, usadas, onSair, onTrocou }) {
       </header>
 
       <main className="planos__conteudo">
-        <p className="mono planos__sobre">Seu plano</p>
+        <p className="mono planos__sobre">Plano e conta</p>
         <h1 className="planos__titulo">{assinante ? `Você está no ${PLANOS[atual].nome}.` : 'Escolha quantos posts por mês.'}</h1>
         <p className="planos__texto">
           Você usou {usadas} de {negocio?.limite_pecas ?? PLANOS[atual].pecas} posts este mês. O contador zera todo dia 1.
@@ -98,6 +99,8 @@ export default function Planos({ negocio, usadas, onSair, onTrocou }) {
           </button>
         )}
         <p className="planos__nota">O pagamento é feito pela Stripe. A gente não guarda o seu cartão. Dá para cancelar quando quiser em "Gerenciar pagamento".</p>
+
+        <Conta email={email} assinante={assinante && !cancelada} />
       </main>
     </div>
   )

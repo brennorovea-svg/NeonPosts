@@ -42,7 +42,7 @@ async function arquivosDoNegocio(negocioId: string) {
 async function baixar(usuario: { id: string; email?: string; created_at: string }, negocio: Record<string, unknown>) {
   const id = negocio.id as string
   const [marca, posts, agenda, uso, arquivos] = await Promise.all([
-    banco.from('perfis_marca').select('versao, identidade, voz, padrao, dados, criado_em').eq('negocio', id).order('versao'),
+    banco.from('perfis_marca').select('versao, identidade, voz, padrao, dados, profissional, criado_em').eq('negocio', id).order('versao'),
     banco.from('pecas').select('id, formato, modelo, pedido, roteiro, versoes, escolhida, fotos, imagem, refeitas, cortesia, criado_em').eq('negocio', id).order('criado_em'),
     banco.from('agenda').select('titulo, rede, formato, quando, lembrete_minutos, avisado_em, postado_em, peca, criado_em').eq('negocio', id).order('quando'),
     banco.from('uso_ia').select('funcao, peso, criado_em').eq('negocio', id).order('criado_em'),

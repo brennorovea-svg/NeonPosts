@@ -219,3 +219,6 @@ button.cor__amostra { padding: 0; font: inherit; }
 .campo__dica strong { font-weight: 600; color: var(--lilas); }
 @keyframes dica-entra { from { opacity: 0; transform: translateY(-4px); } }
 @media (prefers-reduced-motion: reduce) { .campo__dica { animation: none; } }
+
+/* Perfil profissional: botão do PDF do LinkedIn, do tamanho do texto. */
+.perfil__pdf { align-self: flex-start; width: auto; }

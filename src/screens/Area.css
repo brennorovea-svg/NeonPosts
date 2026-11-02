@@ -99,3 +99,6 @@
   .area__grade-pecas { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px; }
 }
 @media (min-width: 1024px) { .area__corpo--criar .criar__marca { display: none; } }
+
+/* Perfil profissional (LinkedIn): fora das 4 partes da marca, logo abaixo delas. */
+.area__profissional { margin-top: 12px; }

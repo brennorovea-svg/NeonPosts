@@ -251,7 +251,8 @@ type Perfil = {
 }
 
 // `fotos`: quantas o dono mandou; `vistas`: quantas a IA recebe como imagem (as que têm cópia pequena).
-export function montarMensagem(perfil: Perfil, pedido: string, formato: string, anterior?: Record<string, unknown> | null, ajuste?: string, fotos = 0, layout = '', video = false, vistas = 0, rede = '') {
+// `profissional`: só nos posts do LinkedIn em nome da pessoa (o perfil profissional do dono).
+export function montarMensagem(perfil: Perfil, pedido: string, formato: string, anterior?: Record<string, unknown> | null, ajuste?: string, fotos = 0, layout = '', video = false, vistas = 0, rede = '', profissional: Record<string, string> | null = null) {
   // Do guia da marca vão só as regras; as respostas da entrevista ficam no perfil.
   const guia = (perfil.voz as { guia?: { regras?: string[] } }).guia
   const marca = {
@@ -273,6 +274,15 @@ export function montarMensagem(perfil: Perfil, pedido: string, formato: string, 
   if (rede === 'tiktok') {
     texto += `\n\n<rede>TikTok</rede>\n\nEste vídeo vai para o TikTok. Título curto que prende nos primeiros segundos. Legenda curta (até 150 caracteres), com gancho na primeira frase e sem parágrafos longos. Use de 3 a 5 hashtags, misturando as da marca com temas do ramo.`
   }
+  if (rede === 'linkedin') {
+    texto += `\n\n<rede>LinkedIn</rede>\n\n${LINKEDIN}`
+    if (profissional) {
+      const { nome, cargo, carreira, resultados, temas, publico, nunca } = profissional
+      texto += `\n\n<perfil_profissional>\n${JSON.stringify({ nome, cargo, carreira: String(carreira || '').slice(0, 6000), resultados, temas, publico, nunca }, null, 2)}\n</perfil_profissional>\n\n${LINKEDIN_PESSOA}`
+    } else {
+      texto += `\n\n${LINKEDIN_EMPRESA}`
+    }
+  }
   if (layout) {
     texto += `\n\n<layout>${layout}</layout>\n\nO dono já escolheu o layout. Use "modelo": "${layout}" e escreva pensando nele: ${DICAS_DO_LAYOUT[layout] || ''} Você continua decidindo o destaque, o tamanho do título, o alinhamento e o fundo.`
   }
@@ -286,6 +296,22 @@ export function montarMensagem(perfil: Perfil, pedido: string, formato: string, 
   return texto
 }
 
+// LinkedIn: tom mais formal, texto longo e nada de cargo ou número inventado.
+const LINKEDIN = `Este post vai para o LinkedIn, uma rede profissional. Para o LinkedIn, valem estas regras no lugar das de tamanho de legenda do Instagram:
+- A legenda é o texto do post: de 700 a 1.300 caracteres, em parágrafos curtos de 1 a 3 frases, separados por linha em branco.
+- A primeira linha é o gancho e aparece antes do "ver mais": uma frase curta, concreta e pessoal que faça a pessoa querer ler o resto. Nada de "Hoje quero compartilhar".
+- Conte uma história ou uma lição com começo, meio e fim, e feche com uma pergunta para os comentários ou um convite claro.
+- Tom profissional e humano, sem gíria e sem frase motivacional vazia. No máximo 1 emoji, só se a marca usar.
+- "hashtags": no máximo 3, de temas profissionais do assunto.
+- A arte é post 4:5: título curto e forte que resume a ideia do texto.
+- Número (resultado, porcentagem, quantidade, tempo, ano) só se estiver no pedido, nos dados da marca ou no perfil profissional, escrito igual. Se o texto precisar de um número que não existe, escreva exatamente [SEU RESULTADO].`
+const LINKEDIN_PESSOA = `O post é em nome da pessoa do <perfil_profissional>, em primeira pessoa ("eu", "aprendi", "a minha equipe").
+- Cargo, empresa, formação, cliente e período só como estão no perfil profissional. Nunca invente cargo, empresa, prêmio, cliente ou número.
+- Use os resultados e a carreira do perfil quando ajudarem a história; fale dos temas que a pessoa escolheu, para o público dela.
+- Respeite o que a pessoa nunca diz.
+- O tom da marca vale só como referência; aqui a voz é a da pessoa, mais profissional.`
+const LINKEDIN_EMPRESA = `O post é em nome da empresa, na voz da marca, falando como "a gente", com o tom um pouco mais profissional que no Instagram.`
+
 const MARCADORES: Record<string, string> = {
   '[SEU PREÇO]': 'Falta o preço',
   '[ENDEREÇO]': 'Falta o endereço',
@@ -293,6 +319,7 @@ const MARCADORES: Record<string, string> = {
   '[HORÁRIO]': 'Falta o horário',
   '[TELEFONE]': 'Falta o telefone',
   '[CUPOM]': 'Falta o código do cupom',
+  '[SEU RESULTADO]': 'Falta o resultado',
 }
 
 // Cada número que aparece nos dados ou no pedido, com e sem separadores.
@@ -337,8 +364,9 @@ export function formatarPreco(preco: string) {
   return /^r\$/i.test(limpo) ? limpo : `R$ ${limpo}`
 }
 
-export function conferir(bruto: Record<string, unknown>, perfil: Perfil, pedido: string, layout = '', fotos = 0, video = false) {
-  const fonte = numerosDaFonte(pedido + ' ' + JSON.stringify(perfil.dados))
+export function conferir(bruto: Record<string, unknown>, perfil: Perfil, pedido: string, layout = '', fotos = 0, video = false, rede = '', profissional: Record<string, string> | null = null) {
+  const fonte = numerosDaFonte(pedido + ' ' + JSON.stringify(perfil.dados) + (profissional ? ' ' + JSON.stringify(profissional) : ''))
+  const linkedin = rede === 'linkedin'
   const avisos: string[] = []
   const trocados = new Set<string>()
 
@@ -349,6 +377,14 @@ export function conferir(bruto: Record<string, unknown>, perfil: Perfil, pedido:
         if (permitido(trecho, fonte)) return trecho
         trocados.add(marcador)
         return marcador
+      })
+    }
+    // No LinkedIn todo número tem de ter fonte (resultado, quantidade, ano); senão vira [SEU RESULTADO].
+    if (linkedin) {
+      t = t.replace(/(?<![\w[])\d[\d.,]*(?:\s?%)?/g, (trecho) => {
+        if (permitido(trecho, fonte)) return trecho
+        trocados.add('[SEU RESULTADO]')
+        return '[SEU RESULTADO]'
       })
     }
     return t
@@ -435,7 +471,8 @@ export function conferir(bruto: Record<string, unknown>, perfil: Perfil, pedido:
     if (achado) roteiro.itens.push({ nome: achado.nome, preco: formatarPreco(achado.preco) })
   }
 
-  const fixas = (perfil.padrao.hashtags || '').split(/[\s,]+/)
+  // Em nome da pessoa, as hashtags fixas da marca ficam de fora.
+  const fixas = linkedin && profissional ? [] : (perfil.padrao.hashtags || '').split(/[\s,]+/)
   const todas = [...fixas, ...((bruto.hashtags as string[] | undefined) || [])]
   const vistas = new Set<string>()
   for (const h of todas) {
@@ -444,6 +481,7 @@ export function conferir(bruto: Record<string, unknown>, perfil: Perfil, pedido:
     vistas.add(tag.toLowerCase())
     roteiro.hashtags.push(tag)
   }
+  if (linkedin) roteiro.hashtags = roteiro.hashtags.slice(0, 3)
 
   const naoDeu = ((bruto.nao_deu as string[] | undefined) || []).map((t) => String(t).trim().replace(/\.$/, '')).filter(Boolean).slice(0, 3)
   if (naoDeu.length) avisos.push(`Por aqui ainda não dá para ${naoDeu.join(', ')}. O resto do pedido foi atendido.${naoDeu.some((t) => /fonte|letra/i.test(t)) ? ' A fonte dos títulos você troca no perfil da marca.' : ''}`)

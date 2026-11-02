@@ -73,7 +73,7 @@
 
 /* Pronta */
 .criar__pronta {
-  width: 100%; max-width: 1080px; margin: 0 auto;
+  width: 100%; max-width: 1080px; margin: 0 auto; grid-template-columns: minmax(0, 1fr);
   display: grid; gap: 28px; align-items: start;
   padding: 24px 16px 64px;
   animation: aparecer 400ms var(--ease) both;
@@ -247,3 +247,43 @@
 .criar__faltando-texto { margin: -8px 0 0; font-size: 13px; color: var(--texto-2); }
 
 .criar__rede-ponto { width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; display: inline-block; vertical-align: middle; }
+
+/* LinkedIn: postar como empresa ou como pessoa. */
+.criar__como-opcoes {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px;
+  background: var(--painel); border: 1px solid var(--borda); border-radius: var(--raio-campo);
+}
+.criar__como-opcoes button {
+  display: flex; flex-direction: column; gap: 2px; align-items: center; padding: 10px 8px;
+  font: inherit; font-size: 15px; font-weight: 600; color: var(--texto-2); cursor: pointer;
+  background: transparent; border: 0; border-radius: calc(var(--raio-campo) - 4px);
+  transition: background-color var(--dur-controle) var(--ease), color var(--dur-controle) var(--ease), transform var(--dur-controle) var(--ease);
+}
+.criar__como-opcoes button:active { transform: scale(.97); }
+.criar__como-opcoes button small { font-size: 12px; font-weight: 400; color: var(--cinza-claro); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.criar__como-opcoes button[aria-pressed="true"] { background: var(--violeta); color: var(--neve); }
+.criar__como-opcoes button[aria-pressed="true"] small { color: rgba(245, 245, 247, .75); }
+.criar__como-opcoes button:focus-visible { outline: 2px solid var(--lilas); outline-offset: 2px; }
+.criar__como .criar__faltando { margin-top: 4px; }
+
+/* LinkedIn: a arte dentro de um cartão parecido com o post da rede (sem imitar a marca dela). */
+.criar__linkedin {
+  align-self: start; display: flex; flex-direction: column; gap: 12px; padding: 14px;
+  background: var(--painel); border: 1px solid var(--borda); border-radius: var(--raio-cartao);
+  box-sizing: border-box; min-width: 0; width: 100%; justify-self: center;
+  max-width: min(100%, calc((100vh - 260px) * .8 + 30px));
+}
+.criar__linkedin .criar__previa { min-width: 0; }
+.criar__linkedin .criar__previa canvas { box-shadow: none; border-radius: 10px; max-width: 100%; }
+.criar__linkedin-topo { display: flex; align-items: center; gap: 10px; }
+.criar__linkedin-foto {
+  flex: none; width: 42px; height: 42px; display: grid; place-items: center;
+  font-weight: 700; font-size: 14px; color: var(--neve); background: var(--violeta-escuro);
+}
+.criar__linkedin-foto--pessoa { border-radius: 50%; }
+.criar__linkedin-foto--empresa { border-radius: 8px; }
+.criar__linkedin-quem { display: flex; flex-direction: column; min-width: 0; }
+.criar__linkedin-quem strong { font-size: 15px; }
+.criar__linkedin-quem span { font-size: 13px; color: var(--texto-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.criar__linkedin-texto { margin: 0; font-size: 14px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.criar__linkedin-texto span { color: var(--texto-2); margin-left: 4px; }

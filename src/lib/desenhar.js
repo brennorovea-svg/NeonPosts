@@ -373,7 +373,8 @@ function pilula(ctx, texto, { x, y, largura, altura = 112, fundo, cor, tamanho =
   ctx.fillStyle = cor
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
-  ctx.fillText(texto, x + largura / 2, y + altura / 2 + 2)
+  const linhas = String(texto).split('\n')
+  linhas.forEach((linha, i) => ctx.fillText(linha, x + largura / 2, y + altura / 2 + 2 + (i - (linhas.length - 1) / 2) * tamanho * 1.15))
   ctx.restore()
 }
 
@@ -868,14 +869,21 @@ function chamadaEmTexto(ctx, r, { x, y, largura, alinhar, cor, tamanho = 40 }) {
 function pilulaCurta(ctx, r, { x, y, largura, alinhar = 'left', fundo, cor, altura = 104, tamanho = 40 }) {
   if (!r.chamada) return
   ctx.font = `700 ${tamanho}px ${FONTE}`
-  // Chamada longa em coluna estreita: a letra diminui até caber na pílula.
-  while (tamanho > 24 && ctx.measureText(r.chamada).width + 80 > largura) {
+  // Chamada longa em coluna estreita: com o WhatsApp, o número desce para a segunda linha; a letra diminui até caber.
+  let texto = r.chamada
+  if (ctx.measureText(texto).width + 80 > largura && texto.includes(': ')) texto = texto.replace(': ', '\n')
+  const maior = () => Math.max(...texto.split('\n').map((l) => ctx.measureText(l).width))
+  if (texto.includes('\n')) {
+    tamanho = Math.min(tamanho, Math.floor(altura * 0.34))
+    ctx.font = `700 ${tamanho}px ${FONTE}`
+  }
+  while (tamanho > 22 && maior() + 80 > largura) {
     tamanho -= 2
     ctx.font = `700 ${tamanho}px ${FONTE}`
   }
-  const w = Math.min(ctx.measureText(r.chamada).width + 110, largura)
+  const w = Math.min(maior() + 110, largura)
   const px = alinhar === 'center' ? x + (largura - w) / 2 : alinhar === 'right' ? x + largura - w : x
-  pilula(ctx, r.chamada, { x: px, y, largura: w, altura, tamanho, fundo, cor })
+  pilula(ctx, texto, { x: px, y, largura: w, altura, tamanho, fundo, cor })
 }
 
 // Um pedaço da foto: amplia e centraliza num ponto (fx, fy de 0 a 1), sem sair da imagem.

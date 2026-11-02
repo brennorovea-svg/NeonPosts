@@ -107,12 +107,13 @@ Por tipo de post
 - Depoimento: a fala do cliente no "titulo", em primeira pessoa, como ele diria, e o nome em "autor" (ex.: "Marcos, paciente"). Se o pedido não trouxer a frase, escreva [FRASE DO CLIENTE] no título. No parado, use "citacao"; no vídeo, "estrelas" ou, com foto, "zoom".
 - Antes e depois: o "antes" descreve o ponto de partida sem julgar o cliente (nada de cabelo ruim, sem graça, feio, opaco). "Curvatura escondida" em vez de "cabelo sem definição".
 - Aviso de horário: o horário do pedido vai em "horario" e o dia em "data", além do texto. Mudança que ainda vai começar é "a partir de", nunca "desde". Atendimento de emergência leva o WhatsApp na chamada.
-- Promoção: com desconto em porcentagem, não ponha em "itens" o item com o preço cheio; o número do desconto vai em "numero". Combo sem preço no pedido: [SEU PREÇO] no apoio e "itens" vazio.
+- Promoção: mantém a voz da marca. Se ela é divertida, o título brinca com a oferta; se é elegante, a oferta soa elegante. Nunca vira anúncio genérico de desconto. Com desconto em porcentagem, não ponha em "itens" o item com o preço cheio; o número do desconto vai em "numero". Combo sem preço no pedido: [SEU PREÇO] no apoio e "itens" vazio.
 - Enquete ou isso-ou-aquilo: a chamada pede o voto ("Vote no story", "Responda aqui"), nunca venda.
 - Bastidores: celebra o movimento e quem faz; nunca vira reclamação ou pedido para o cliente vir outro dia.
 - Quando o lugar muda por dia (food truck, feira), a arte diz onde e quando: no apoio ou na chamada.
 - Post de feed: legenda de 3 a 6 frases curtas, em parágrafos. Story: legenda de 1 ou 2 frases, porque a arte faz o trabalho.
 - Contato (WhatsApp, site, Instagram) só quando a chamada pedir, e escrito como está nos dados fixos.
+- Português natural: "fornada" é substantivo (a fornada do dia); nunca "fornado" nem "fornar". Use "assado", "saiu do forno".
 
 "hashtags": de 3 a 8, sem repetir, incluindo as fixas da marca.
 
@@ -443,6 +444,11 @@ export function conferir(bruto: Record<string, unknown>, perfil: Perfil, pedido:
 
   const naoDeu = ((bruto.nao_deu as string[] | undefined) || []).map((t) => String(t).trim().replace(/\.$/, '')).filter(Boolean).slice(0, 3)
   if (naoDeu.length) avisos.push(`Por aqui ainda não dá para ${naoDeu.join(', ')}. O resto do pedido foi atendido.${naoDeu.some((t) => /fonte|letra/i.test(t)) ? ' A fonte dos títulos você troca no perfil da marca.' : ''}`)
+  // Chamada para o WhatsApp leva o número na arte: no story não tem link, e quem vê precisa saber para onde mandar.
+  const zap = String(perfil.dados.whatsapp || '').replace(/\D/g, '').replace(/^55(?=\d{10,11}$)/, '')
+  if (/whats/i.test(roteiro.chamada) && !/\d{4}/.test(roteiro.chamada) && /^\d{10,11}$/.test(zap)) {
+    roteiro.chamada = `${roteiro.chamada}: (${zap.slice(0, 2)}) ${zap.slice(2, -4)}-${zap.slice(-4)}`
+  }
   if (['comparar', 'deslize'].includes(roteiro.modelo) && fotos < 2) avisos.push('Envie a foto do antes e a do depois para o post mostrar a comparação.')
   if (trocados.size) avisos.push('A IA tentou escrever um dado que não está na sua marca. Trocamos por um marcador.')
   const tudo = [roteiro.titulo, roteiro.apoio, roteiro.chamada, roteiro.legenda, roteiro.numero, roteiro.cupom, roteiro.data, roteiro.horario, ...roteiro.pontos, ...roteiro.itens.map((i) => i.preco)].join(' ')

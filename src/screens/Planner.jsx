@@ -95,6 +95,21 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, onAti
     window.scrollTo({ top: 0 })
   }
 
+  // Fecha o dia e volta para o calendário do mês desse dia.
+  function fecharDia() {
+    if (dia) { const d = juntarDiaEHora(dia, '12:00'); setMes(new Date(d.getFullYear(), d.getMonth(), 1)) }
+    setDia(null); setPlanejando(false); setEditando(null); setConfirmando(null)
+    setVisao('mes')
+  }
+
+  // Esc também fecha o dia aberto (menos quando está digitando num campo).
+  useEffect(() => {
+    if (!dia) return
+    const tecla = (e) => { if (e.key === 'Escape' && !/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) fecharDia() }
+    window.addEventListener('keydown', tecla)
+    return () => window.removeEventListener('keydown', tecla)
+  }, [dia])
+
   async function tentar(acao) {
     setErro('')
     try { await acao(); onMudou(); return true } catch { setErro('Não deu para salvar agora. Confira a internet e tente de novo.'); return false }
@@ -184,6 +199,12 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, onAti
         <button type="button" className="planner__seta" aria-label={dia || visao === 'semana' ? 'Próxima semana' : 'Próximo mês'} onClick={() => (dia || visao === 'semana' ? setSemana((s) => somarDias(s, 7)) : setMes((m) => new Date(m.getFullYear(), m.getMonth() + 1, 1)))}>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
         </button>
+        {dia && (
+          <button type="button" className="botao botao--fantasma planner__ver-mes" onClick={fecharDia}>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2.5" /><path d="M3.5 10h17M8 3v4M16 3v4M8 14h.01M12 14h.01M16 14h.01M8 17h.01M12 17h.01" /></svg>
+            Ver o mês
+          </button>
+        )}
         <button type="button" className="botao botao--fantasma planner__hoje" onClick={() => { setMes(new Date(hoje.getFullYear(), hoje.getMonth(), 1)); setSemana(inicioDaSemana(hoje)); if (dia) setDia(chaveDoDia(hoje)) }}>Hoje</button>
       </div>
       <div className="planner__direita">
@@ -275,7 +296,7 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, onAti
   const painelDoDia = dia && (
     <section className="planner__painel" aria-label={`Dia ${dia}`}>
       <header className="planner__painel-topo">
-        <button type="button" className="botao botao--fantasma planner__voltar" onClick={() => { setDia(null); setPlanejando(false) }}>Voltar</button>
+        <button type="button" className="botao botao--fantasma planner__voltar" onClick={fecharDia}>Voltar</button>
         <div>
           <h2 className="planner__painel-titulo">{comMaiuscula(porExtenso(juntarDiaEHora(dia, '12:00'), { weekday: 'long', day: 'numeric', month: 'long' }))}</h2>
           <p className="planner__painel-sub">{doDiaAberto.length === 0 ? 'Nada planejado ainda.' : `${doDiaAberto.length} ${doDiaAberto.length === 1 ? 'post planejado' : 'posts planejados'}.`}</p>

@@ -2,11 +2,12 @@ import { useCallback, useEffect, useState } from 'react'
 import Abertura from './components/Abertura.jsx'
 import Entrar from './screens/Entrar.jsx'
 import Area from './screens/Area.jsx'
+import Aceite from './screens/Aceite.jsx'
 import { supabase } from './lib/supabase.js'
 import { usarModoDeTeste } from './lib/perfil.js'
 
 // Só no computador de desenvolvimento: ?tela=area mostra a área sem login, para prints.
-// ?tela=area&marca=exemplo (ou narua) já começa com uma marca preenchida.
+// ?tela=area&marca=exemplo (ou narua) já começa com uma marca preenchida. ?tela=aceite mostra a tela de aceite dos termos.
 const parametros = new URLSearchParams(location.search)
 const sessaoDeTeste = import.meta.env.DEV && parametros.get('tela') === 'area'
   ? { user: { email: 'brenno@exemplo.com.br', user_metadata: { full_name: 'Brenno Rovea' } } }
@@ -42,5 +43,6 @@ export default function App() {
   }, [])
 
   if (abertura) return <Abertura onFim={fimDaAbertura} />
+  if (import.meta.env.DEV && parametros.get('tela') === 'aceite') return <Aceite negocio={{ id: 'teste' }} deNovo={parametros.has('denovo')} onAceitou={() => {}} onSair={() => {}} />
   return sessao ? <Area sessao={sessao} teste={Boolean(sessaoDeTeste)} /> : <Entrar />
 }

@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import Obturador from '../components/Obturador.jsx'
 import { supabase, enderecoDeVolta } from '../lib/supabase.js'
+import { contaFoiExcluida } from '../lib/conta.js'
+import { LINK_PRIVACIDADE, LINK_TERMOS } from '../lib/termos.js'
 import './Entrar.css'
 
 function IconeGoogle() {
@@ -18,6 +20,7 @@ export default function Entrar() {
   const [email, setEmail] = useState('')
   const [estado, setEstado] = useState('parado') // parado | enviando | enviado | erro
   const [erro, setErro] = useState('')
+  const [excluida] = useState(contaFoiExcluida)
 
   const semConfig = !supabase
 
@@ -78,6 +81,7 @@ export default function Entrar() {
           <>
             <h1 id="entrar-titulo" className="entrar__titulo">Entre para criar seus posts</h1>
             <p className="entrar__texto">Sem senha para decorar.</p>
+            {excluida && <p className="entrar__excluida" role="status">Sua conta foi excluída. A marca, as fotos e os posts foram apagados. Obrigado por ter usado o Neonposts.</p>}
 
             <button type="button" className="botao botao--primario" onClick={entrarComGoogle} disabled={semConfig}>
               <IconeGoogle /> Entrar com Google
@@ -107,6 +111,9 @@ export default function Entrar() {
 
             {erro && <p id="entrar-erro" className="entrar__erro" role="alert">{erro}</p>}
             {semConfig && <p className="entrar__erro" role="alert">O login ainda não foi ligado ao banco. Volte em instantes.</p>}
+            <p className="entrar__legal">
+              Ao entrar, você cria uma conta e aceita os <a href={LINK_TERMOS} target="_blank" rel="noopener">Termos de uso</a> e a <a href={LINK_PRIVACIDADE} target="_blank" rel="noopener">Política de privacidade</a>.
+            </p>
           </>
         )}
       </section>

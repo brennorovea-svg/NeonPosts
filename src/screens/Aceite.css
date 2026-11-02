@@ -1,0 +1,29 @@
+.aceite {
+  min-height: 100%;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 28px; padding: 40px 16px;
+  animation: aparecer 400ms var(--ease) both;
+}
+.aceite__topo { display: flex; align-items: center; gap: 14px; }
+.aceite__marca { margin: 0; font-size: 34px; }
+.aceite__cartao {
+  width: 100%; max-width: 440px;
+  display: flex; flex-direction: column; gap: 16px;
+  padding: 28px 22px;
+  background: var(--painel); border: 1px solid var(--borda); border-radius: var(--raio-cartao);
+}
+.aceite__titulo { margin: 0; font-size: 26px; font-weight: 700; line-height: 1.1; letter-spacing: -.03em; }
+.aceite__texto { margin: -6px 0 0; font-size: 15px; line-height: 1.5; color: var(--texto-2); }
+.aceite__links { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 20px; }
+.aceite__links a { color: var(--lilas); font-size: 15px; text-decoration: underline; text-underline-offset: 3px; }
+.aceite__caixa {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 14px; border-radius: var(--raio-campo);
+  background: var(--grafite); border: 1px solid var(--borda);
+  font-size: 15px; line-height: 1.45; cursor: pointer;
+}
+.aceite__caixa input { width: 20px; height: 20px; margin: 1px 0 0; flex: none; accent-color: var(--violeta); cursor: pointer; }
+.aceite__sair { align-self: center; }
+.aceite__rodape { margin: 0; font-size: 12px; color: var(--texto-2); }
+@keyframes aparecer { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .aceite { animation: none; } }

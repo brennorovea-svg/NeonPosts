@@ -9,6 +9,7 @@ import Comecar from './Comecar.jsx'
 import Criar from './Criar.jsx'
 import Entrevista from './Entrevista.jsx'
 import Planos from './Planos.jsx'
+import Aceite from './Aceite.jsx'
 import Planner from './Planner.jsx'
 import Redes from './Redes.jsx'
 import Menu from '../components/Menu.jsx'
@@ -16,10 +17,11 @@ import PainelMarca from '../components/PainelMarca.jsx'
 import DicasMarca from '../components/DicasMarca.jsx'
 import { dicasDaMarca } from '../lib/dicas.js'
 import { PLANOS, voltouDoPagamento } from '../lib/planos.js'
+import { aceitouTermos, TERMOS_VERSAO } from '../lib/termos.js'
 import './Area.css'
 
 const NEGOCIO_DE_TESTE = { id: 'teste', nome: null, limite_pecas: 5, plano: 'gratis' }
-const COLUNAS = 'id, nome, limite_pecas, plano, assinatura_status, renova_em, cancela_no_fim, stripe_cliente'
+const COLUNAS = 'id, nome, limite_pecas, plano, assinatura_status, renova_em, cancela_no_fim, stripe_cliente, aceitou_termos_em, termos_versao'
 // Lido uma vez, ao abrir: ?pago=pro quando a pessoa volta da Stripe.
 const pagou = voltouDoPagamento()
 
@@ -146,11 +148,24 @@ export default function Area({ sessao, teste = false }) {
     } catch { /* a peça existe; a pessoa marca no planner depois */ }
   }
 
+  // LGPD: antes de qualquer coisa, a pessoa aceita os Termos e a Privacidade (de novo quando a versão muda).
+  if (!teste && negocio && !aceitouTermos(negocio)) {
+    return (
+      <Aceite
+        negocio={negocio}
+        deNovo={Boolean(negocio.aceitou_termos_em)}
+        onAceitou={() => setNegocio((n) => ({ ...n, aceitou_termos_em: new Date().toISOString(), termos_versao: TERMOS_VERSAO }))}
+        onSair={() => supabase?.auth.signOut()}
+      />
+    )
+  }
+
   if (vendoPlanos) {
     return (
       <Planos
         negocio={negocio}
         usadas={usadas}
+        email={usuario.email}
         onSair={() => { setVendoPlanos(false); window.scrollTo({ top: 0 }) }}
         onTrocou={(plano) => {
           setNegocio((n) => ({ ...n, plano, limite_pecas: PLANOS[plano].pecas, cancela_no_fim: false }))

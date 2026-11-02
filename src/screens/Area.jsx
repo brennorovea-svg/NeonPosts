@@ -20,7 +20,8 @@ import { PLANOS, voltouDoPagamento } from '../lib/planos.js'
 import { aceitouTermos, TERMOS_VERSAO } from '../lib/termos.js'
 import './Area.css'
 
-const NEGOCIO_DE_TESTE = { id: 'teste', nome: null, limite_pecas: 5, plano: 'gratis' }
+// Só no modo de teste: ?limite=30 simula um plano maior, para ver o Preencher o mês com espaço.
+const NEGOCIO_DE_TESTE = { id: 'teste', nome: null, limite_pecas: Number(new URLSearchParams(location.search).get('limite')) || 5, plano: 'gratis' }
 const COLUNAS = 'id, nome, limite_pecas, plano, assinatura_status, renova_em, cancela_no_fim, stripe_cliente, aceitou_termos_em, termos_versao'
 // Lido uma vez, ao abrir: ?pago=pro quando a pessoa volta da Stripe.
 const pagou = voltouDoPagamento()
@@ -353,6 +354,7 @@ export default function Area({ sessao, teste = false }) {
             perfil={perfil}
             pecaInicial={criando === 'nova' ? null : criando}
             formatoInicial={criarCom?.formato}
+            pedidoInicial={criarCom?.titulo}
             videoInicial={videoInicial}
             marca={{ feitas: total, proxima: proxima >= 0 ? PARTES[proxima] : null }}
             onCompletar={() => { setCriando(null); setVideoInicial(false); setEditando(proxima); window.scrollTo({ top: 0 }) }}
@@ -394,6 +396,7 @@ export default function Area({ sessao, teste = false }) {
               negocioId={negocio.id} perfil={perfil} itens={agenda} pecas={pecas}
               avisos={avisos} onAtivarAvisos={ativarAvisos}
               onMudou={recarregarAgenda} onFaixa={pedirFaixa} abrir={abrirItem}
+              saldo={Math.max(0, limite - usadas)} onPlanos={() => setVendoPlanos(true)}
               onCriar={(com) => { if (usadas >= limite) { setVendoPlanos(true); return } setCriarCom(com); setVoltarPara(com.quando); setCriando('nova') }}
               onAbrirPeca={(p, quando) => { if (p) { setCriarCom(null); setVoltarPara(quando || null); setCriando(p) } }}
             />

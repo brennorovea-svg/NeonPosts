@@ -1407,9 +1407,13 @@ function comparar(ctx, { L, A, story, c, r, logo, foto, nome }) {
   const destaque = destaqueSobre(tinta, c)
   const tOp = { x: m, largura: L - m * 2, tamanho: Math.round(84 * escala(r)), maxLinhas: 3, entre: 1.0, alinhar: al }
   const aOp = { x: m, largura: L - m * 2 - (al === 'left' ? 160 : 0), tamanho: 36, peso: 400, maxLinhas: 2, entre: 1.3, alinhar: al }
-  while (medir(ctx, r.titulo, tOp) + 22 + medir(ctx, r.apoio, aOp) > A - base - 20 - (alto + 60) && tOp.tamanho > 50) tOp.tamanho -= 6
+  // A chamada entra embaixo do apoio, acima do selo; o título diminui para dar espaço.
+  const hCham = r.chamada ? 92 + 30 : 0
+  while (medir(ctx, r.titulo, tOp) + 22 + medir(ctx, r.apoio, aOp) + hCham > A - base - 96 - (alto + 60) && tOp.tamanho > 50) tOp.tamanho -= 6
   let y = bloco(ctx, r.titulo, { ...tOp, y: alto + 60, cor: corPedida(r, 'titulo', tinta), ...marca(r, destaque) })
-  bloco(ctx, r.apoio, { ...aOp, y: y + 22, cor: corPedida(r, 'texto', apagado(tinta, 0.75)) })
+  y = bloco(ctx, r.apoio, { ...aOp, y: y + 22, cor: corPedida(r, 'texto', apagado(tinta, 0.75)) })
+  const fundoCham = fundoPedido(r, c[0])
+  pilulaCurta(ctx, r, { x: m, y: Math.min(y + 30, A - base - 96 - 92), largura: L - m * 2 - (al === 'left' ? 200 : 0), alinhar: al, fundo: fundoCham, cor: textoSobre(fundoCham), altura: 92, tamanho: 34 })
   selo(ctx, { logo, nome, x: al === 'right' ? m : L - m, y: A - base - 76, altura: 52, alinhar: al === 'right' ? 'left' : 'right', claro: tinta === '#FFFFFF' })
 }
 

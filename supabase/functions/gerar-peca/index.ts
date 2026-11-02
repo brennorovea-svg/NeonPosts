@@ -29,6 +29,22 @@ function resposta(corpo: unknown, status = 200) {
 }
 const erro = (mensagem: string, status: number) => resposta({ erro: mensagem }, status)
 
+// Tetos de uso da IA (migração 0014). Confere e anota o uso antes de chamar a IA.
+// Se o banco não responder, não chama a IA: melhor um erro do que custo sem controle.
+const AVISOS_DE_USO: Record<string, string> = {
+  hora: 'Você usou bastante a IA na última hora. Espere um pouco e tente de novo.',
+  gratis_cheio: 'O plano grátis chegou ao limite de hoje. Tente amanhã ou mude de plano.',
+  'dia:calibrar': 'Você já testou o guia 3 vezes hoje. Tente de novo amanhã.',
+  'dia:entrevista': 'Você já montou o guia muitas vezes hoje. Tente de novo amanhã.',
+  'dia:regra': 'Você já ajustou a marca 10 vezes hoje. Tente de novo amanhã.',
+}
+async function usarIa(banco: ReturnType<typeof createClient>, negocioId: string, funcao: string, peso = 1) {
+  const { data, error } = await banco.rpc('usar_ia', { p_negocio: negocioId, p_funcao: funcao, p_peso: peso })
+  if (error) { console.error('usar_ia', error); return erro('Não deu para conferir o seu uso agora. Tente de novo.', 503) }
+  if (!data) return null
+  return erro(AVISOS_DE_USO[data === 'dia' ? `dia:${funcao}` : data] || 'Você chegou ao limite de uso. Tente mais tarde.', 429)
+}
+
 // Bytes da imagem em base64, em pedaços (o spread de um arquivo inteiro estoura a pilha).
 function base64(bytes: Uint8Array) {
   let texto = ''
@@ -116,6 +132,8 @@ Deno.serve(async (req) => {
 
   const chave = Deno.env.get('ANTHROPIC_API_KEY')
   if (!chave) return erro('A IA ainda não foi ligada. Tente mais tarde.', 503)
+  const barrado = await usarIa(banco, negocio.id, 'gerar')
+  if (barrado) return barrado
   const ia = new Anthropic({ apiKey: chave, timeout: 90_000, maxRetries: 1 })
 
   let bruto: Record<string, unknown>
@@ -174,7 +192,7 @@ Deno.serve(async (req) => {
 })
 
 // Gera as 3 peças de teste com as regras que o dono ainda está conferindo (não salvas).
-// Não grava nada e não conta no limite: a peça só aparece na tela da entrevista.
+// Não grava peça nem conta no limite do mês (só no teto de 3 calibrações por dia): a peça só aparece na tela da entrevista.
 async function calibrar(banco: ReturnType<typeof createClient>, negocioId: string, corpo: { regras?: string[]; carro_chefe?: string }) {
   const regras = (corpo.regras || []).map((r) => String(r).trim().slice(0, 300)).filter(Boolean).slice(0, 20)
   if (!regras.length) return erro('Monte o guia antes de testar.', 400)
@@ -185,6 +203,9 @@ async function calibrar(banco: ReturnType<typeof createClient>, negocioId: strin
 
   const chave = Deno.env.get('ANTHROPIC_API_KEY')
   if (!chave) return erro('A IA ainda não foi ligada. Tente mais tarde.', 503)
+  // As 3 peças da calibração pesam 3 no teto da hora e no teto do plano grátis.
+  const barrado = await usarIa(banco, negocioId, 'calibrar', 3)
+  if (barrado) return barrado
   const ia = new Anthropic({ apiKey: chave, timeout: 90_000, maxRetries: 1 })
 
   const pedidos = pedidosDeCalibracao(String(corpo.carro_chefe || '').trim().slice(0, 80))

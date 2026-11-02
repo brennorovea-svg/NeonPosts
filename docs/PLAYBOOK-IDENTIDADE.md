@@ -78,6 +78,7 @@ Placa violeta #7B5CFF, disco grafite r=36, hexágono neve `78,60 69,75.6 51,75.6
 | `--texto-2` | #A1A1B0 | texto secundário, legendas, contadores |
 | `--violeta-escuro` | #5B3FE0 | violeta para texto pequeno sobre claro, pílulas com texto pequeno |
 | `--cinza-claro` | #55555F | texto secundário sobre claro |
+| `--perigo` | #D93036 | só para ação que apaga algo (botão Excluir), com texto branco |
 
 **Proporção:** ~70% grafite/painel, ~20% neve, ~10% violeta/lilás. O violeta é tempero, não fundo de tela inteira.
 

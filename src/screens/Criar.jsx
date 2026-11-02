@@ -283,7 +283,7 @@ const semDadosDoPedido = (t) => String(t || '').split('\n\nUse estes dados:')[0]
 const paraInput = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 const quandoPorExtenso = (d) => d.toLocaleString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
 
-export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, pedidoInicial = '', redeInicial = null, videoInicial = false, marca = null, onCompletar, onSair, onPerfil, onPerfilProfissional, onCriou, onAgendar, onPostou, noPlanner = false }) {
+export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, pedidoInicial = '', redeInicial = null, videoInicial = false, marca = null, onCompletar, onSair, onPerfil, onPerfilProfissional, onCriou, onAgendar, onPostou, onMandarParaCelular = null, noPlanner = false }) {
   // Veio do planner: o tema marcado já abre escrito, para a pessoa completar.
   const [pedido, setPedido] = useState(() => (pedidoInicial ? `${pedidoInicial.trim()}. ` : ''))
   const [tipo, setTipo] = useState(null)
@@ -314,6 +314,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
   const [arquivo, setArquivo] = useState(null) // { arquivo: File, extensao }
   const [resultado, setResultado] = useState(null) // depois de Postar: 'compartilhou' | 'baixou' | '...-sem-copiar'
   const [postou, setPostou] = useState(false)
+  const [celular, setCelular] = useState('') // '' | 'enviando' | 'enviado' | 'nenhum'
   const [dadosFaltando, setDadosFaltando] = useState({}) // { '[HORÁRIO]': 'sábado, 9h às 13h' }
   const [respondidos, setRespondidos] = useState([]) // marcadores que a pessoa já respondeu antes de gerar: não pergunta de novo
   const [fotos, setFotos] = useState([])
@@ -474,6 +475,12 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
     const r = await entregar(arquivo.arquivo, textoDaLegenda(roteiro))
     if (r === 'cancelou') return
     setResultado(r)
+  }
+
+  // "Mandar para o celular" (computador): o servidor avisa os celulares desta conta com o post pronto.
+  async function mandarParaCelular() {
+    setCelular('enviando')
+    try { setCelular((await onMandarParaCelular({ peca: peca.id })) > 0 ? 'enviado' : 'nenhum') } catch (falha) { setCelular(''); setErro(falha.message) }
   }
 
   // "Sim, postei": o post entra no planner como postado (ou a marcação que já existia vira postada).
@@ -923,7 +930,14 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
                     <button type="button" className="botao botao--primario" onClick={confirmarPostou}>Sim, postei</button>
                     <button type="button" className="botao botao--fantasma" onClick={() => setResultado(null)}>Ainda não</button>
                     {resultado.startsWith('baixou') && <button type="button" className="botao botao--fantasma" onClick={() => baixarLegenda(textoDaLegenda(roteiro), nomeDoArquivo(nome, peca, video))}>Baixar legenda</button>}
+                    {resultado.startsWith('baixou') && onMandarParaCelular && (
+                      <button type="button" className="botao botao--fantasma" disabled={celular === 'enviando'} onClick={mandarParaCelular}>
+                        {celular === 'enviando' ? 'Mandando...' : 'Mandar para o celular'}
+                      </button>
+                    )}
                   </div>
+                  {celular === 'enviado' && <span className="criar__nota--ok">Mandado. No celular, toque no aviso e poste de lá.</span>}
+                  {celular === 'nenhum' && <span>Nenhum celular com avisos ligados. No celular, abra o Neonposts, vá em Redes e toque em Ativar avisos.</span>}
                 </div>
               )}
               {postou && <p className="criar__nota criar__nota--ok" role="status">Postado. Já está no planner como postado.</p>}
@@ -932,7 +946,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
                 <button type="button" className="botao botao--fantasma" disabled={restantes <= 0 || ajustando} onClick={() => { setPedidoNovo(peca.pedido); setAjustando(true) }}>
                   Gerar de novo{restantes > 0 ? ` (${restantes})` : ''}
                 </button>
-                <button type="button" className="botao botao--fantasma" onClick={() => { setPeca(null); setPedido(''); setTipo(null); setFotos([]); setLayout('ia'); setAvisoVideo(''); setAvisoPost(''); setResultado(null); setPostou(false); setDadosFaltando({}); setRespondidos([]); setEstado('pedido') }}>Criar outro</button>
+                <button type="button" className="botao botao--fantasma" onClick={() => { setPeca(null); setPedido(''); setTipo(null); setFotos([]); setLayout('ia'); setAvisoVideo(''); setAvisoPost(''); setResultado(null); setPostou(false); setCelular(''); setDadosFaltando({}); setRespondidos([]); setEstado('pedido') }}>Criar outro</button>
               </div>
               <p className="criar__nota">Gerar de novo não conta como post novo.</p>
               <NaoEMinhaMarca

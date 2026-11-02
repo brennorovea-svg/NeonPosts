@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { carregarPerfil, enderecoDaImagem, parteFeita, PERFIL_VAZIO, profissionalFeito } from '../lib/perfil.js'
-import { listarPecas, pecasDoMes } from '../lib/pecas.js'
-import { agendar, listarAgenda, mudarAgenda } from '../lib/agenda.js'
+import { listarPecas, pecaPorId, pecasDoMes } from '../lib/pecas.js'
+import { agendaPorId, agendar, listarAgenda, mudarAgenda } from '../lib/agenda.js'
 import { avisosPermitidos, pedirAvisos, vigiarAgenda } from '../lib/avisos.js'
+import { conferirAvisos, ligarAvisos, mandarParaCelular, ouvirAvisos, pedidoDoEndereco, pushDisponivel } from '../lib/push.js'
 import PerfilMarca, { PARTES } from './PerfilMarca.jsx'
 import PerfilProfissional from './PerfilProfissional.jsx'
 import Comecar from './Comecar.jsx'
@@ -59,6 +60,7 @@ export default function Area({ sessao, teste = false }) {
   const [agenda, setAgenda] = useState([])
   const [faixa, setFaixa] = useState(() => { const h = new Date(); return { de: new Date(h.getFullYear(), h.getMonth() - 1, 1), ate: new Date(h.getFullYear(), h.getMonth() + 2, 1) } })
   const [avisos, setAvisos] = useState(avisosPermitidos())
+  const [push, setPush] = useState(false) // este aparelho recebe o aviso com o app fechado
   const [abrirItem, setAbrirItem] = useState(null) // marcação que veio pelo aviso
   const [criarCom, setCriarCom] = useState(null) // { agendaId, titulo, formato, quando } quando a peça nasce no planner
   const [voltarPara, setVoltarPara] = useState(null) // dia do planner para reabrir ao sair de Criar
@@ -126,19 +128,50 @@ export default function Area({ sessao, teste = false }) {
     setFaixa((f) => (de >= f.de && ate <= f.ate ? f : { de: de < f.de ? de : f.de, ate: ate > f.ate ? ate : f.ate }))
   }, [])
 
-  // Com os avisos liberados, olha a agenda e avisa na hora de postar.
+  // Este aparelho já assinou o aviso com o app fechado? Confirma a assinatura no banco.
   useEffect(() => {
-    if (!avisos) return
+    if (!negocio || teste) return
+    conferirAvisos(negocio.id).then(setPush)
+  }, [negocio, teste])
+
+  // Toque no aviso (app fechado ou aberto): abre a marcação ou o post que ele aponta.
+  const abrirPedido = useCallback(async (pedido) => {
+    if (!pedido) return
+    if (pedido.agenda) {
+      const item = agendaAtual.current.find((i) => i.id === pedido.agenda) || await agendaPorId(pedido.agenda).catch(() => null)
+      if (item) { setCriando(null); setVendoPlanos(false); setAba('planner'); setAbrirItem(item) }
+    } else if (pedido.peca) {
+      const p = await pecaPorId(pedido.peca).catch(() => null)
+      if (p) { setCriarCom(null); setVoltarPara(null); setVendoPlanos(false); setCriando(p) }
+    }
+  }, [])
+  useEffect(() => {
+    if (!negocio) return
+    abrirPedido(pedidoDoEndereco())
+    return ouvirAvisos((parametros) => abrirPedido({ agenda: parametros.get('agenda'), peca: parametros.get('peca') }))
+  }, [negocio, abrirPedido])
+
+  // Com os avisos liberados e sem push, o app aberto olha a agenda e avisa na hora de postar.
+  // Com push, quem avisa é o servidor (também com o app fechado).
+  useEffect(() => {
+    if (!avisos || push) return
     return vigiarAgenda(
       () => agendaAtual.current,
       (item) => { setCriando(null); setVendoPlanos(false); setAba('planner'); setAbrirItem(item) },
       recarregarAgenda,
     )
-  }, [avisos, recarregarAgenda])
+  }, [avisos, push, recarregarAgenda])
 
+  // Ligar avisos: com push, o aviso chega com o app fechado; sem, só com o app aberto.
   async function ativarAvisos() {
+    if (pushDisponivel() && !teste && negocio) {
+      try {
+        if (await ligarAvisos(negocio.id)) { setAvisos(true); setPush(true); return }
+      } catch { /* servidor sem push ainda: cai no aviso com o app aberto */ }
+    }
     setAvisos(await pedirAvisos())
   }
+  const enviarParaCelular = teste ? null : (alvo) => mandarParaCelular(alvo)
 
   // Peça criada a partir do planner: entra no dia marcado (ou preenche a marcação que já existia).
   async function ligarAoPlanner(peca) {
@@ -397,6 +430,7 @@ export default function Area({ sessao, teste = false }) {
             onCriou={ligarAoPlanner}
             noPlanner={Boolean(criarCom)}
             onPostou={marcarPostada}
+            onMandarParaCelular={enviarParaCelular}
             onAgendar={async (peca, quando, rede = 'instagram') => {
               await agendar(negocio.id, { titulo: peca.roteiro?.titulo || peca.pedido, rede, formato: peca.formato === 'story' ? 'story' : 'post', quando, peca: peca.id })
               recarregarAgenda()
@@ -428,11 +462,11 @@ export default function Area({ sessao, teste = false }) {
           )}
           {abaAtual === 'marca' && marca}
           {abaAtual === 'pecas' && minhasPecas}
-          {abaAtual === 'redes' && <Redes avisos={avisos} onAtivarAvisos={ativarAvisos} />}
+          {abaAtual === 'redes' && <Redes avisos={avisos} push={push} onAtivarAvisos={ativarAvisos} />}
           {abaAtual === 'planner' && negocio && (
             <Planner
               negocioId={negocio.id} perfil={perfil} itens={agenda} pecas={pecas}
-              avisos={avisos} onAtivarAvisos={ativarAvisos}
+              avisos={avisos} push={push} onAtivarAvisos={ativarAvisos} onMandarParaCelular={enviarParaCelular}
               onMudou={recarregarAgenda} onFaixa={pedirFaixa} abrir={abrirItem}
               saldo={Math.max(0, limite - usadas)} onPlanos={() => setVendoPlanos(true)}
               onCriar={(com) => { if (usadas >= limite) { setVendoPlanos(true); return } setCriarCom(com); setVoltarPara(com.quando); setCriando('nova') }}

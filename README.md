@@ -14,6 +14,13 @@ Neonposts, da Neon Scripts: gerador de posts e stories (imagem ou vídeo) para p
 ## Identidade
 Tudo em [`docs/PLAYBOOK-IDENTIDADE.md`](docs/PLAYBOOK-IDENTIDADE.md). Ler antes de mexer em qualquer tela.
 
+## Avisos com o app fechado (Web Push)
+- `public/sw.js` é o service worker (só avisos, sem cache). O aparelho assina em Redes › Ativar avisos; a assinatura fica em `assinaturas_push`.
+- A Edge Function `avisar` manda o push: `hora` (pg_cron a cada minuto, com o cabeçalho `x-segredo`), `celular` ("Mandar para o celular", com o login da pessoa), `teste` e `chave` (chave pública VAPID).
+- Segredos nas Edge Functions: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` (gerar com `npx web-push generate-vapid-keys`), `VAPID_SUBJECT` (`mailto:neonposts@neonscripts.com.br`) e `AVISAR_SEGREDO`. O mesmo segredo vai para o cofre do banco: `select vault.create_secret('<AVISAR_SEGREDO>', 'avisar_segredo');`.
+- Deploy: `supabase functions deploy avisar --no-verify-jwt`. A migração `0018_avisos_push.sql` cria a tabela, a função `avisos_pendentes()` e o cron `neonposts-avisar`.
+- iPhone: o aviso só chega com o app na tela inicial (iOS 16.4+). Android: funciona no Chrome, instalado ou não.
+
 ## Rodar e publicar
 - `npm install` e `npm run dev` para ver no computador.
 - Todo merge no `main` publica sozinho em https://neonposts.com.br pela Action `Publicar no GitHub Pages`.

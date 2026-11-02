@@ -76,6 +76,15 @@ export async function listarPecas(negocioId, quantas = 12) {
   return data
 }
 
+// Uma peça pelo id (o aviso do celular traz só o id).
+export async function pecaPorId(id) {
+  if (modoDeTeste()) return pecasDeTeste.find((p) => p.id === id) || null
+  const { data } = await supabase.from('pecas')
+    .select('id, formato, modelo, pedido, roteiro, versoes, escolhida, fotos, imagem, refeitas, cortesia, criado_em')
+    .eq('id', id).maybeSingle()
+  return data || null
+}
+
 export async function pecasDoMes(negocioId) {
   if (modoDeTeste()) return pecasDeTeste.filter((p) => !p.cortesia).length
   const { count } = await supabase.from('pecas').select('id', { count: 'exact', head: true })

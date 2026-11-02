@@ -11,7 +11,7 @@ import { profissionalFeito, salvarPerfil } from '../lib/perfil.js'
 import { acordarIA, escolherVersao, gerarPeca, guardarImagem, salvarTexto } from '../lib/pecas.js'
 import { REDES } from '../lib/agenda.js'
 import { desenhar, layoutsDoGrupo, NOMES_DOS_MODELOS, paraArquivo, prepararFontes } from '../lib/desenhar.js'
-import { baixarLegenda, entregar, imagemDe, nomeDoArquivo, passoNaRede, podeCompartilhar, prepararArquivo, textoDaLegenda } from '../lib/publicar.js'
+import { avisoDoResultado, baixarArquivo, baixarLegenda, entregar, imagemDe, nomeDoArquivo, passoNaRede, podeCompartilhar, prepararArquivo, textoDaLegenda } from '../lib/publicar.js'
 import './Criar.css'
 
 const suave = (t) => 1 - Math.pow(1 - Math.min(1, Math.max(0, t)), 4)
@@ -915,20 +915,12 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
               {avisoPost && <p className="criar__nota" role="status">{avisoPost}</p>}
               {resultado && !postou && (
                 <div className="criar__postou" role="group" aria-label="Postou?">
-                  <strong>
-                    {resultado === 'compartilhou' ? 'Legenda copiada.'
-                      : resultado === 'baixou' ? 'Arquivo baixado e legenda copiada.'
-                      : resultado === 'baixou-sem-copiar' ? 'Arquivo baixado.' : 'Arquivo enviado.'}
-                  </strong>
-                  <span>
-                    {resultado.startsWith('baixou')
-                      ? `Mande o arquivo para o celular e poste de lá. ${passoNaRede(rede)}`
-                      : passoNaRede(rede)}
-                    {resultado.endsWith('sem-copiar') && ' A legenda não copiou sozinha: use o botão Copiar legenda.'}
-                  </span>
+                  <strong>{avisoDoResultado(resultado, rede).titulo}</strong>
+                  <span>{avisoDoResultado(resultado, rede).texto}</span>
                   <div className="criar__postou-acoes">
                     <button type="button" className="botao botao--primario" onClick={confirmarPostou}>Sim, postei</button>
                     <button type="button" className="botao botao--fantasma" onClick={() => setResultado(null)}>Ainda não</button>
+                    {resultado.startsWith('falhou') && <button type="button" className="botao botao--fantasma" onClick={() => baixarArquivo(arquivo.arquivo)}>Baixar o arquivo</button>}
                     {resultado.startsWith('baixou') && <button type="button" className="botao botao--fantasma" onClick={() => baixarLegenda(textoDaLegenda(roteiro), nomeDoArquivo(nome, peca, video))}>Baixar legenda</button>}
                     {resultado.startsWith('baixou') && onMandarParaCelular && (
                       <button type="button" className="botao botao--fantasma" disabled={celular === 'enviando'} onClick={mandarParaCelular}>

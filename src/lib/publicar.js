@@ -69,24 +69,48 @@ export function podeCompartilhar() {
 }
 
 // Copia a legenda e abre o compartilhar com o arquivo. Chamar DIRETO no toque, com o
-// arquivo já pronto. Devolve 'compartilhou', 'baixou' ou 'cancelou'.
+// arquivo já pronto. Devolve um destes resultados (com "-sem-copiar" quando a legenda não copiou):
+// 'compartilhou'; 'baixou' (aparelho sem compartilhar, o computador); 'tipo' (o celular compartilha,
+// mas não esse tipo de arquivo, então baixa); 'falhou' (o compartilhar recusou; nada baixa sozinho,
+// a pessoa toca de novo); 'cancelou'. O motivo da última falha fica em ultimaFalha().
+let falha = ''
+let tentarSemTexto = false
+export const ultimaFalha = () => falha
 export async function entregar(arquivo, legenda) {
   // A cópia começa antes do compartilhar e não espera: os dois saem no mesmo toque.
   let copiou = true
   const copia = navigator.clipboard?.writeText(legenda).catch(() => { copiou = false }) || Promise.resolve((copiou = false))
-  if (podeCompartilhar() && navigator.canShare({ files: [arquivo] })) {
-    try {
-      await navigator.share({ files: [arquivo], text: legenda })
-      await copia
-      return copiou ? 'compartilhou' : 'compartilhou-sem-copiar'
-    } catch (e) {
-      if (e.name === 'AbortError') return 'cancelou'
-      // Sem compartilhar, cai no download.
-    }
+  const fim = async (r) => { await copia; return copiou ? r : `${r}-sem-copiar` }
+  falha = ''
+  if (!podeCompartilhar()) { baixarArquivo(arquivo); return fim('baixou') }
+  if (!navigator.canShare({ files: [arquivo] })) {
+    falha = `tipo ${arquivo.type || 'desconhecido'}`
+    baixarArquivo(arquivo)
+    return fim('tipo')
   }
-  baixarArquivo(arquivo)
-  await copia
-  return copiou ? 'baixou' : 'baixou-sem-copiar'
+  // Depois de uma recusa, tenta só com o arquivo: a legenda já vai copiada e algumas redes recusam texto junto.
+  const dados = tentarSemTexto ? { files: [arquivo] } : { files: [arquivo], text: legenda }
+  try {
+    await navigator.share(dados)
+    tentarSemTexto = false
+    return fim('compartilhou')
+  } catch (e) {
+    if (e.name === 'AbortError') return 'cancelou'
+    falha = e.name || 'erro'
+    tentarSemTexto = true
+    return fim('falhou')
+  }
+}
+
+// Título e texto do cartão "Postou?" para cada resultado do entregar().
+export function avisoDoResultado(resultado, rede) {
+  const semCopiar = resultado.endsWith('-sem-copiar')
+  const base = resultado.replace('-sem-copiar', '')
+  const copiar = semCopiar ? ' A legenda não copiou sozinha: use o botão Copiar legenda.' : ''
+  if (base === 'compartilhou') return { titulo: semCopiar ? 'Arquivo enviado.' : 'Legenda copiada.', texto: passoNaRede(rede) + copiar }
+  if (base === 'baixou') return { titulo: semCopiar ? 'Arquivo baixado.' : 'Arquivo baixado e legenda copiada.', texto: `Mande o arquivo para o celular e poste de lá. ${passoNaRede(rede)}${copiar}` }
+  if (base === 'tipo') return { titulo: 'O arquivo foi baixado.', texto: `Este celular não compartilha esse arquivo pelo navegador. Abra a rede, escolha o arquivo na galeria e cole a legenda.${copiar}` }
+  return { titulo: 'O compartilhar não abriu.', texto: `Toque em Postar de novo. Se não abrir, use Baixar o arquivo e escolha ele na galeria dentro da rede. (motivo: ${falha || 'desconhecido'})${copiar}` }
 }
 
 export function baixarArquivo(arquivo) {

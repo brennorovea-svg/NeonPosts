@@ -1,0 +1,11 @@
+.instalar {
+  display: flex; flex-direction: column; gap: 6px; padding: 14px 16px;
+  border-radius: var(--raio-cartao); border: 1px solid var(--borda); background: var(--painel);
+  font-size: 14px; line-height: 1.5; color: var(--texto-2);
+}
+.instalar > strong { color: var(--neve); font-size: 15px; }
+.instalar__passos { margin: 4px 0 0; padding: 0 0 0 20px; display: flex; flex-direction: column; gap: 4px; }
+.instalar__passos strong { color: var(--neve); font-weight: 600; }
+.instalar__acoes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.instalar__acoes .botao, .instalar__depois { width: auto; min-height: 40px; padding: 8px 14px; font-size: 14px; }
+.instalar__depois { align-self: flex-start; margin-top: 4px; }

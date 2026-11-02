@@ -68,6 +68,13 @@ export async function agendar(negocioId, { titulo, rede, formato, quando, peca =
   return data
 }
 
+// Uma marcação pelo id (o aviso do celular traz só o id).
+export async function agendaPorId(id) {
+  if (modoDeTeste()) return (agendaDeTeste ?? exemploDeTeste()).find((i) => i.id === id) || null
+  const { data } = await supabase.from('agenda').select(COLUNAS).eq('id', id).maybeSingle()
+  return data || null
+}
+
 export async function mudarAgenda(id, campos) {
   const mudanca = { ...campos }
   if (mudanca.quando instanceof Date) mudanca.quando = mudanca.quando.toISOString()

@@ -1,9 +1,11 @@
 import { REDES } from '../lib/agenda.js'
+import { pushDisponivel } from '../lib/push.js'
+import Instalar from '../components/Instalar.jsx'
 import './Redes.css'
 
 // Redes: por enquanto, postar é pelo celular, em um toque. Conectar de verdade
 // (postar sozinho) é o Bloco 9 e depende da revisão das redes.
-export default function Redes({ avisos, onAtivarAvisos }) {
+export default function Redes({ avisos, push = false, onAtivarAvisos }) {
   return (
     <section className="redes">
       <h1 className="redes__titulo">Suas redes</h1>
@@ -26,10 +28,17 @@ export default function Redes({ avisos, onAtivarAvisos }) {
         ))}
       </ul>
       <div className="redes__avisos">
-        <strong>{avisos ? 'Avisos ligados neste navegador.' : 'Avisos desligados.'}</strong>
-        <span>O lembrete funciona com o app aberto numa aba ou instalado na tela inicial do celular.</span>
-        {!avisos && <button type="button" className="botao botao--fantasma" onClick={onAtivarAvisos}>Ativar avisos</button>}
+        <strong>{push ? 'Avisos ligados neste aparelho, mesmo com o app fechado.' : avisos ? 'Avisos ligados só com o app aberto.' : 'Avisos desligados.'}</strong>
+        <span>
+          {push
+            ? 'Na hora de postar, o aviso chega aqui. Tocar nele abre o post com o Postar pronto.'
+            : pushDisponivel()
+              ? 'Ligue para receber o aviso na hora de postar, mesmo com o app fechado. No computador, o botão "Mandar para o celular" manda o post pronto para cá.'
+              : 'Neste navegador o aviso só chega com o app aberto. No celular, instale o app na tela inicial para receber com ele fechado.'}
+        </span>
+        {!push && <button type="button" className="botao botao--fantasma" onClick={onAtivarAvisos}>{avisos ? 'Ligar com o app fechado' : 'Ativar avisos'}</button>}
       </div>
+      <Instalar motivo="No celular, o aviso com o app fechado chega pelo app da tela inicial. É de graça e leva 10 segundos." />
     </section>
   )
 }

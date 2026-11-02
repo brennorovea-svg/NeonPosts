@@ -4,6 +4,8 @@ import { avisosDisponiveis, avisosNegados } from '../lib/avisos.js'
 import { enderecoDaImagem } from '../lib/perfil.js'
 import { gerarGrade } from '../lib/preencher.js'
 import { ehAnimado, entregar, legendaDe, nomeDoArquivo, opcoesDaPeca, passoNaRede, podeCompartilhar, prepararArquivo } from '../lib/publicar.js'
+import { ehIphone, instalado } from '../lib/push.js'
+import Instalar from '../components/Instalar.jsx'
 import './Planner.css'
 
 // Planner: calendário do mês no computador, lista da semana no celular.
@@ -33,7 +35,7 @@ function Miniatura({ peca, formato }) {
   )
 }
 
-export default function Planner({ negocioId, perfil, itens, pecas, avisos, onAtivarAvisos, onMudou, onCriar, onAbrirPeca, onFaixa, abrir, saldo = 0, onPlanos }) {
+export default function Planner({ negocioId, perfil, itens, pecas, avisos, push = false, onAtivarAvisos, onMandarParaCelular = null, onMudou, onCriar, onAbrirPeca, onFaixa, abrir, saldo = 0, onPlanos }) {
   const hoje = useMemo(() => new Date(), [])
   const [mes, setMes] = useState(new Date(hoje.getFullYear(), hoje.getMonth(), 1))
   const [semana, setSemana] = useState(inicioDaSemana(hoje))
@@ -48,7 +50,8 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, onAti
   const [arrastando, setArrastando] = useState(null)
   const [excluindo, setExcluindo] = useState(null) // id do item esperando o segundo toque em Excluir
   const [confirmando, setConfirmando] = useState(null) // { id, resultado } do item esperando "postou?" depois do compartilhar
-  const [prontos, setProntos] = useState({}) // id da marcação -> { arquivo, progresso, erro }: o arquivo pronto antes do toque
+  const [prontos, setProntos] = useState({})
+  const [celular, setCelular] = useState(null) // { id, estado: 'enviando' | 'enviado' | 'nenhum' } do Mandar para o celular // id da marcação -> { arquivo, progresso, erro }: o arquivo pronto antes do toque
   const [sugestao, setSugestao] = useState(null) // Preencher o mês: a grade sugerida, esperando a pessoa aprovar
   const [fora, setFora] = useState([]) // ids que a pessoa tirou da grade
   const [marcando, setMarcando] = useState(false)
@@ -221,12 +224,20 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, onAti
     </header>
   )
 
-  const avisoDeLembrete = avisosDisponiveis() && !avisos && (
+  // No iPhone o aviso com o app fechado só chega com o app na tela inicial: convida antes de pedir o aviso.
+  const avisoDeLembrete = ehIphone() && !instalado() ? <Instalar compacto />
+    : avisosDisponiveis() && !avisos && (
     <div className="planner__avisos">
-      <p>{avisosNegados() ? 'Os avisos estão bloqueados neste navegador. Libere nas configurações do site para receber o lembrete na hora de postar.' : 'Quer um aviso na hora de postar? Com o app aberto ou instalado, a gente avisa e abre o compartilhar.'}</p>
+      <p>{avisosNegados() ? 'Os avisos estão bloqueados neste navegador. Libere nas configurações do site para receber o lembrete na hora de postar.' : 'Quer um aviso na hora de postar, mesmo com o app fechado? A gente avisa e abre o compartilhar.'}</p>
       {!avisosNegados() && <button type="button" className="botao botao--fantasma" onClick={onAtivarAvisos}>Ativar avisos</button>}
     </div>
   )
+
+  // "Mandar para o celular" (computador): o servidor avisa os celulares desta conta com o post pronto.
+  async function mandarParaCelular(item) {
+    setCelular({ id: item.id, estado: 'enviando' })
+    try { setCelular({ id: item.id, estado: (await onMandarParaCelular({ agenda: item.id })) > 0 ? 'enviado' : 'nenhum' }) } catch { setCelular(null); setErro('Não deu para mandar agora. Tente de novo.') }
+  }
 
   const marcacao = (item, compacto = false) => (
     <span key={item.id} className={`planner__item${item.postado_em ? ' planner__item--postado' : ''}`} draggable={!compacto} onDragStart={() => setArrastando(item.id)} onDragEnd={() => setArrastando(null)}>
@@ -403,7 +414,7 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, onAti
                   <select id={`lembrete-${item.id}`} className="planner__select" value={item.lembrete_minutos} onChange={(e) => tentar(() => mudarAgenda(item.id, { lembrete_minutos: Number(e.target.value), avisado_em: null }))}>
                     {LEMBRETES.map(([v, r]) => <option key={v} value={v}>{r}</option>)}
                   </select>
-                  <span className="planner__cartao-nota">{avisos ? 'Na hora, o aviso abre o compartilhar com a legenda copiada.' : 'Ative os avisos para receber o lembrete.'}</span>
+                  <span className="planner__cartao-nota">{push ? 'Na hora, o aviso chega no celular mesmo com o app fechado.' : avisos ? 'Na hora, com o app aberto, o aviso abre o compartilhar.' : 'Ative os avisos para receber o lembrete.'}</span>
                 </div>
               )}
               {confirmando?.id === item.id && !item.postado_em && (
@@ -424,6 +435,8 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, onAti
                   </div>
                 </div>
               )}
+              {celular?.id === item.id && celular.estado === 'enviado' && <p className="planner__ok">Mandado. No celular, toque no aviso e poste de lá.</p>}
+              {celular?.id === item.id && celular.estado === 'nenhum' && <p className="planner__cartao-nota">Nenhum celular com avisos ligados. No celular, abra o Neonposts, vá em Redes e toque em Ativar avisos.</p>}
               <div className="planner__cartao-acoes">
                 {peca ? (
                   <>
@@ -440,6 +453,11 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, onAti
                         </span>
                       )
                     })()}
+                    {!item.postado_em && !podeCompartilhar() && onMandarParaCelular && (
+                      <button type="button" className="botao botao--fantasma" disabled={celular?.id === item.id && celular.estado === 'enviando'} onClick={() => mandarParaCelular(item)}>
+                        {celular?.id === item.id && celular.estado === 'enviando' ? 'Mandando...' : 'Mandar para o celular'}
+                      </button>
+                    )}
                     <button type="button" className="botao botao--fantasma" onClick={() => onAbrirPeca(peca, quando)}>Abrir o post</button>
                   </>
                 ) : (

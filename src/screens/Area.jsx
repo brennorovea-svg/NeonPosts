@@ -7,6 +7,8 @@ import { avisosPermitidos, pedirAvisos, vigiarAgenda } from '../lib/avisos.js'
 import { conferirAvisos, ligarAvisos, mandarParaCelular, ouvirAvisos, pedidoDoEndereco, pushDisponivel } from '../lib/push.js'
 import PerfilMarca, { PARTES } from './PerfilMarca.jsx'
 import PerfilProfissional from './PerfilProfissional.jsx'
+import MeusLayouts from './MeusLayouts.jsx'
+import { preferencias } from '../lib/meusLayouts.js'
 import Comecar from './Comecar.jsx'
 import Criar from './Criar.jsx'
 import Entrevista from './Entrevista.jsx'
@@ -49,6 +51,7 @@ export default function Area({ sessao, teste = false }) {
   const [versao, setVersao] = useState(0)
   const [editando, setEditando] = useState(null) // índice da parte aberta
   const [profissional, setProfissional] = useState(false) // perfil profissional (LinkedIn) aberto
+  const [meusLayouts, setMeusLayouts] = useState(false) // Marca › Meus layouts aberto
   const [entrevista, setEntrevista] = useState(null) // null, 'nova' ou 'revisar'
   const [dica, setDica] = useState(null) // dica que abriu a edição: o campo dela já vem em foco
   const [erro, setErro] = useState('')
@@ -260,6 +263,20 @@ export default function Area({ sessao, teste = false }) {
     )
   }
 
+  if (meusLayouts && perfil) {
+    return (
+      <MeusLayouts
+        negocioId={negocio.id}
+        perfilInicial={perfil}
+        onSair={(salvo) => {
+          if (salvo) { setPerfil(salvo); recarregar() }
+          setMeusLayouts(false)
+          window.scrollTo({ top: 0 })
+        }}
+      />
+    )
+  }
+
   if (editando !== null && perfil) {
     return (
       <PerfilMarca
@@ -389,6 +406,20 @@ export default function Area({ sessao, teste = false }) {
           <span className={`mono area__estado${profissionalFeito(perfil) ? ' area__estado--feito' : ''}`}>{profissionalFeito(perfil) ? 'Feito' : 'Opcional'}</span>
         </button>
       )}
+      {podeCriar && (() => {
+        const { gosto, nao } = preferencias(perfil)
+        const estado = gosto.length ? `${gosto.length} ${gosto.length > 1 ? 'favoritos' : 'favorito'}` : nao.length ? `${nao.length} ${nao.length > 1 ? 'escondidos' : 'escondido'}` : 'Opcional'
+        return (
+          <button type="button" className="area__passo area__profissional" onClick={() => setMeusLayouts(true)}>
+            <span className="mono area__num">Extra</span>
+            <span className="area__passo-texto">
+              <strong>Meus layouts</strong>
+              <span>Escolha os layouts com a cara da sua marca. A IA usa esses e nunca os que você esconder.</span>
+            </span>
+            <span className={`mono area__estado${gosto.length || nao.length ? ' area__estado--feito' : ''}`}>{estado}</span>
+          </button>
+        )
+      })()}
       {total === 4 && <PainelMarca perfil={perfil} versao={versao} dicas={dicas} onEditar={setEditando} onGuia={() => setEntrevista(perfil.voz.guia?.regras?.length ? 'revisar' : 'nova')} />}
       <p className="area__email mono">
         {usuario.email}{versao > 0 && ` · marca na versão ${versao}`}

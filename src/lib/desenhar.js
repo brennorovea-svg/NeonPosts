@@ -2610,6 +2610,18 @@ function desenharParaTikTok(canvas, opcoes) {
   ctx.restore()
 }
 
+// Marca com uma cor só (ou duas quase iguais): o destaque e o brilho saem de um tom dela,
+// senão a palavra em destaque fica da cor do fundo e some (crítica do Bloco 11).
+function paletaDe(cores = []) {
+  const valida = (x) => (/^#[0-9a-f]{6}$/i.test(x || '') ? x : '')
+  const p = valida(cores[0]) || '#7B5CFF'
+  const rumo = luz(p) > 0.35 ? '#000000' : '#FFFFFF'
+  const outra = (x, t) => (x && contraste(x, p) >= 1.6 ? x : misturar(p, rumo, t))
+  const s = valida(cores[1]) ? outra(cores[1], 0.5) : cores.length ? misturar(p, rumo, 0.5) : '#A28BFF'
+  const t = valida(cores[2]) || (cores.length > 1 ? s : cores.length ? misturar(p, rumo, 0.25) : '#5B3FE0')
+  return [p, s, t]
+}
+
 export function desenhar(canvas, opcoes) {
   if (opcoes.rede === 'tiktok') return desenharParaTikTok(canvas, opcoes)
   const { formato, modelo, roteiro, cores, logo, foto, fotos, nome, fonte, tempo = null, total = 8 } = opcoes
@@ -2617,7 +2629,7 @@ export function desenhar(canvas, opcoes) {
   canvas.width = L
   canvas.height = A
   const ctx = canvas.getContext('2d')
-  const base = [cores[0] || '#7B5CFF', cores[1] || cores[0] || '#A28BFF', cores[2] || cores[1] || cores[0] || '#5B3FE0']
+  const base = paletaDe(cores)
   const c = [fundoPedido(roteiro, base[0]), base[1], base[2]]
   ctx.clearRect(0, 0, L, A)
   relogio = tempo === null ? null : { t: tempo, total, ordem: 0 }

@@ -3,12 +3,14 @@
 // Com foto, só entram layouts em que a foto é o centro (Brenno, 30/10).
 // As miniaturas são desenhadas no aparelho com as cores e o logo da marca.
 
-// Para cada tipo, os 3 layouts parados que mais combinam, com foto e sem foto.
+// Para cada tipo, os layouts parados que mais combinam, com foto e sem foto. O app mostra os 3 primeiros;
+// os outros entram quando o dono esconde algum. Crítica do Brenno (03/11): bastidores em Novidade,
+// citação em Dica, conversa e enquete em Promoção.
 const POR_TIPO = {
-  Promoção: { foto: ['promo', 'numero', 'cupom'], sem: ['promo', 'numero', 'cupom'] },
-  Novidade: { foto: ['foto', 'dividido', 'capa'], sem: ['manchete', 'faixas', 'cartao'] },
+  Promoção: { foto: ['promo', 'numero', 'conversa', 'enquete', 'cupom'], sem: ['promo', 'numero', 'cupom'] },
+  Novidade: { foto: ['foto', 'dividido', 'bastidores', 'capa'], sem: ['manchete', 'faixas', 'cartao'] },
   Bastidores: { foto: ['bastidores', 'polaroid', 'mosaico'], sem: ['manchete', 'conversa', 'citacao'] },
-  Dica: { foto: ['lista', 'dividido', 'conversa'], sem: ['lista', 'enquete', 'manchete'] },
+  Dica: { foto: ['lista', 'conversa', 'citacao', 'dividido'], sem: ['lista', 'enquete', 'manchete'] },
   'Cardápio ou catálogo': { foto: ['tabela', 'mosaico', 'promo'], sem: ['tabela', 'promo', 'lista'] },
   Depoimento: { foto: ['citacao', 'foto', 'polaroid'], sem: ['citacao', 'conversa', 'cartao'] },
   'Aviso de horário': { foto: ['dividido', 'agenda', 'foto'], sem: ['agenda', 'aviso', 'cartao'] },

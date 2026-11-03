@@ -64,6 +64,7 @@ export const ESQUEMA = {
     chamada: { type: 'string' },
     legenda: { type: 'string' },
     hashtags: { type: 'array', items: { type: 'string' } },
+    reels: { type: 'string' },
     pontos: { type: 'array', items: { type: 'string' } },
     autor: { type: 'string' },
     numero: { type: 'string' },
@@ -90,7 +91,7 @@ export const ESQUEMA = {
     ordem_fotos: { type: 'array', items: { type: 'integer' } },
     nao_deu: { type: 'array', items: { type: 'string' } },
   },
-  required: ['modelo', 'titulo', 'apoio', 'itens', 'chamada', 'legenda', 'hashtags', 'pontos', 'autor', 'numero', 'cupom', 'data', 'horario', 'arte', 'cores', 'ordem_fotos', 'nao_deu'],
+  required: ['modelo', 'titulo', 'apoio', 'itens', 'chamada', 'legenda', 'hashtags', 'reels', 'pontos', 'autor', 'numero', 'cupom', 'data', 'horario', 'arte', 'cores', 'ordem_fotos', 'nao_deu'],
   additionalProperties: false,
 }
 
@@ -133,6 +134,8 @@ Por tipo de post
 - Português natural: "fornada" é substantivo (a fornada do dia); nunca "fornado" nem "fornar". Use "assado", "saiu do forno".
 
 "hashtags": de 3 a 8, sem repetir, incluindo as fixas da marca.
+
+"reels": roteiro curto de um Reels de 15 a 30 segundos sobre o mesmo assunto, para o dono gravar com o celular. De 3 a 5 linhas, uma por cena, separadas por quebra de linha, no formato "Cena 1 (0-3 s): o que filmar. Texto na tela: ...". A primeira cena é o gancho; a última traz a chamada. Só cenas que o dono consegue filmar no dia a dia do negócio. As mesmas regras de dados valem aqui: nada de preço, data, horário ou endereço que não esteja no pedido ou nos dados da marca.
 
 "cores": o app desenha a arte com as cores da marca. Só preencha quando o pedido ou o ajuste pedir uma cor; senão deixe os três vazios (""). Use código hex de 6 dígitos, na cor que a pessoa nomeou (vermelho "#E53935", verde "#2E7D32", azul "#1E63D6"); o app ajusta o tom para dar leitura sobre o fundo. Se o pedido der duas cores sem dizer onde, ponha a primeira no título e a segunda no destaque. "titulo" é a cor do título da arte, "texto" a da frase de apoio, "destaque" a do botão, da moldura e dos detalhes. "Palavras em branco" ou "texto" quer dizer título e apoio. Se a versão anterior tinha cores e o ajuste não fala delas, repita as mesmas.
 
@@ -420,6 +423,7 @@ export function conferir(bruto: Record<string, unknown>, perfil: Perfil, pedido:
     apoio: limpar(bruto.apoio),
     chamada: limpar(bruto.chamada),
     legenda: limpar(bruto.legenda),
+    reels: linkedin ? '' : limpar(bruto.reels),
     itens: [] as { nome: string; preco: string }[],
     hashtags: [] as string[],
     pontos: ((bruto.pontos as string[] | undefined) || []).map(limpar).filter(Boolean),

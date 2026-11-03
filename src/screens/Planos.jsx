@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { assinar, gerenciar, PAGOS, PLANOS } from '../lib/planos.js'
+import { assinar, emReais, FUNDADOR_ABERTO, FUNDADOR_MESES, gerenciar, MESES_PAGOS_NO_ANO, PAGOS, PLANOS } from '../lib/planos.js'
 import Conta from '../components/Conta.jsx'
 import './Planos.css'
 
@@ -9,6 +9,7 @@ export default function Planos({ negocio, usadas, email, onSair, onTrocou }) {
   const [esperando, setEsperando] = useState(null) // plano clicado ou 'portal'
   const [confirmar, setConfirmar] = useState(null) // troca de plano pede um segundo toque
   const [erro, setErro] = useState('')
+  const [periodo, setPeriodo] = useState('mes') // só escolhe quem ainda não assina; a troca mantém o período
   const atual = negocio?.plano || 'gratis'
   const assinante = PAGOS.includes(atual)
   const cancelada = assinante && Boolean(negocio?.cancela_no_fim)
@@ -18,7 +19,7 @@ export default function Planos({ negocio, usadas, email, onSair, onTrocou }) {
     if (assinante && plano !== atual && confirmar !== plano) { setConfirmar(plano); return }
     setErro(''); setEsperando(plano)
     try {
-      const resposta = await assinar(plano)
+      const resposta = await assinar(plano, periodo)
       if (resposta.url) { window.location.assign(resposta.url); return }
       setConfirmar(null)
       onTrocou(plano)
@@ -58,6 +59,13 @@ export default function Planos({ negocio, usadas, email, onSair, onTrocou }) {
           <p className="planos__alerta" role="alert">Não conseguimos cobrar o seu cartão. Atualize em "Gerenciar pagamento" para não perder o plano.</p>
         )}
 
+        {!assinante && (
+          <div className="planos__periodos" role="group" aria-label="Como pagar">
+            <button type="button" className="planos__periodo" aria-pressed={periodo === 'mes'} onClick={() => setPeriodo('mes')}>Mensal</button>
+            <button type="button" className="planos__periodo" aria-pressed={periodo === 'ano'} onClick={() => setPeriodo('ano')}>Anual <span className="mono">2 meses grátis</span></button>
+          </div>
+        )}
+
         <ul className="planos__lista">
           {Object.entries(PLANOS).map(([chave, p]) => {
             const eAtual = chave === atual
@@ -67,7 +75,19 @@ export default function Planos({ negocio, usadas, email, onSair, onTrocou }) {
                   <strong>{p.nome}</strong>
                   {eAtual && <span className="mono planos__selo">Seu plano</span>}
                 </div>
-                <p className="planos__preco"><span>{p.preco}</span> por mês</p>
+                {(() => {
+                  const ano = periodo === 'ano' && !assinante && p.reais > 0
+                  const vezes = ano ? MESES_PAGOS_NO_ANO : 1
+                  const por = ano ? 'por ano' : 'por mês'
+                  const fundador = FUNDADOR_ABERTO && p.fundador
+                  return (
+                    <>
+                      <p className="planos__preco"><span>{emReais((fundador ? p.fundador : p.reais) * vezes)}</span> {por}</p>
+                      {fundador && <p className="planos__fundador">Preço de lançamento por {FUNDADOR_MESES} meses. Depois, {emReais(p.reais * vezes)} {por}.</p>}
+                      {ano && <p className="planos__fundador">Paga {MESES_PAGOS_NO_ANO} meses e usa 12.</p>}
+                    </>
+                  )
+                })()}
                 <p className="planos__pecas mono">{p.pecas} posts por mês</p>
                 <p className="planos__marca-dagua">{PAGOS.includes(chave) ? "Sem marca d'água" : "Com marca d'água neonposts.com.br"}</p>
                 {p.resumo && <p className="planos__resumo">{p.resumo}</p>}

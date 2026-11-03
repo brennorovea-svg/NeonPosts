@@ -324,6 +324,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
   const [restantes, setRestantes] = useState(pecaInicial ? 3 - pecaInicial.refeitas : 3)
   const [erro, setErro] = useState('')
   const [copiou, setCopiou] = useState(false)
+  const [copiouReels, setCopiouReels] = useState(false)
   const [ajustando, setAjustando] = useState(false)
   const [pedidoNovo, setPedidoNovo] = useState('')
   const [ajuste, setAjuste] = useState('')
@@ -522,6 +523,11 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
     await navigator.clipboard.writeText(`${r.legenda}\n\n${r.hashtags.join(' ')}`)
     setCopiou(true)
     setTimeout(() => setCopiou(false), 1800)
+  }
+  async function copiarReels() {
+    try { await navigator.clipboard.writeText(roteiro.reels) } catch { return }
+    setCopiouReels(true)
+    setTimeout(() => setCopiouReels(false), 1800)
   }
 
   const trocar = (campo, valor) => setPeca((p) => ({ ...p, [campo]: valor }))
@@ -888,6 +894,14 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
                 <label htmlFor="texto-hashtags">Hashtags</label>
                 <input id="texto-hashtags" className="criar__hashtags" maxLength={300} value={hashtagsTexto ?? (roteiroDaIA.hashtags || []).join(' ')} onChange={(e) => { setHashtagsTexto(e.target.value); editarTexto('hashtags', e.target.value.split(/\s+/).filter(Boolean)) }} />
               </div>
+              {!linkedin && roteiro.reels && (
+                <details className="criar__reels">
+                  <summary>Roteiro de Reels sobre o mesmo assunto</summary>
+                  <p className="criar__nota">Para gravar com o celular, cena por cena.</p>
+                  <ol>{roteiro.reels.split('\n').filter(Boolean).map((cena, i) => <li key={i}>{cena.replace(/^cena\s*\d+\s*/i, '')}</li>)}</ol>
+                  <button type="button" className="botao botao--fantasma" onClick={copiarReels}>{copiouReels ? 'Roteiro copiado' : 'Copiar roteiro'}</button>
+                </details>
+              )}
             </div>
 
             {erro && <p className="campo__erro" role="alert">{erro}</p>}

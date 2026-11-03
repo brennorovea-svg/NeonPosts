@@ -10,5 +10,9 @@ export const PLANOS = {
 export const FUNDADOR_ABERTO = true
 export const FUNDADOR_MESES = 12
 
+// Anual: paga 10 meses e leva 12 (2 meses grátis). O limite de posts continua por mês.
+export const MESES_PAGOS_NO_ANO = 10
+export type Periodo = 'mes' | 'ano'
+
 export type Plano = keyof typeof PLANOS
 export const PAGOS: Plano[] = ['essencial', 'pro']

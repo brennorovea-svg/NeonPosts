@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { agendar, chaveDoDia, horaDe, juntarDiaEHora, LEMBRETES, mudarAgenda, padraoDaSemana, tirarDaAgenda } from '../lib/agenda.js'
 import { avisosDisponiveis, avisosNegados } from '../lib/avisos.js'
 import { enderecoDaImagem } from '../lib/perfil.js'
-import { gerarGrade } from '../lib/preencher.js'
+import { gerarGrade, ideiaDoDia } from '../lib/preencher.js'
 import { avisoDoResultado, baixarArquivo, ehAnimado, entregar, legendaDe, nomeDoArquivo, opcoesDaPeca, podeCompartilhar, prepararArquivo } from '../lib/publicar.js'
 import { ehIphone, instalado } from '../lib/push.js'
 import Instalar from '../components/Instalar.jsx'
@@ -552,11 +552,25 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, push 
     </section>
   )
 
+  // Ideia de hoje: só quando hoje ainda não tem nada marcado. Criar já marca o post para hoje.
+  const ideia = !dia && !sugestao && !(porDia[chaveDoDia(hoje)] || []).length ? ideiaDoDia(perfil, hoje) : null
+  const ideiaDeHoje = ideia && (
+    <div className="planner__ideia">
+      <p><span className="mono planner__ideia-rotulo">Ideia para hoje</span>{ideia.titulo}</p>
+      <button type="button" className="botao botao--fantasma" onClick={() => {
+        const agora = new Date()
+        const hora = agora.getHours() < 11 ? '12:00' : `${String(Math.min(agora.getHours() + 1, 23)).padStart(2, '0')}:00`
+        onCriar({ titulo: ideia.titulo, formato: 'post', quando: juntarDiaEHora(chaveDoDia(hoje), hora) })
+      }}>Criar agora</button>
+    </div>
+  )
+
   return (
     <div className={`planner${dia ? ' planner--dia' : ''}`}>
       {cabecalho}
       {erro && <p className="campo__erro" role="alert">{erro}</p>}
       {avisoDeLembrete}
+      {ideiaDeHoje}
       {sugestao && !dia ? painelPreencher : dia ? (
         <div className="planner__duas">
           {lista}

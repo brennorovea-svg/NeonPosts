@@ -36,6 +36,13 @@
 }
 .planner__avisos p { margin: 0; flex: 1; min-width: 200px; font-size: 14px; line-height: 1.5; color: var(--texto-2); }
 
+.planner__ideia {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+  padding: 12px 14px; border-radius: var(--raio-cartao); border: 1px solid var(--borda); background: var(--painel);
+}
+.planner__ideia p { margin: 0; flex: 1; min-width: 200px; font-size: 15px; line-height: 1.4; color: var(--neve); display: grid; gap: 2px; }
+.planner__ideia-rotulo { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--lilas); }
+
 /* Mês */
 .planner__semana-nomes { display: none; }
 .planner__grade { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }

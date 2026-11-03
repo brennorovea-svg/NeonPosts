@@ -74,3 +74,17 @@ export function gerarGrade({ perfil, itens, mes, saldo, hoje = new Date() }) {
     return { id: `${v.dia}-${v.formato}`, dia: v.dia, formato: v.formato, hora: HORA[v.formato], tipo, titulo: TEMAS[tipo](item), quando: juntarDiaEHora(v.dia, HORA[v.formato]) }
   })
 }
+
+// Ideia do dia: um tema por dia, do mesmo rodízio do Preencher o mês, sem IA.
+// Muda todo dia e é igual o dia inteiro (conta os dias desde 1/1/2026).
+const DIAS_DE_1_JAN = (d) => Math.floor((new Date(d.getFullYear(), d.getMonth(), d.getDate()) - new Date(2026, 0, 1)) / 86400000)
+export function ideiaDoDia(perfil, hoje = new Date()) {
+  const tipos = (perfil?.padrao?.tipos || []).filter((t) => TEMAS[t])
+  const rodizio = tipos.length ? tipos : PADRAO_DE_TIPOS
+  const nomes = (perfil?.dados?.itens || []).map((i) => i?.nome).filter(Boolean)
+  const n = Math.abs(DIAS_DE_1_JAN(hoje))
+  const tipo = rodizio[n % rodizio.length]
+  const usaItem = tipo === 'Promoção' || tipo === 'Cardápio ou catálogo'
+  const item = usaItem && nomes.length ? nomes[Math.floor(n / rodizio.length) % nomes.length] : null
+  return { tipo, titulo: TEMAS[tipo](item) }
+}

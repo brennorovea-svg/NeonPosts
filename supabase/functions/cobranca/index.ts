@@ -5,7 +5,7 @@
 // Chaves: STRIPE_SECRET_KEY e STRIPE_WEBHOOK_SECRET, só aqui.
 import Stripe from 'npm:stripe@22.6.2'
 import { createClient } from 'npm:@supabase/supabase-js@2.117.3'
-import { FUNDADOR_ABERTO, FUNDADOR_MESES, PAGOS, PLANOS, type Plano } from './planos.ts'
+import { FUNDADOR_ABERTO, FUNDADOR_MESES, MESES_PAGOS_NO_ANO, PAGOS, PLANOS, type Periodo, type Plano } from './planos.ts'
 
 const CABECALHOS = {
   'Access-Control-Allow-Origin': '*',
@@ -31,11 +31,11 @@ const banco = createClient(Deno.env.get('SUPABASE_URL')!, chaveDeServico(), { au
 const chaveStripe = Deno.env.get('STRIPE_SECRET_KEY') || ''
 const stripe = chaveStripe ? new Stripe(chaveStripe, { httpClient: Stripe.createFetchHttpClient() }) : null
 
-const precoDo = (plano: Plano, fundador: boolean) => ({
+const precoDo = (plano: Plano, fundador: boolean, periodo: Periodo) => ({
   currency: 'brl',
-  unit_amount: fundador ? PLANOS[plano].fundador : PLANOS[plano].centavos,
-  recurring: { interval: 'month' as const },
-  product_data: { name: `Neonposts ${PLANOS[plano].nome} · ${PLANOS[plano].pecas} posts por mês${fundador ? ' · fundador' : ''}` },
+  unit_amount: (fundador ? PLANOS[plano].fundador : PLANOS[plano].centavos) * (periodo === 'ano' ? MESES_PAGOS_NO_ANO : 1),
+  recurring: { interval: periodo === 'ano' ? 'year' as const : 'month' as const },
+  product_data: { name: `Neonposts ${PLANOS[plano].nome} ${periodo === 'ano' ? 'anual' : 'mensal'} · ${PLANOS[plano].pecas} posts por mês${fundador ? ' · fundador' : ''}` },
 })
 
 // Preço de fundador: vale até a data guardada na assinatura (fundador_ate, AAAA-MM-DD).
@@ -115,7 +115,7 @@ Deno.serve(async (req) => {
     .select('id, plano, cancela_no_fim, stripe_cliente, stripe_assinatura').eq('dono', conta.user.id).single()
   if (!negocio) return erro('Não achamos o seu negócio.', 404)
 
-  let corpo: { acao?: string; plano?: string; volta?: string }
+  let corpo: { acao?: string; plano?: string; periodo?: string; volta?: string }
   try { corpo = await req.json() } catch { return erro('Pedido inválido.', 400) }
   const volta = ORIGENS.some((o) => String(corpo.volta || '').startsWith(o + '/')) ? String(corpo.volta) : 'https://neonposts.com.br/'
 
@@ -137,8 +137,10 @@ Deno.serve(async (req) => {
     if (negocio.stripe_assinatura) {
       let atual = await desfazerCancelamento(await stripe.subscriptions.retrieve(negocio.stripe_assinatura))
       if (plano !== negocio.plano) {
+        // A troca de plano mantém o período que a pessoa já paga (mensal ou anual).
         const ate = fundadorAte(atual)
-        const novo = await stripe.prices.create(precoDo(plano, Boolean(ate)))
+        const periodo: Periodo = atual.items.data[0].price.recurring?.interval === 'year' ? 'ano' : 'mes'
+        const novo = await stripe.prices.create(precoDo(plano, Boolean(ate), periodo))
         atual = await stripe.subscriptions.update(atual.id, {
           items: [{ id: atual.items.data[0].id, price: novo.id }],
           metadata: { negocio: negocio.id, plano, fundador_ate: ate || '' },
@@ -159,7 +161,7 @@ Deno.serve(async (req) => {
       mode: 'subscription',
       customer: cliente,
       client_reference_id: negocio.id,
-      line_items: [{ price_data: precoDo(plano, Boolean(ate)), quantity: 1 }],
+      line_items: [{ price_data: precoDo(plano, Boolean(ate), corpo.periodo === 'ano' ? 'ano' : 'mes'), quantity: 1 }],
       subscription_data: { metadata: { negocio: negocio.id, plano, fundador_ate: ate || '' } },
       success_url: `${volta}${volta.includes('?') ? '&' : '?'}pago=${plano}`,
       cancel_url: volta,

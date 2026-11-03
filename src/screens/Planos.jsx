@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { assinar, gerenciar, PAGOS, PLANOS } from '../lib/planos.js'
+import { assinar, FUNDADOR_ABERTO, FUNDADOR_MESES, gerenciar, PAGOS, PLANOS } from '../lib/planos.js'
 import Conta from '../components/Conta.jsx'
 import './Planos.css'
 
@@ -67,7 +67,14 @@ export default function Planos({ negocio, usadas, email, onSair, onTrocou }) {
                   <strong>{p.nome}</strong>
                   {eAtual && <span className="mono planos__selo">Seu plano</span>}
                 </div>
-                <p className="planos__preco"><span>{p.preco}</span> por mês</p>
+                {FUNDADOR_ABERTO && p.fundador ? (
+                  <>
+                    <p className="planos__preco"><span>{p.fundador}</span> por mês</p>
+                    <p className="planos__fundador">Preço de lançamento por {FUNDADOR_MESES} meses. Depois, {p.preco}.</p>
+                  </>
+                ) : (
+                  <p className="planos__preco"><span>{p.preco}</span> por mês</p>
+                )}
                 <p className="planos__pecas mono">{p.pecas} posts por mês</p>
                 <p className="planos__marca-dagua">{PAGOS.includes(chave) ? "Sem marca d'água" : "Com marca d'água neonposts.com.br"}</p>
                 {p.resumo && <p className="planos__resumo">{p.resumo}</p>}

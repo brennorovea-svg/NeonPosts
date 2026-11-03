@@ -5,7 +5,7 @@
 // Chaves: STRIPE_SECRET_KEY e STRIPE_WEBHOOK_SECRET, só aqui.
 import Stripe from 'npm:stripe@22.6.2'
 import { createClient } from 'npm:@supabase/supabase-js@2.117.3'
-import { PAGOS, PLANOS, type Plano } from './planos.ts'
+import { FUNDADOR_ABERTO, FUNDADOR_MESES, PAGOS, PLANOS, type Plano } from './planos.ts'
 
 const CABECALHOS = {
   'Access-Control-Allow-Origin': '*',
@@ -31,12 +31,23 @@ const banco = createClient(Deno.env.get('SUPABASE_URL')!, chaveDeServico(), { au
 const chaveStripe = Deno.env.get('STRIPE_SECRET_KEY') || ''
 const stripe = chaveStripe ? new Stripe(chaveStripe, { httpClient: Stripe.createFetchHttpClient() }) : null
 
-const precoDo = (plano: Plano) => ({
+const precoDo = (plano: Plano, fundador: boolean) => ({
   currency: 'brl',
-  unit_amount: PLANOS[plano].centavos,
+  unit_amount: fundador ? PLANOS[plano].fundador : PLANOS[plano].centavos,
   recurring: { interval: 'month' as const },
-  product_data: { name: `Neonposts ${PLANOS[plano].nome} · ${PLANOS[plano].pecas} posts por mês` },
+  product_data: { name: `Neonposts ${PLANOS[plano].nome} · ${PLANOS[plano].pecas} posts por mês${fundador ? ' · fundador' : ''}` },
 })
+
+// Preço de fundador: vale até a data guardada na assinatura (fundador_ate, AAAA-MM-DD).
+// Quem assina enquanto FUNDADOR_ABERTO for true ganha FUNDADOR_MESES a partir de hoje.
+function fundadorAte(assinatura?: Stripe.Subscription): string | null {
+  const ate = assinatura?.metadata?.fundador_ate
+  if (ate && ate >= new Date().toISOString().slice(0, 10)) return ate
+  if (assinatura || !FUNDADOR_ABERTO) return null
+  const fim = new Date()
+  fim.setMonth(fim.getMonth() + FUNDADOR_MESES)
+  return fim.toISOString().slice(0, 10)
+}
 
 // Desfaz um cancelamento marcado, venha ele do portal (cancel_at) ou do jeito antigo (cancel_at_period_end).
 async function desfazerCancelamento(assinatura: Stripe.Subscription) {
@@ -126,10 +137,11 @@ Deno.serve(async (req) => {
     if (negocio.stripe_assinatura) {
       let atual = await desfazerCancelamento(await stripe.subscriptions.retrieve(negocio.stripe_assinatura))
       if (plano !== negocio.plano) {
-        const novo = await stripe.prices.create(precoDo(plano))
+        const ate = fundadorAte(atual)
+        const novo = await stripe.prices.create(precoDo(plano, Boolean(ate)))
         atual = await stripe.subscriptions.update(atual.id, {
           items: [{ id: atual.items.data[0].id, price: novo.id }],
-          metadata: { negocio: negocio.id, plano },
+          metadata: { negocio: negocio.id, plano, fundador_ate: ate || '' },
           proration_behavior: 'create_prorations',
         })
       }
@@ -142,12 +154,13 @@ Deno.serve(async (req) => {
       cliente = (await stripe.customers.create({ email: conta.user.email, metadata: { negocio: negocio.id } })).id
       await banco.from('negocios').update({ stripe_cliente: cliente }).eq('id', negocio.id)
     }
+    const ate = fundadorAte()
     const sessao = await stripe.checkout.sessions.create({
       mode: 'subscription',
       customer: cliente,
       client_reference_id: negocio.id,
-      line_items: [{ price_data: precoDo(plano), quantity: 1 }],
-      subscription_data: { metadata: { negocio: negocio.id, plano } },
+      line_items: [{ price_data: precoDo(plano, Boolean(ate)), quantity: 1 }],
+      subscription_data: { metadata: { negocio: negocio.id, plano, fundador_ate: ate || '' } },
       success_url: `${volta}${volta.includes('?') ? '&' : '?'}pago=${plano}`,
       cancel_url: volta,
       locale: 'pt-BR',

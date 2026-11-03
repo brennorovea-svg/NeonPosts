@@ -5,10 +5,13 @@ import { modoDeTeste } from './perfil.js'
 // Quem decide o limite é o servidor; se mudar lá, mudar aqui.
 export const PLANOS = {
   gratis: { nome: 'Grátis', pecas: 5, preco: 'R$ 0', resumo: 'Para conhecer o Neonposts.' },
-  essencial: { nome: 'Essencial', pecas: 30, preco: 'R$ 39', resumo: 'Para postar quase todo dia.' },
-  pro: { nome: 'Pro', pecas: 100, preco: 'R$ 79', resumo: 'Para quem posta feed e story todo dia.' },
+  essencial: { nome: 'Essencial', pecas: 30, preco: 'R$ 49', fundador: 'R$ 39', resumo: 'Para postar quase todo dia.' },
+  pro: { nome: 'Pro', pecas: 100, preco: 'R$ 99', fundador: 'R$ 79', resumo: 'Para quem posta feed e story todo dia.' },
 }
 export const PAGOS = ['essencial', 'pro']
+// Igual a FUNDADOR_ABERTO e FUNDADOR_MESES da função cobranca.
+export const FUNDADOR_ABERTO = true
+export const FUNDADOR_MESES = 12
 
 async function chamar(corpo) {
   const { data, error } = await supabase.functions.invoke('cobranca', { body: { ...corpo, volta: enderecoDeVolta() } })

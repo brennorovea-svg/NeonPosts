@@ -18,6 +18,23 @@ export const SO_NO_VIDEO = ['cenas', ...HISTORIAS, ...ANIMADOS_DA_FOTO]
 // Com foto, o parado usa só layouts em que a foto é o centro; os outros viram o mais parecido com foto (Brenno, 30/10).
 const PARADOS_COM_FOTO = ['foto', 'bastidores', 'capa', 'dividido', 'promo', 'mosaico', 'comparar', 'polaroid',
   'numero', 'conversa', 'citacao', 'enquete', 'agenda', 'cupom', 'lista', 'tabela']
+// Sem foto, o parado usa os layouts da marca (mesma lista do app, src/lib/desenhar.js).
+const PARADOS_DA_MARCA = ['promo', 'aviso', 'manchete', 'lista', 'citacao', 'dividido', 'cartao', 'numero', 'cupom',
+  'agenda', 'conversa', 'faixas', 'capa', 'comparar', 'tabela', 'enquete', 'bastidores', 'mosaico', 'foto']
+// Os layouts que servem para esta peça (o mesmo grupo que o app mostra no Criar).
+export function layoutsDoGrupo(fotos: number, video: boolean) {
+  if (video) return fotos ? [...ANIMADOS_DA_FOTO, 'cenas', ...HISTORIAS.filter((m) => m !== 'escolha')] : ['cenas', ...HISTORIAS]
+  return fotos ? PARADOS_COM_FOTO : PARADOS_DA_MARCA
+}
+// Meus layouts (Bloco 11): o dono marca no app os que gosta e os que não quer ver (perfil > padrao > layouts).
+// Devolve só os que servem para esta peça.
+export function preferenciasDoGrupo(perfil: Perfil, fotos: number, video: boolean) {
+  const l = perfil.padrao?.layouts || {}
+  const grupo = layoutsDoGrupo(fotos, video)
+  const lista = (v: unknown) => (Array.isArray(v) ? v.filter((m): m is string => typeof m === 'string' && grupo.includes(m)) : [])
+  const nao = lista(l.nao)
+  return { gosto: lista(l.gosto).filter((m) => !nao.includes(m)), nao }
+}
 const COM_FOTO: Record<string, string> = { aviso: 'foto', manchete: 'foto', cartao: 'foto', faixas: 'mosaico', escolha: 'cardfoto' }
 // Sem foto, os que precisam dela viram o da marca mais parecido.
 const SEM_FOTO: Record<string, string> = {
@@ -246,7 +263,7 @@ const DICAS_DO_LAYOUT: Record<string, string> = {
 type Perfil = {
   identidade: { nome: string; ramo: string }
   voz: Record<string, unknown>
-  padrao: { tipos: string[]; hashtags: string; chamada: string }
+  padrao: { tipos: string[]; hashtags: string; chamada: string; layouts?: { gosto?: unknown; nao?: unknown } }
   dados: { endereco: string; horario: string; whatsapp: string; instagram: string; site: string; itens: { nome: string; preco: string }[] }
 }
 
@@ -282,6 +299,12 @@ export function montarMensagem(perfil: Perfil, pedido: string, formato: string, 
     } else {
       texto += `\n\n${LINKEDIN_EMPRESA}`
     }
+  }
+  const preferidos = layout ? { gosto: [], nao: [] } : preferenciasDoGrupo(perfil, fotos, video)
+  if (preferidos.gosto.length) {
+    texto += `\n\n<layouts_da_marca>${preferidos.gosto.join(', ')}</layouts_da_marca>\n\nO dono marcou estes layouts como os que têm a cara da marca. Escolha "modelo" só entre eles.`
+  } else if (preferidos.nao.length) {
+    texto += `\n\n<layouts_escondidos>${preferidos.nao.join(', ')}</layouts_escondidos>\n\nO dono escondeu estes layouts. Nunca use nenhum deles em "modelo".`
   }
   if (layout) {
     texto += `\n\n<layout>${layout}</layout>\n\nO dono já escolheu o layout. Use "modelo": "${layout}" e escreva pensando nele: ${DICAS_DO_LAYOUT[layout] || ''} Você continua decidindo o destaque, o tamanho do título, o alinhamento e o fundo.`
@@ -419,6 +442,12 @@ export function conferir(bruto: Record<string, unknown>, perfil: Perfil, pedido:
   // No animado, só layouts animados (parado e animado são grupos separados).
   if (video && !SO_NO_VIDEO.includes(roteiro.modelo)) roteiro.modelo = fotos ? 'zoom' : 'impacto'
   if (!video && SO_NO_VIDEO.includes(roteiro.modelo)) roteiro.modelo = PARECIDO[roteiro.modelo] || 'lista'
+  // Meus layouts: sem layout escolhido na hora, a IA fica entre os que o dono gosta e nunca usa os escondidos.
+  if (!MODELOS.includes(layout)) {
+    const { gosto, nao } = preferenciasDoGrupo(perfil, fotos, video)
+    if (gosto.length && !gosto.includes(roteiro.modelo)) roteiro.modelo = gosto[0]
+    else if (nao.includes(roteiro.modelo)) roteiro.modelo = layoutsDoGrupo(fotos, video).find((m) => !nao.includes(m)) || roteiro.modelo
+  }
   roteiro.pontos = roteiro.pontos.slice(0, PONTOS_POR_MODELO[roteiro.modelo] || 4)
   // O gráfico só com números que vieram do pedido ou dos dados; senão, sem gráfico (o app mostra o título).
   if (roteiro.modelo === 'painel' && !roteiro.pontos.every((p) => numerosPermitidos(p, fonte))) {

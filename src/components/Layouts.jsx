@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import Obturador from './Obturador.jsx'
-import { desenhar, layoutsDoGrupo, NOMES_DOS_MODELOS, prepararFontes } from '../lib/desenhar.js'
+import { desenhar, NOMES_DOS_MODELOS, prepararFontes } from '../lib/desenhar.js'
+import { layoutsVisiveis, preferencias } from '../lib/meusLayouts.js'
 import { roteiroDeAmostra, todosOsLayouts } from '../lib/sugerir.js'
 import Carrossel from './Carrossel.jsx'
 
@@ -26,7 +27,9 @@ function Miniatura({ modelo, tipo, perfil, formato, logo, foto, fotoDaMarca, rot
 
 // `roteiro`: no post pronto, as miniaturas mostram o texto de verdade em cada layout, e a opção da IA some.
 export default function Layouts({ sugeridos, escolhido, onEscolher, tipo, perfil, formato, animado = false, logo, foto, fotoDaMarca, roteiro = null }) {
-  const grupo = layoutsDoGrupo(Boolean(foto), animado)
+  // Os escondidos em Meus layouts não aparecem; os que o dono gosta ganham o selo.
+  const grupo = layoutsVisiveis(Boolean(foto), animado, perfil)
+  const { gosto } = preferencias(perfil)
   return (
     <div className="layouts" role="radiogroup" aria-label="Layout">
       <p className="layouts__grupo">
@@ -36,7 +39,7 @@ export default function Layouts({ sugeridos, escolhido, onEscolher, tipo, perfil
         <span className="layouts__icone"><Obturador tamanho={36} abertura={0.55} /></span>
         <span>
           <strong>Deixar a IA escolher</strong>
-          <span className="layouts__ajuda">Ela olha o seu pedido e decide a arte.</span>
+          <span className="layouts__ajuda">{gosto.length ? 'Ela olha o seu pedido e escolhe entre os layouts que você gosta.' : 'Ela olha o seu pedido e decide a arte.'}</span>
         </span>
       </button>}
       <Carrossel rotulo="Layouts" inicio={`${sugeridos.join()}-${grupo.length}`} className={`layouts__carrossel layouts__carrossel--${formato}`}>
@@ -50,7 +53,7 @@ export default function Layouts({ sugeridos, escolhido, onEscolher, tipo, perfil
             </span>
             <span className="layouts__nome">
               {NOMES_DOS_MODELOS[modelo]}
-              {sugeridos.includes(modelo) && <span className="mono layouts__selo">Sugerido</span>}
+              {gosto.includes(modelo) ? <span className="mono layouts__selo">Você gosta</span> : sugeridos.includes(modelo) && <span className="mono layouts__selo">Sugerido</span>}
             </span>
           </button>
         ))}

@@ -11,10 +11,19 @@ import { desenhar, prepararFontes, carregarImagem } from '../lib/desenhar.js'
 import { tocar } from '../lib/video.js'
 import { enderecoDaImagem } from '../lib/perfil.js'
 import { pecasDaVitrine, RAMOS } from '../lib/vitrine.js'
+import { roteiroDeAmostra } from '../lib/sugerir.js'
+import { NOMES_DOS_MODELOS } from '../lib/desenhar.js'
+import { comPreferencias } from '../lib/meusLayouts.js'
+import MiniLayout from '../components/MiniLayout.jsx'
 import './Comecar.css'
 
 // Primeira vez: nome, ramo e cor (ou o logo), e a marca já aparece viva numa vitrine de amostras.
 // Tocar numa amostra e "Criar a minha" gera a peça de boas-vindas de verdade (não conta no plano).
+// "Escolha 3" (Bloco 11): seis layouts sem foto, com a marca recém-contada. Os escolhidos vão para Meus layouts.
+const PARA_ESCOLHER = [
+  ['manchete', 'Novidade', false], ['promo', 'Promoção', false], ['lista', 'Dica', false],
+  ['citacao', 'Depoimento', false], ['faixas', 'Cardápio ou catálogo', false], ['acende', 'Novidade', true],
+]
 const CORES = ['#E53935', '#F4A62A', '#2ECC71', '#4FA3FF', '#7B5CFF', '#EC4899']
 
 function Amostra({ peca, perfil, logo, ativa, onEscolher }) {
@@ -40,7 +49,8 @@ function Amostra({ peca, perfil, logo, ativa, onEscolher }) {
 }
 
 export default function Comecar({ negocioId, perfil, onSalvo, onDepois, onPeca }) {
-  const [etapa, setEtapa] = useState('dados') // dados | vitrine | gerando
+  const [etapa, setEtapa] = useState('dados') // dados | escolha | vitrine | gerando
+  const [escolhidos, setEscolhidos] = useState([])
   const [nome, setNome] = useState(perfil.identidade.nome || '')
   const [ramo, setRamo] = useState(perfil.identidade.ramo || '')
   const [cor, setCor] = useState(perfil.identidade.cores?.[0] || CORES[0])
@@ -89,7 +99,7 @@ export default function Comecar({ negocioId, perfil, onSalvo, onDepois, onPeca }
       await salvarPerfil(negocioId, novo)
       setSalvo(novo)
       onSalvo?.(novo)
-      setEtapa('vitrine')
+      setEtapa('escolha')
       window.scrollTo({ top: 0 })
     } catch {
       setErro('Não deu para salvar agora. Confira a internet e tente de novo.')
@@ -111,6 +121,56 @@ export default function Comecar({ negocioId, perfil, onSalvo, onDepois, onPeca }
       setErro(falha.message)
       setEtapa('vitrine')
     }
+  }
+
+  async function guardarEscolha() {
+    setErro('')
+    setSalvando(true)
+    const novo = comPreferencias(salvo, escolhidos, [])
+    try {
+      await salvarPerfil(negocioId, novo)
+      setSalvo(novo)
+      onSalvo?.(novo)
+      setEtapa('vitrine')
+      window.scrollTo({ top: 0 })
+    } catch {
+      setErro('Não deu para salvar agora. Confira a internet e tente de novo.')
+    }
+    setSalvando(false)
+  }
+
+  if (etapa === 'escolha') {
+    const i = salvo.identidade
+    const alternar = (m) => setEscolhidos((e) => (e.includes(m) ? e.filter((x) => x !== m) : e.length < 3 ? [...e, m] : e))
+    return (
+      <main className="comecar comecar--escolha">
+        <header className="comecar__topo">
+          <p className="marca comecar__marca">Neon<span>posts</span></p>
+          <span className="mono comecar__passo" role="status">{escolhidos.length} de 3</span>
+        </header>
+        <h1 className="comecar__titulo">Escolha 3 que têm a cara da {i.nome}.</h1>
+        <p className="comecar__texto">A gente começa os seus posts por eles. Você muda depois em Marca › Meus layouts.</p>
+        <div className="comecar__escolha" role="group" aria-label="Layouts">
+          {PARA_ESCOLHER.map(([m, tipo, animado]) => {
+            const marcado = escolhidos.includes(m)
+            return (
+              <button key={m} type="button" className="comecar__opcao" aria-pressed={marcado} data-cheio={!marcado && escolhidos.length >= 3 ? '' : undefined} onClick={() => alternar(m)}>
+                <span className="comecar__opcao-tela">
+                  <MiniLayout animado={animado} opcoes={{ formato: 'post', modelo: m, roteiro: roteiroDeAmostra(m, tipo, salvo, false), cores: i.cores, nome: i.nome, fonte: i.fonte, logo: logoCarregado, fotos: [] }} />
+                  <span className="comecar__check" aria-hidden="true" />
+                </span>
+                <span className="comecar__opcao-nome">{NOMES_DOS_MODELOS[m]}{animado ? ' · animado' : ''}</span>
+              </button>
+            )
+          })}
+        </div>
+        {erro && <p className="campo__erro" role="alert">{erro}</p>}
+        <div className="comecar__acoes">
+          <button type="button" className="botao botao--primario" disabled={escolhidos.length < 3 || salvando} onClick={guardarEscolha}>{salvando ? 'Guardando...' : 'Continuar'}</button>
+          <button type="button" className="perfil__depois" onClick={() => { setEtapa('vitrine'); window.scrollTo({ top: 0 }) }}>Pular por agora</button>
+        </div>
+      </main>
+    )
   }
 
   if (etapa === 'gerando') {

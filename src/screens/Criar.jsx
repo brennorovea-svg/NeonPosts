@@ -5,6 +5,7 @@ import Layouts from '../components/Layouts.jsx'
 import DeuProblema from '../components/DeuProblema.jsx'
 import NaoEMinhaMarca from '../components/NaoEMinhaMarca.jsx'
 import { sugerirLayouts, tipoDoPedido } from '../lib/sugerir.js'
+import { sugeridosDaMarca } from '../lib/meusLayouts.js'
 import { DURACAO, duracaoDe, tocar } from '../lib/video.js'
 import { dadosEmTexto, listaDeNomes, MARCADORES, marcadoresDe, perguntasAntes, preencher } from '../lib/marcadores.js'
 import { profissionalFeito, salvarPerfil } from '../lib/perfil.js'
@@ -348,7 +349,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
 
   // Sugestão de layout pelo tipo (ficha ou texto do pedido) e pela foto; os sugeridos vêm na frente.
   const tipoPercebido = tipoDoPedido(tipo, pedido)
-  const sugeridos = sugerirLayouts(tipoPercebido, Boolean(foto), video)
+  const sugeridos = sugeridosDaMarca(sugerirLayouts(tipoPercebido, Boolean(foto), video), Boolean(foto), video, perfil)
   // Trocar a foto ou o movimento muda o grupo; um layout que não é do grupo novo volta para a escolha da IA.
   useEffect(() => {
     if (layout !== 'ia' && !layoutsDoGrupo(Boolean(foto), video).includes(layout)) setLayout('ia')
@@ -528,7 +529,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
   function trocarMovimento(animado) {
     setVideo(animado)
     const temFoto = imagens.fotos.length > 0
-    if (!layoutsDoGrupo(temFoto, animado).includes(peca.modelo)) trocar('modelo', sugerirLayouts(tipoDoPedido(null, versoes[indice]?.pedido), temFoto, animado)[0])
+    if (!layoutsDoGrupo(temFoto, animado).includes(peca.modelo)) trocar('modelo', sugeridosDaMarca(sugerirLayouts(tipoDoPedido(null, versoes[indice]?.pedido), temFoto, animado), temFoto, animado, perfil)[0])
   }
   const versoes = peca ? [...(peca.versoes || []), { pedido: peca.pedido, roteiro: peca.roteiro }] : []
   const indice = peca ? Math.min(peca.escolhida ?? versoes.length - 1, versoes.length - 1) : 0
@@ -807,7 +808,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
               <span className="campo__rotulo">Modelo</span>
               <p className="campo__ajuda">Toque num para ver o seu texto nele.</p>
               <Layouts
-                sugeridos={sugerirLayouts(tipoDoPedido(null, versoes[indice]?.pedido), imagens.fotos.length > 0, video)}
+                sugeridos={sugeridosDaMarca(sugerirLayouts(tipoDoPedido(null, versoes[indice]?.pedido), imagens.fotos.length > 0, video), imagens.fotos.length > 0, video, perfil)}
                 escolhido={peca.modelo} onEscolher={(m) => trocar('modelo', m)}
                 tipo={tipoDoPedido(null, versoes[indice]?.pedido)} perfil={perfil} formato={peca.formato} animado={video}
                 roteiro={roteiro} logo={imagens.logo} foto={imagens.fotos[0] || null} fotoDaMarca={miniaturas.fotoDaMarca}

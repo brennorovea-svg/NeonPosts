@@ -4,6 +4,7 @@ import Imagens from '../components/campos/Imagens.jsx'
 import Layouts from '../components/Layouts.jsx'
 import DeuProblema from '../components/DeuProblema.jsx'
 import NaoEMinhaMarca from '../components/NaoEMinhaMarca.jsx'
+import ImagemIa from '../components/ImagemIa.jsx'
 import { sugerirLayouts, tipoDoPedido } from '../lib/sugerir.js'
 import { DURACAO, duracaoDe, tocar } from '../lib/video.js'
 import { dadosEmTexto, listaDeNomes, MARCADORES, marcadoresDe, perguntasAntes, preencher } from '../lib/marcadores.js'
@@ -283,7 +284,7 @@ const semDadosDoPedido = (t) => String(t || '').split('\n\nUse estes dados:')[0]
 const paraInput = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 const quandoPorExtenso = (d) => d.toLocaleString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
 
-export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, pedidoInicial = '', videoInicial = false, marca = null, onCompletar, onSair, onPerfil, onPerfilProfissional, onCriou, onAgendar, onPostou, onMandarParaCelular = null, noPlanner = false }) {
+export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, pedidoInicial = '', videoInicial = false, marca = null, onCompletar, onSair, onPerfil, onPerfilProfissional, onCriou, onAgendar, onPostou, onMandarParaCelular = null, noPlanner = false, plano = 'gratis' }) {
   // Veio do planner: o tema marcado já abre escrito, para a pessoa completar.
   const [pedido, setPedido] = useState(() => (pedidoInicial ? `${pedidoInicial.trim()}. ` : ''))
   const [tipo, setTipo] = useState(null)
@@ -631,6 +632,10 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
             <span className="campo__rotulo">Foto</span>
             <p className="campo__ajuda">A foto é o centro do post. Mande até 4. Sem foto, a gente usa um modelo com as cores e o logo da sua marca.</p>
             <Imagens negocioId={negocioId} valor={fotos} onChange={setFotos} maximo={4} tipo="peca-foto" texto="Adicionar foto" previa />
+            {/* Bloco 10: imagem com IA só no Pro (Brenno, 03/11). Nos outros planos, não aparece. */}
+            {plano === 'pro' && fotos.length < 4 && (
+              <ImagemIa negocioId={negocioId} perfil={perfil} pedido={pedido} formato={linkedin ? 'post' : formato} onUsar={(caminho) => setFotos((f) => [...f, caminho].slice(0, 4))} />
+            )}
           </div>
 
           <div className="criar__mais">

@@ -425,6 +425,7 @@ export default function Area({ sessao, teste = false }) {
         {criando && perfil ? (
           <Criar
             negocioId={negocio.id}
+            plano={negocio.plano}
             perfil={perfil}
             pecaInicial={criando === 'nova' ? null : criando}
             formatoInicial={criarCom?.formato}

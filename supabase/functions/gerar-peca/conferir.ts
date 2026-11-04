@@ -7,23 +7,27 @@ export const HISTORIAS = [
   'inclui', 'comemoracao', 'pronto', 'movimento', 'estrelas', 'aovivo', 'contagem', 'escolha', 'vitrine', 'local',
 ]
 // Animados feitos para a foto (desenho em src/lib/desenhar.js): só no animado e só com foto.
-export const ANIMADOS_DA_FOTO = ['zoom', 'cortina', 'cardfoto', 'deslize', 'moldura', 'portas', 'foco']
+export const ANIMADOS_DA_FOTO = ['zoom', 'cortina', 'cardfoto', 'deslize', 'moldura', 'portas', 'foco', 'tarja', 'mira', 'maquete', 'lancamento']
+// Layouts novos (src/lib/estilos.js, 04/11): parados com foto e os da marca, parados e animados.
+const PARADOS_DA_FOTO_NOVOS = ['dossie', 'suica', 'lupa', 'caderno', 'deco', 'popup']
+const PARADOS_DA_MARCA_NOVOS = ['lousa', 'memphis']
+const ANIMADOS_DA_MARCA_NOVOS = ['terminal', 'pictograma']
 export const MODELOS = [
   'promo', 'aviso', 'bastidores', 'manchete', 'lista', 'citacao', 'dividido', 'foto', 'cartao',
   'numero', 'cupom', 'agenda', 'conversa', 'mosaico', 'faixas', 'capa', 'comparar', 'tabela', 'enquete', 'polaroid', 'cenas',
-  ...HISTORIAS, ...ANIMADOS_DA_FOTO,
+  ...HISTORIAS, ...ANIMADOS_DA_FOTO, ...PARADOS_DA_FOTO_NOVOS, ...PARADOS_DA_MARCA_NOVOS, ...ANIMADOS_DA_MARCA_NOVOS,
 ]
 // Só no animado (post 4:5 ou story 9:16 em vídeo).
-export const SO_NO_VIDEO = ['cenas', ...HISTORIAS, ...ANIMADOS_DA_FOTO]
+export const SO_NO_VIDEO = ['cenas', ...HISTORIAS, ...ANIMADOS_DA_FOTO, ...ANIMADOS_DA_MARCA_NOVOS]
 // Com foto, o parado usa só layouts em que a foto é o centro; os outros viram o mais parecido com foto (Brenno, 30/10).
 const PARADOS_COM_FOTO = ['foto', 'bastidores', 'capa', 'dividido', 'promo', 'mosaico', 'comparar', 'polaroid',
-  'numero', 'conversa', 'citacao', 'enquete', 'agenda', 'cupom', 'lista', 'tabela']
+  'numero', 'conversa', 'citacao', 'enquete', 'agenda', 'cupom', 'lista', 'tabela', ...PARADOS_DA_FOTO_NOVOS]
 // Sem foto, o parado usa os layouts da marca (mesma lista do app, src/lib/desenhar.js).
 const PARADOS_DA_MARCA = ['promo', 'aviso', 'manchete', 'lista', 'citacao', 'dividido', 'cartao', 'numero', 'cupom',
-  'agenda', 'conversa', 'faixas', 'capa', 'comparar', 'tabela', 'enquete', 'bastidores', 'mosaico', 'foto']
+  'agenda', 'conversa', 'faixas', 'capa', 'comparar', 'tabela', 'enquete', 'bastidores', 'mosaico', 'foto', ...PARADOS_DA_MARCA_NOVOS]
 // Os layouts que servem para esta peça (o mesmo grupo que o app mostra no Criar).
 export function layoutsDoGrupo(fotos: number, video: boolean) {
-  if (video) return fotos ? [...ANIMADOS_DA_FOTO, 'cenas', ...HISTORIAS.filter((m) => m !== 'escolha')] : ['cenas', ...HISTORIAS]
+  if (video) return fotos ? [...ANIMADOS_DA_FOTO, 'cenas', ...HISTORIAS.filter((m) => m !== 'escolha')] : ['cenas', ...HISTORIAS, ...ANIMADOS_DA_MARCA_NOVOS]
   return fotos ? PARADOS_COM_FOTO : PARADOS_DA_MARCA
 }
 // Meus layouts (Bloco 11): o dono marca no app os que gosta e os que não quer ver (perfil > padrao > layouts).
@@ -35,10 +39,12 @@ export function preferenciasDoGrupo(perfil: Perfil, fotos: number, video: boolea
   const nao = lista(l.nao)
   return { gosto: lista(l.gosto).filter((m) => !nao.includes(m)), nao }
 }
-const COM_FOTO: Record<string, string> = { aviso: 'foto', manchete: 'foto', cartao: 'foto', faixas: 'mosaico', escolha: 'cardfoto' }
+const COM_FOTO: Record<string, string> = { aviso: 'foto', manchete: 'foto', cartao: 'foto', faixas: 'mosaico', escolha: 'cardfoto', lousa: 'tabela', memphis: 'popup', terminal: 'tarja', pictograma: 'lancamento' }
 // Sem foto, os que precisam dela viram o da marca mais parecido.
 const SEM_FOTO: Record<string, string> = {
   polaroid: 'bastidores', zoom: 'impacto', cortina: 'revelacao', cardfoto: 'impacto', deslize: 'escolha', moldura: 'acende', portas: 'impacto', foco: 'vitrine',
+  tarja: 'impacto', mira: 'inclui', maquete: 'acende', lancamento: 'acende',
+  dossie: 'bastidores', suica: 'dividido', lupa: 'foto', caderno: 'bastidores', deco: 'cartao', popup: 'promo',
 }
 // Fora do animado, cada um vira o layout parado mais parecido.
 const PARECIDO: Record<string, string> = {
@@ -47,6 +53,7 @@ const PARECIDO: Record<string, string> = {
   impacto: 'manchete', acende: 'manchete', revelacao: 'manchete', glitch: 'manchete', pergunta: 'cartao', inclui: 'lista',
   comemoracao: 'numero', pronto: 'aviso', movimento: 'lista', estrelas: 'citacao', aovivo: 'bastidores', contagem: 'agenda',
   escolha: 'enquete', vitrine: 'tabela', local: 'aviso',
+  tarja: 'foto', mira: 'lupa', maquete: 'foto', lancamento: 'deco', terminal: 'manchete', pictograma: 'memphis',
 }
 // Quantos pontos cada modelo aceita (o padrão é 4).
 const PONTOS_POR_MODELO: Record<string, number> = { semana: 7, painel: 7, inclui: 5 }
@@ -183,6 +190,16 @@ Stories com movimento: só quando o formato é vídeo. Fora do vídeo, nunca use
 - "vitrine": os itens da lista ("itens") com preço correndo em duas fitas, "titulo" curto. Sem itens, "pontos" com 3 a 6 nomes curtos. Cardápio, catálogo.
 - "local": mapa com pino caindo e o endereço dos dados fixos digitado; o app escreve o endereço, o "titulo" convida a vir. Como chegar.
 Com foto, o parado também tem "polaroid": a foto em moldura branca, com legenda curta à mão (o "apoio", até 5 palavras), e o título embaixo. Bastidores, agradecimento, momento.
+Outros parados feitos para a foto (só com foto):
+- "dossie": a foto presa por um clipe numa ficha, com um carimbo ("pontos" com 1 palavra ou 2, ex.: "Feito na hora") e o título embaixo. Bastidores, como é feito, história da marca.
+- "suica": grade limpa, a foto num módulo e um bloco na cor da marca com o "numero" grande (ex.: "450g", "30%") e o "apoio" pequeno. Produto, ficha técnica, novidade.
+- "lupa": a foto numa ficha e uma lupa que amplia um detalhe; "pontos" com 1 palavra que nomeia o detalhe. Textura, acabamento, ingrediente.
+- "caderno": a foto de borda solta numa página, com um bilhete à mão ("pontos" com 1 frase de até 4 palavras) e uma seta apontando; a "chamada" sai escrita à mão. Dica, recomendação, depoimento.
+- "deco": a foto num arco dourado sobre o preto, título em maiúsculas centralizado e o "apoio" bem curto. Lançamento especial, data comemorativa, produto nobre.
+- "popup": a foto sai do papel como num livro pop-up, com estrelas, e o título embaixo. Novidade divertida, promoção.
+Sem foto, o parado também tem:
+- "lousa": cardápio do dia escrito a giz: o "titulo" no alto, o "apoio" curto e os "itens" da lista com preço (sem itens, "pontos" com 3 a 6 nomes curtos). Cardápio, lista de serviços, especial do dia.
+- "memphis": formas coloridas em volta de um cartão com o título (até 8 palavras) e o "apoio". Pergunta, enquete, chamada geral divertida.
 Animados feitos para a foto (só no vídeo e só com foto; a foto é a primeira coisa que se mexe):
 - "zoom": a foto aproxima devagar e o texto sobe no pé. Bastidores, aviso, depoimento.
 - "cortina": a cor da marca com o nome cobre a foto e sobe, revelando. Novidade, lançamento.
@@ -191,9 +208,16 @@ Animados feitos para a foto (só no vídeo e só com foto; a foto é a primeira 
 - "moldura": a foto num quadro e a borda acende como letreiro. Aviso de horário, abertura, evento.
 - "portas": dois painéis da marca se abrem e mostram a foto e o "numero" da oferta. Promoção, cupom, lançamento.
 - "foco": começa no detalhe e abre para a foto toda; o primeiro dos "itens" aponta o produto com o preço. Produto, cardápio.
-Varie: não use sempre o mesmo. Com foto, a foto é sempre o centro: no parado use "foto", "bastidores", "capa", "dividido", "promo", "mosaico", "comparar", "polaroid", "numero", "conversa", "citacao", "enquete", "agenda", "cupom", "lista" ou "tabela" (com foto, esses ganham a versão com a foto); no vídeo, prefira os animados feitos para a foto ou o "cenas". Sem foto, não use "polaroid" nem os animados feitos para a foto. No vídeo sem foto, prefira o story com movimento que mais combina com o pedido; com 2 ou mais itens ou pontos para mostrar um a um, "cenas".
-"pontos": nos stories com movimento, como está em cada um acima; no "cenas" (2 a 4 frases de até 8 palavras, uma por cena, quando a peça não fala de itens da lista), no "lista" (2 a 4 frases de até 6 palavras), "conversa" (1 a 3 perguntas de até 12 palavras, no jeito de um cliente escrever), "faixas" (3 a 5 palavras soltas), "comparar" (2 frases de até 6 palavras) e "enquete" (2 a 4 opções de até 5 palavras); nos outros, lista vazia. "autor": só no "citacao" e no "estrelas"; nos outros, "".
-"numero": só no "numero", no "mosaico", no "contador", no "comemoracao", no "cardfoto" e no "portas", o número que é o coração da peça, curto (até 7 caracteres, ex.: "50%", "7 dias", "3x"). Tem de estar no pedido ou nos dados da marca; se não estiver, "" e o app usa o título. Nos outros modelos, "".
+- "tarja": o título bate na tela em faixas, palavra por palavra, sobre a foto. Chamada forte, promoção, aviso curto (título de até 5 palavras).
+- "mira": cantos de mira fecham sobre a foto e marcam até 3 detalhes ("pontos" com 1 a 3 palavras de até 2 palavras cada, ex.: "Crocante"). Produto, o que vem no prato.
+- "maquete": a foto desfocada ao fundo, o mesmo recorte em primeiro plano entra em camadas, e o título no alto. Produto saindo, novidade.
+- "lancamento": a foto num cartão que sobe com um brilho passando, título centralizado embaixo. Lançamento, novidade no cardápio.
+Stories da marca com movimento (só no vídeo e sem foto):
+- "terminal": o texto é digitado num monitor antigo: o nome, o título em letra grande, o "apoio" e a "chamada". Aviso de horário, onde a gente vai estar, recado direto.
+- "pictograma": faixas de formas nas cores da marca deslizam no ritmo e o título grande fica embaixo. Chamada geral, dia de funcionamento, lançamento.
+Varie: não use sempre o mesmo. Com foto, a foto é sempre o centro: no parado use "foto", "bastidores", "capa", "dividido", "promo", "mosaico", "comparar", "polaroid", "numero", "conversa", "citacao", "enquete", "agenda", "cupom", "lista", "tabela", "dossie", "suica", "lupa", "caderno", "deco" ou "popup" (com foto, esses ganham a versão com a foto); no vídeo, prefira os animados feitos para a foto ou o "cenas". Sem foto, não use "polaroid", os outros parados feitos para a foto nem os animados feitos para a foto. No vídeo sem foto, prefira o story com movimento que mais combina com o pedido; com 2 ou mais itens ou pontos para mostrar um a um, "cenas".
+"pontos": nos stories com movimento, como está em cada um acima; no "cenas" (2 a 4 frases de até 8 palavras, uma por cena, quando a peça não fala de itens da lista), no "lista" (2 a 4 frases de até 6 palavras), "conversa" (1 a 3 perguntas de até 12 palavras, no jeito de um cliente escrever), "faixas" (3 a 5 palavras soltas), "comparar" (2 frases de até 6 palavras), "enquete" (2 a 4 opções de até 5 palavras), "dossie", "lupa" e "caderno" (1, como está acima), "mira" (1 a 3) e "lousa" (só sem itens); nos outros, lista vazia. "autor": só no "citacao" e no "estrelas"; nos outros, "".
+"numero": só no "numero", no "mosaico", no "contador", no "comemoracao", no "cardfoto", no "portas" e no "suica", o número que é o coração da peça, curto (até 7 caracteres, ex.: "50%", "7 dias", "3x"). Tem de estar no pedido ou nos dados da marca; se não estiver, "" e o app usa o título. Nos outros modelos, "".
 "cupom": só no "cupom", o código escrito igual ao pedido. Se o pedido não traz o código, escreva [CUPOM]. Nos outros, "".
 "data" e "horario": no "agenda", na validade do "cupom" e no "contagem" (só "data"). Só do pedido ou dos dados da marca; se a peça precisa e não tem, [DATA] e [HORÁRIO]. "data" curta (ex.: "29/11"), "horario" curto (ex.: "10h às 14h"). Nos outros, "".
 "arte":
@@ -261,6 +285,20 @@ const DICAS_DO_LAYOUT: Record<string, string> = {
   moldura: 'título curto, até 6 palavras, como um letreiro aceso.',
   portas: '"numero" com a oferta do pedido (ex.: "2x1", "30%"), se houver; título que completa, até 6 palavras.',
   foco: '"itens" com o produto da foto, se estiver na lista; título curto, até 6 palavras.',
+  dossie: '"pontos" com 1 palavra ou 2 para o carimbo (ex.: "Feito na hora"); título de até 8 palavras sobre o que a foto mostra.',
+  suica: '"numero" curto do pedido ou da marca (peso, quantidade, desconto), se houver; título de até 6 palavras; apoio com até 14 palavras.',
+  lupa: '"pontos" com 1 palavra que nomeia o detalhe ampliado; título de até 7 palavras sobre o detalhe.',
+  caderno: '"pontos" com 1 bilhete à mão de até 4 palavras; título de até 6 palavras; a "chamada" sai escrita à mão.',
+  deco: 'título curto, até 4 palavras (sai em maiúsculas); apoio de até 4 palavras.',
+  popup: 'título de até 6 palavras; apoio curto.',
+  tarja: 'título de até 5 palavras, que bate palavra por palavra; apoio curto.',
+  mira: '"pontos" com 1 a 3 detalhes da foto, até 2 palavras cada; título de até 6 palavras.',
+  maquete: 'título de até 7 palavras sobre o produto da foto; apoio bem curto, até 4 palavras.',
+  lancamento: 'título de até 7 palavras anunciando o que é novo; apoio curto.',
+  lousa: 'preencha "itens" com os itens da lista que entram (até 5 no post, 7 no story); sem itens, "pontos" com 3 a 6 nomes curtos; título de até 5 palavras; apoio de até 5 palavras.',
+  memphis: 'título de até 8 palavras, pode ser pergunta; apoio de até 14 palavras.',
+  terminal: 'título de até 7 palavras (sai em maiúsculas); apoio curto, sem inventar horário; a "chamada" fecha.',
+  pictograma: 'título de até 6 palavras; apoio de até 14 palavras.',
 }
 
 type Perfil = {

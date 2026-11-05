@@ -7,26 +7,26 @@
 // os outros entram quando o dono esconde algum. Crítica do Brenno (03/11): bastidores em Novidade,
 // citação em Dica, conversa e enquete em Promoção.
 const POR_TIPO = {
-  Promoção: { foto: ['promo', 'numero', 'conversa', 'enquete', 'cupom'], sem: ['promo', 'numero', 'cupom'] },
-  Novidade: { foto: ['foto', 'dividido', 'bastidores', 'capa'], sem: ['manchete', 'faixas', 'cartao'] },
-  Bastidores: { foto: ['bastidores', 'polaroid', 'mosaico'], sem: ['manchete', 'conversa', 'citacao'] },
-  Dica: { foto: ['lista', 'conversa', 'citacao', 'dividido'], sem: ['lista', 'enquete', 'manchete'] },
-  'Cardápio ou catálogo': { foto: ['tabela', 'mosaico', 'promo'], sem: ['tabela', 'promo', 'lista'] },
-  Depoimento: { foto: ['citacao', 'foto', 'polaroid'], sem: ['citacao', 'conversa', 'cartao'] },
-  'Aviso de horário': { foto: ['dividido', 'agenda', 'foto'], sem: ['agenda', 'aviso', 'cartao'] },
-  'Antes e depois': { foto: ['comparar', 'dividido', 'mosaico'], sem: ['comparar', 'dividido', 'manchete'] },
+  Promoção: { foto: ['promo', 'numero', 'conversa', 'enquete', 'cupom', 'popup', 'suica'], sem: ['promo', 'numero', 'cupom', 'memphis'] },
+  Novidade: { foto: ['foto', 'dividido', 'bastidores', 'capa', 'deco', 'popup', 'suica'], sem: ['manchete', 'faixas', 'cartao', 'memphis'] },
+  Bastidores: { foto: ['bastidores', 'polaroid', 'mosaico', 'dossie', 'caderno'], sem: ['manchete', 'conversa', 'citacao'] },
+  Dica: { foto: ['lista', 'conversa', 'citacao', 'dividido', 'caderno', 'lupa'], sem: ['lista', 'enquete', 'manchete', 'lousa'] },
+  'Cardápio ou catálogo': { foto: ['tabela', 'mosaico', 'promo', 'suica', 'lupa'], sem: ['tabela', 'promo', 'lista', 'lousa'] },
+  Depoimento: { foto: ['citacao', 'foto', 'polaroid', 'caderno'], sem: ['citacao', 'conversa', 'cartao', 'memphis'] },
+  'Aviso de horário': { foto: ['dividido', 'agenda', 'foto', 'dossie'], sem: ['agenda', 'aviso', 'cartao', 'lousa'] },
+  'Antes e depois': { foto: ['comparar', 'dividido', 'mosaico', 'lupa'], sem: ['comparar', 'dividido', 'manchete'] },
 }
 const GERAL = { foto: ['foto', 'dividido', 'capa'], sem: ['manchete', 'faixas', 'enquete'] }
 // No animado: com foto, os movimentos feitos para a foto; sem foto, os stories com movimento.
 const POR_TIPO_NO_VIDEO = {
-  Promoção: { foto: ['portas', 'cardfoto', 'foco'], sem: ['vitrine', 'glitch', 'contador'] },
-  Novidade: { foto: ['cortina', 'cardfoto', 'acende'], sem: ['acende', 'revelacao', 'glitch'] },
-  Bastidores: { foto: ['zoom', 'cenas', 'aovivo'], sem: ['movimento', 'pronto', 'impacto'] },
-  Dica: { foto: ['cenas', 'pergunta', 'inclui'], sem: ['inclui', 'pergunta', 'direct'] },
-  'Cardápio ou catálogo': { foto: ['cenas', 'foco', 'vitrine'], sem: ['vitrine', 'semana', 'inclui'] },
-  Depoimento: { foto: ['zoom', 'estrelas', 'direct'], sem: ['estrelas', 'direct', 'impacto'] },
-  'Aviso de horário': { foto: ['moldura', 'zoom', 'semana'], sem: ['semana', 'contagem', 'local'] },
-  'Antes e depois': { foto: ['deslize', 'cenas', 'zoom'], sem: ['escolha', 'pergunta', 'impacto'] },
+  Promoção: { foto: ['portas', 'cardfoto', 'foco', 'tarja', 'lancamento'], sem: ['vitrine', 'glitch', 'contador', 'pictograma'] },
+  Novidade: { foto: ['cortina', 'cardfoto', 'acende', 'lancamento', 'maquete'], sem: ['acende', 'revelacao', 'glitch', 'terminal', 'pictograma'] },
+  Bastidores: { foto: ['zoom', 'cenas', 'aovivo', 'tarja', 'maquete'], sem: ['movimento', 'pronto', 'impacto', 'terminal'] },
+  Dica: { foto: ['cenas', 'pergunta', 'inclui', 'mira'], sem: ['inclui', 'pergunta', 'direct', 'terminal'] },
+  'Cardápio ou catálogo': { foto: ['cenas', 'foco', 'vitrine', 'mira', 'maquete'], sem: ['vitrine', 'semana', 'inclui', 'terminal'] },
+  Depoimento: { foto: ['zoom', 'estrelas', 'direct', 'tarja'], sem: ['estrelas', 'direct', 'impacto', 'pictograma'] },
+  'Aviso de horário': { foto: ['moldura', 'zoom', 'semana', 'tarja'], sem: ['semana', 'contagem', 'local', 'terminal'] },
+  'Antes e depois': { foto: ['deslize', 'cenas', 'zoom', 'mira'], sem: ['escolha', 'pergunta', 'impacto', 'pictograma'] },
 }
 const GERAL_NO_VIDEO = { foto: ['zoom', 'cortina', 'cardfoto'], sem: ['impacto', 'direct', 'busca'] }
 
@@ -91,6 +91,11 @@ export function roteiroDeAmostra(modelo, tipo, perfil, temFoto) {
     movimento: (nomes.length ? nomes.slice(0, 3) : ['Seu produto', 'Seu serviço']).map((n) => `Saiu agora · ${n}`),
     escolha: ['Opção um', 'Opção dois'],
     vitrine: nomes.length ? [] : ['Seu produto', 'Outro produto', 'Mais um'],
+    lousa: nomes.length ? [] : ['Seu produto', 'Outro produto', 'Mais um'],
+    dossie: ['Feito na hora'],
+    caderno: ['Vale provar!'],
+    lupa: ['detalhe'],
+    mira: ['Detalhe um', 'Detalhe dois', 'Detalhe três'],
   }
   const APOIO = { busca: 'Seu resultado aparece aqui', painel: 'Pedidos por dia', local: String(perfil.dados.endereco || '').trim() || '[ENDEREÇO]', direct: '' }
   return {
@@ -99,11 +104,11 @@ export function roteiroDeAmostra(modelo, tipo, perfil, temFoto) {
     apoio: modelo in APOIO ? APOIO[modelo] : a.apoio,
     chamada: perfil.padrao.chamada || 'Chama no WhatsApp',
     itens: modelo === 'promo' ? (itens.length ? itens : [{ nome: 'Seu produto', preco: 'R$ --' }])
-      : ['tabela', 'vitrine', 'foco'].includes(modelo) ? (perfil.dados.itens || []).filter((i) => i.nome).slice(0, 4).map((i) => ({ nome: i.nome, preco: i.preco ? `R$ ${String(i.preco).replace(/^r\$\s*/i, '')}` : 'R$ --' }))
+      : ['tabela', 'vitrine', 'foco', 'lousa'].includes(modelo) ? (perfil.dados.itens || []).filter((i) => i.nome).slice(0, 4).map((i) => ({ nome: i.nome, preco: i.preco ? `R$ ${String(i.preco).replace(/^r\$\s*/i, '')}` : 'R$ --' }))
       : [],
     pontos: PONTOS[modelo] || [],
     autor: ['citacao', 'estrelas'].includes(modelo) ? 'Cliente' : '',
-    numero: { numero: '30%', mosaico: '7 dias', contador: '1.200', comemoracao: '5', cardfoto: '30%', portas: '30%' }[modelo] || '',
+    numero: { numero: '30%', mosaico: '7 dias', contador: '1.200', comemoracao: '5', cardfoto: '30%', portas: '30%', suica: '30%' }[modelo] || '',
     cupom: modelo === 'cupom' ? 'BEMVINDO' : '',
     data: ['agenda', 'cupom', 'contagem'].includes(modelo) ? '29/11' : '',
     horario: modelo === 'agenda' ? '10h às 14h' : '',

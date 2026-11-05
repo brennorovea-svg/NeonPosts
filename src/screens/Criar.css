@@ -183,6 +183,32 @@
 .layouts__carrossel .layouts__opcao { width: calc((100% - 20px) / 2.6); }
 .layouts__carrossel--story .layouts__opcao { width: calc((100% - 30px) / 3.4); }
 .layouts__grupo { margin: 0 0 10px; font-size: 14px; font-weight: 600; color: var(--neve); }
+.layouts__ver { align-self: center; margin-top: 4px; }
+/* Ver todos: página por cima do Criar, um bloco por tipo de post. Entra só com opacity e translate. */
+.todos {
+  position: fixed; inset: 0; z-index: 50; overflow-y: auto; overscroll-behavior: contain;
+  background: var(--grafite); animation: todos-entra 320ms var(--ease) both;
+}
+.todos__topo {
+  position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 12px clamp(16px, 4vw, 40px); background: rgba(16, 16, 20, .92); backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--borda);
+}
+.todos__conta { font-size: 12px; color: var(--texto-2); }
+.todos__conteudo { width: 100%; max-width: 960px; margin: 0 auto; padding: 28px 16px 64px; }
+.todos__titulo { margin: 0 0 8px; font-size: clamp(28px, 6vw, 40px); font-weight: 700; line-height: 1.04; letter-spacing: -.04em; color: var(--neve); }
+.todos__ajuda { margin: 0 0 28px; font-size: 14px; color: var(--texto-2); }
+.todos__secao { margin-bottom: 32px; }
+.todos__tipo { margin: 0 0 12px; font-size: 16px; font-weight: 600; color: var(--neve); }
+.todos__grade { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 10px; }
+.todos__grade--story { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (min-width: 900px) {
+  .todos__grade { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 20px 16px; }
+  .todos__grade--story { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+}
+@keyframes todos-entra { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .todos { animation: none; } }
+
 .layouts__conta { font-weight: 400; color: var(--texto-2); }
 .layouts__selo {
   display: inline-block; margin-left: 6px; vertical-align: 1px; padding: 3px 7px; border-radius: 999px;

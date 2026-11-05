@@ -3,6 +3,7 @@
 // o vídeo em cenas e os vinte stories com movimento de historias.js) só aparecem no animado, em post ou story. A IA escolhe o modelo e o jeito da arte
 // (palavra em destaque, tamanho do título, alinhamento e fundo).
 import { criarHistorias, NOMES_DAS_HISTORIAS } from './historias.js'
+import { criarEstilos, NOMES_DOS_ESTILOS, PARADOS_DA_FOTO_NOVOS, ANIMADOS_DA_FOTO_NOVOS, PARADOS_DA_MARCA_NOVOS, ANIMADOS_DA_MARCA_NOVOS } from './estilos.js'
 
 export const TAMANHOS = { post: [1080, 1350], story: [1080, 1920] }
 export const NOMES_DOS_MODELOS = {
@@ -14,19 +15,20 @@ export const NOMES_DOS_MODELOS = {
   zoom: 'Zoom lento', cortina: 'Cortina', cardfoto: 'Card que sobe', deslize: 'Antes e depois deslizando',
   moldura: 'Moldura acesa', portas: 'Porta que abre', foco: 'Foco no produto',
   ...NOMES_DAS_HISTORIAS,
+  ...NOMES_DOS_ESTILOS,
 }
 // Animados feitos para a foto: só com foto, e só no animado.
-export const ANIMADOS_DA_FOTO = ['zoom', 'cortina', 'cardfoto', 'deslize', 'moldura', 'portas', 'foco', 'cenas']
+export const ANIMADOS_DA_FOTO = ['zoom', 'cortina', 'cardfoto', 'deslize', 'moldura', 'portas', 'foco', 'cenas', ...ANIMADOS_DA_FOTO_NOVOS]
 // Só aparece no animado (post 4:5 ou story 9:16 em vídeo).
-export const SO_NO_VIDEO = [...ANIMADOS_DA_FOTO, ...Object.keys(NOMES_DAS_HISTORIAS)]
+export const SO_NO_VIDEO = [...ANIMADOS_DA_FOTO, ...Object.keys(NOMES_DAS_HISTORIAS), ...ANIMADOS_DA_MARCA_NOVOS]
 // Os três grupos do Criar (Brenno, 30/10): parado com foto, animado com foto e, sem foto, os da marca.
 export const PARADOS_COM_FOTO = ['foto', 'bastidores', 'capa', 'dividido', 'promo', 'mosaico', 'comparar', 'polaroid',
-  'numero', 'conversa', 'citacao', 'enquete', 'agenda', 'cupom', 'lista', 'tabela']
+  'numero', 'conversa', 'citacao', 'enquete', 'agenda', 'cupom', 'lista', 'tabela', ...PARADOS_DA_FOTO_NOVOS]
 export const PARADOS_DA_MARCA = ['promo', 'aviso', 'manchete', 'lista', 'citacao', 'dividido', 'cartao', 'numero', 'cupom',
-  'agenda', 'conversa', 'faixas', 'capa', 'comparar', 'tabela', 'enquete', 'bastidores', 'mosaico', 'foto']
+  'agenda', 'conversa', 'faixas', 'capa', 'comparar', 'tabela', 'enquete', 'bastidores', 'mosaico', 'foto', ...PARADOS_DA_MARCA_NOVOS]
 // Com foto, os stories com movimento também servem (a foto é o fundo e anda); só o "isso ou aquilo" não usa a foto.
 export const ANIMADOS_COM_FOTO = [...ANIMADOS_DA_FOTO, ...Object.keys(NOMES_DAS_HISTORIAS).filter((m) => m !== 'escolha')]
-export const ANIMADOS_DA_MARCA = ['cenas', ...Object.keys(NOMES_DAS_HISTORIAS)]
+export const ANIMADOS_DA_MARCA = ['cenas', ...Object.keys(NOMES_DAS_HISTORIAS), ...ANIMADOS_DA_MARCA_NOVOS]
 export function layoutsDoGrupo(temFoto, animado) {
   if (animado) return temFoto ? ANIMADOS_COM_FOTO : ANIMADOS_DA_MARCA
   return temFoto ? PARADOS_COM_FOTO : PARADOS_DA_MARCA
@@ -132,6 +134,7 @@ export async function prepararFontes(chave) {
     ...['400', '600', '700'].map((p) => document.fonts.load(`${p} 40px "Instrument Sans"`)),
     document.fonts.load(`${titulo.peso} 40px ${titulo.familia}`),
     document.fonts.load('600 40px "JetBrains Mono"'),
+    document.fonts.load('700 40px Caveat'),
   ])
 }
 
@@ -2538,10 +2541,25 @@ function focoNoProduto(ctx, a) {
 // Os animados feitos para a foto (com os stories e o "cenas", só no vídeo).
 const ANIMADOS_FEITOS_PARA_FOTO = { zoom: zoomLento, cortina, cardfoto: cardQueSobe, deslize, moldura, portas, foco: focoNoProduto }
 
+// Os 14 layouts nascidos dos estilos da Lemo (04/11), em estilos.js.
+const ESTILOS = criarEstilos({
+  relogio: () => relogio,
+  aos: (s) => { if (relogio) relogio.ordem = (s - 0.35) / 0.32 },
+  semRelogio: (desenho) => {
+    const guardado = relogio
+    relogio = null
+    try { return desenho() } finally { relogio = guardado }
+  },
+  modelos: () => MODELOS,
+  bloco, medir, selo, rotulo, arredondado, pilulaCurta, chamadaEmTexto, placaDaMarca, brilho, quebrar, espacar,
+  corPedida, fundoPedido, apagado, textoSobre, comAlfa, misturar, legivel, luz, marca, escala, sobre,
+  fonteDoBloco, FONTE, suave, sorteio, recorte, fotoEmZoom, escuroEmbaixo, textoNoPe,
+})
+
 const MODELOS = {
   promo, aviso, bastidores, manchete, lista, citacao, dividido, foto: fotoInteira, cartao,
   numero, cupom, agenda, conversa, mosaico, faixas, capa, comparar, tabela, enquete, polaroid, cenas,
-  ...HISTORIAS, ...ANIMADOS_FEITOS_PARA_FOTO,
+  ...HISTORIAS, ...ANIMADOS_FEITOS_PARA_FOTO, ...ESTILOS,
 }
 
 // Marca d'água (W2): neonposts.com.br repetido na diagonal sobre a peça inteira, bem fraco.

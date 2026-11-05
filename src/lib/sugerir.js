@@ -9,12 +9,12 @@
 const POR_TIPO = {
   Promoção: { foto: ['promo', 'numero', 'conversa', 'enquete', 'cupom', 'popup', 'suica'], sem: ['promo', 'numero', 'cupom', 'memphis'] },
   Novidade: { foto: ['foto', 'dividido', 'bastidores', 'capa', 'deco', 'popup', 'suica'], sem: ['manchete', 'faixas', 'cartao', 'memphis'] },
-  Bastidores: { foto: ['bastidores', 'polaroid', 'mosaico', 'dossie', 'caderno'], sem: ['manchete', 'conversa', 'citacao', 'memphis'] },
+  Bastidores: { foto: ['bastidores', 'polaroid', 'mosaico', 'dossie', 'caderno'], sem: ['manchete', 'conversa', 'citacao'] },
   Dica: { foto: ['lista', 'conversa', 'citacao', 'dividido', 'caderno', 'lupa'], sem: ['lista', 'enquete', 'manchete', 'lousa'] },
   'Cardápio ou catálogo': { foto: ['tabela', 'mosaico', 'promo', 'suica', 'lupa'], sem: ['tabela', 'promo', 'lista', 'lousa'] },
   Depoimento: { foto: ['citacao', 'foto', 'polaroid', 'caderno'], sem: ['citacao', 'conversa', 'cartao', 'memphis'] },
   'Aviso de horário': { foto: ['dividido', 'agenda', 'foto', 'dossie'], sem: ['agenda', 'aviso', 'cartao', 'lousa'] },
-  'Antes e depois': { foto: ['comparar', 'dividido', 'mosaico', 'lupa'], sem: ['comparar', 'dividido', 'manchete', 'memphis'] },
+  'Antes e depois': { foto: ['comparar', 'dividido', 'mosaico', 'lupa'], sem: ['comparar', 'dividido', 'manchete'] },
 }
 const GERAL = { foto: ['foto', 'dividido', 'capa'], sem: ['manchete', 'faixas', 'enquete'] }
 // No animado: com foto, os movimentos feitos para a foto; sem foto, os stories com movimento.

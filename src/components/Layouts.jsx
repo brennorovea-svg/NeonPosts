@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Obturador from './Obturador.jsx'
 import { desenhar, NOMES_DOS_MODELOS, prepararFontes } from '../lib/desenhar.js'
 import { layoutsVisiveis, preferencias } from '../lib/meusLayouts.js'
@@ -30,11 +30,33 @@ export default function Layouts({ sugeridos, escolhido, onEscolher, tipo, perfil
   // Os escondidos em Meus layouts não aparecem; os que o dono gosta ganham o selo.
   const grupo = layoutsVisiveis(Boolean(foto), animado, perfil)
   const { gosto } = preferencias(perfil)
+  // Ver todos (Brenno, 05/11): troca a fileira por uma grade com todos os layouts do grupo de uma vez.
+  const [todos, setTodos] = useState(false)
+  const lista = todosOsLayouts(sugeridos, grupo)
+  const opcao = (modelo, i) => (
+    <button
+      key={`${modelo}-${formato}`} type="button" role="radio" aria-checked={escolhido === modelo}
+      className="layouts__opcao" style={{ animationDelay: `${Math.min(i, 5) * 50}ms` }} onClick={() => onEscolher(modelo)}
+    >
+      <span className="layouts__miniatura">
+        <Miniatura modelo={modelo} tipo={tipo} perfil={perfil} formato={formato} logo={logo} foto={foto} fotoDaMarca={fotoDaMarca} roteiro={roteiro} />
+      </span>
+      <span className="layouts__nome">
+        {NOMES_DOS_MODELOS[modelo]}
+        {gosto.includes(modelo) ? <span className="mono layouts__selo">Você gosta</span> : sugeridos.includes(modelo) && <span className="mono layouts__selo">Sugerido</span>}
+      </span>
+    </button>
+  )
   return (
     <div className="layouts" role="radiogroup" aria-label="Layout">
-      <p className="layouts__grupo">
-        Layouts {animado ? 'animados' : 'parados'} {foto ? 'com a sua foto' : 'com as cores e o logo da sua marca'} <span className="layouts__conta">· {grupo.length}</span>
-      </p>
+      <div className="layouts__topo">
+        <p className="layouts__grupo">
+          Layouts {animado ? 'animados' : 'parados'} {foto ? 'com a sua foto' : 'com as cores e o logo da sua marca'} <span className="layouts__conta">· {grupo.length}</span>
+        </p>
+        <button type="button" className="layouts__ver" aria-expanded={todos} onClick={() => setTodos((v) => !v)}>
+          {todos ? 'Ver em fileira' : `Ver todos os ${grupo.length}`}
+        </button>
+      </div>
       {!roteiro && <button type="button" role="radio" aria-checked={escolhido === 'ia'} className="layouts__ia" onClick={() => onEscolher('ia')}>
         <span className="layouts__icone"><Obturador tamanho={36} abertura={0.55} /></span>
         <span>
@@ -42,22 +64,9 @@ export default function Layouts({ sugeridos, escolhido, onEscolher, tipo, perfil
           <span className="layouts__ajuda">{gosto.length ? 'Ela olha o seu pedido e escolhe entre os layouts que você gosta.' : 'Ela olha o seu pedido e decide a arte.'}</span>
         </span>
       </button>}
-      <Carrossel rotulo="Layouts" inicio={`${sugeridos.join()}-${grupo.length}`} className={`layouts__carrossel layouts__carrossel--${formato}`}>
-        {todosOsLayouts(sugeridos, grupo).map((modelo, i) => (
-          <button
-            key={`${modelo}-${formato}`} type="button" role="radio" aria-checked={escolhido === modelo}
-            className="layouts__opcao" style={{ animationDelay: `${Math.min(i, 5) * 50}ms` }} onClick={() => onEscolher(modelo)}
-          >
-            <span className="layouts__miniatura">
-              <Miniatura modelo={modelo} tipo={tipo} perfil={perfil} formato={formato} logo={logo} foto={foto} fotoDaMarca={fotoDaMarca} roteiro={roteiro} />
-            </span>
-            <span className="layouts__nome">
-              {NOMES_DOS_MODELOS[modelo]}
-              {gosto.includes(modelo) ? <span className="mono layouts__selo">Você gosta</span> : sugeridos.includes(modelo) && <span className="mono layouts__selo">Sugerido</span>}
-            </span>
-          </button>
-        ))}
-      </Carrossel>
+      {todos
+        ? <div className={`layouts__todos layouts__todos--${formato}`} role="group" aria-label="Todos os layouts">{lista.map(opcao)}</div>
+        : <Carrossel rotulo="Layouts" inicio={`${sugeridos.join()}-${grupo.length}`} className={`layouts__carrossel layouts__carrossel--${formato}`}>{lista.map(opcao)}</Carrossel>}
     </div>
   )
 }

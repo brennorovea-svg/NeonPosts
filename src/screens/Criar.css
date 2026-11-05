@@ -182,7 +182,20 @@
 .layouts__ia[aria-checked="true"] { border-color: var(--violeta); background: rgba(123, 92, 255, .12); }
 .layouts__carrossel .layouts__opcao { width: calc((100% - 20px) / 2.6); }
 .layouts__carrossel--story .layouts__opcao { width: calc((100% - 30px) / 3.4); }
-.layouts__grupo { margin: 0 0 10px; font-size: 14px; font-weight: 600; color: var(--neve); }
+.layouts__topo { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.layouts__grupo { margin: 0; font-size: 14px; font-weight: 600; color: var(--neve); }
+.layouts__ver {
+  flex: none; padding: 6px 0; cursor: pointer; font: inherit; font-size: 13px; font-weight: 600;
+  color: var(--violeta); background: none; border: 0;
+}
+.layouts__ver:focus-visible { outline: 2px solid var(--violeta); outline-offset: 2px; border-radius: 6px; }
+/* Ver todos: a grade com o grupo inteiro (3 por linha no post, 4 no story; mais no computador). */
+.layouts__todos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 10px; }
+.layouts__todos--story { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (min-width: 900px) {
+  .layouts__todos { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .layouts__todos--story { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
 .layouts__conta { font-weight: 400; color: var(--texto-2); }
 .layouts__selo {
   display: inline-block; margin-left: 6px; vertical-align: 1px; padding: 3px 7px; border-radius: 999px;

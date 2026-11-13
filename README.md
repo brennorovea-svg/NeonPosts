@@ -25,3 +25,10 @@ Tudo em [`docs/PLAYBOOK-IDENTIDADE.md`](docs/PLAYBOOK-IDENTIDADE.md). Ler antes 
 - `npm install` e `npm run dev` para ver no computador.
 - Todo merge no `main` publica sozinho em https://neonposts.com.br pela Action `Publicar no GitHub Pages`.
 - Por enquanto publica no endereço provisório https://brennorovea-svg.github.io/NeonPosts/. Quando o DNS do Registro.br estiver pronto, criar `public/CNAME` com `neonposts.com.br` e colocar o domínio em Settings › Pages.
+
+## Publicar sozinho no Instagram (piloto da Neon Scripts)
+- Só a marca ligada em `publicacao_direta` (hoje a Neon Scripts, @neon.scripts). Cliente só depois da revisão da Meta + CNPJ.
+- Secret das Edge Functions: `INSTAGRAM_TOKEN_NEON_SCRIPTS` (token EAA do app "Publicador Neon Scripts"). Nunca no repositório nem no chat.
+- Migração `0020_publicar_no_instagram.sql`: colunas de publicação na `agenda`, bucket privado `publicar`, `pegar_publicacoes()` e o cron `neonposts-publicar` (a cada 5 min, mesmo segredo do `avisar`).
+- Deploy: `supabase functions deploy publicar --no-verify-jwt`.
+

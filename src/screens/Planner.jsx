@@ -5,6 +5,7 @@ import { enderecoDaImagem } from '../lib/perfil.js'
 import { gerarGrade, ideiaDoDia } from '../lib/preencher.js'
 import { avisoDoResultado, baixarArquivo, ehAnimado, entregar, legendaDe, nomeDoArquivo, opcoesDaPeca, podeCompartilhar, prepararArquivo } from '../lib/publicar.js'
 import { ehIphone, instalado } from '../lib/push.js'
+import { agendarNoInstagram, cancelarNoInstagram, contaDireta, NaoDaParaPublicar } from '../lib/publicarDireto.js'
 import Instalar from '../components/Instalar.jsx'
 import './Planner.css'
 
@@ -55,6 +56,9 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, push 
   const [sugestao, setSugestao] = useState(null) // Preencher o mês: a grade sugerida, esperando a pessoa aprovar
   const [fora, setFora] = useState([]) // ids que a pessoa tirou da grade
   const [marcando, setMarcando] = useState(false)
+  const [direta, setDireta] = useState(null) // { conta_nome } quando a marca publica sozinha no Instagram (piloto Neon Scripts)
+  const [enviandoDireto, setEnviandoDireto] = useState(null) // id da marcação subindo o arquivo
+  useEffect(() => { contaDireta(negocioId).then(setDireta).catch(() => setDireta(null)) }, [negocioId])
   const pecaPorId = useMemo(() => Object.fromEntries((pecas || []).map((p) => [p.id, p])), [pecas])
   const porDia = useMemo(() => {
     const mapa = {}
@@ -177,6 +181,22 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, push 
     if (r === 'cancelou') return
     // Só vira "Postada" quando a pessoa confirma: o compartilhar abrir não quer dizer que postou (Brenno, 30/10).
     setConfirmando({ id: item.id, resultado: r })
+  }
+
+  // Publicar sozinho no Instagram: o toque é o ok daquele post. Sobe o arquivo final e liga a marcação.
+  async function publicarSozinho(item) {
+    const pronto = prontos[item.id]
+    if (!pronto?.arquivo) return
+    setErro('')
+    setEnviandoDireto(item.id)
+    try {
+      await agendarNoInstagram(negocioId, item, pronto.arquivo, legendaDe(pecaPorId[item.peca]))
+      onMudou()
+    } catch (e) {
+      setErro(e instanceof NaoDaParaPublicar ? e.message : 'Não deu para agendar agora. Confira a internet e tente de novo.')
+    } finally {
+      setEnviandoDireto(null)
+    }
   }
 
   const padrao = padraoDaSemana(perfil)
@@ -393,7 +413,18 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, push 
               </div>
               <h3 className="planner__cartao-titulo">{item.titulo}</h3>
               {peca ? <p className="planner__cartao-texto">{legendaDe(peca).split('\n')[0]}</p> : <p className="planner__cartao-texto">O post ainda não foi criado. Crie quando quiser; ele já entra neste dia.</p>}
-              {!item.postado_em && (
+              {item.publicar && !item.postado_em && item.publicacao_estado !== 'erro' && (
+                <p className="planner__direto">
+                  {quando <= new Date() ? 'Saindo no Instagram' : `Agendado no Instagram para ${horaDe(quando)}`}{direta?.conta_nome ? ` (@${direta.conta_nome})` : ''}. Sai sozinho, sem você tocar em nada.
+                </p>
+              )}
+              {item.publicar && item.publicacao_estado === 'erro' && !item.postado_em && (
+                <p className="planner__direto planner__direto--erro">Não saiu no Instagram. {item.publicacao_erro || ''} Poste à mão ou tente de novo.</p>
+              )}
+              {item.postado_em && item.permalink && (
+                <a className="planner__direto planner__direto--link" href={item.permalink} target="_blank" rel="noreferrer">Ver no Instagram</a>
+              )}
+              {!item.postado_em && !(item.publicar && item.publicacao_estado !== 'erro') && (
                 <div className="planner__cartao-lembrete">
                   <label htmlFor={`lembrete-${item.id}`}>Avisar</label>
                   <select id={`lembrete-${item.id}`} className="planner__select" value={item.lembrete_minutos} onChange={(e) => tentar(() => mudarAgenda(item.id, { lembrete_minutos: Number(e.target.value), avisado_em: null }))}>
@@ -421,7 +452,7 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, push 
               <div className="planner__cartao-acoes">
                 {peca ? (
                   <>
-                    {!item.postado_em && (() => {
+                    {!item.postado_em && !(item.publicar && item.publicacao_estado !== 'erro') && (() => {
                       const pronto = prontos[item.id]
                       const rotulo = pronto?.progresso != null ? `Preparando o vídeo... ${Math.round(pronto.progresso * 100)}%`
                         : pronto?.erro ? 'Não deu para preparar'
@@ -434,6 +465,14 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, push 
                         </span>
                       )
                     })()}
+                    {direta && !item.postado_em && (!item.publicar || item.publicacao_estado === 'erro') && (
+                      <button type="button" className="botao botao--fantasma" disabled={!prontos[item.id]?.arquivo || enviandoDireto === item.id} onClick={() => publicarSozinho(item)}>
+                        {enviandoDireto === item.id ? 'Agendando...' : item.publicacao_estado === 'erro' ? 'Tentar de novo no Instagram' : quando <= new Date() ? 'Publicar agora no Instagram' : 'Publicar sozinho no Instagram'}
+                      </button>
+                    )}
+                    {direta && item.publicar && item.publicacao_estado === 'agendado' && !item.postado_em && (
+                      <button type="button" className="botao botao--fantasma" onClick={() => tentar(() => cancelarNoInstagram(item))}>Cancelar envio automático</button>
+                    )}
                     {!item.postado_em && !podeCompartilhar() && onMandarParaCelular && (
                       <button type="button" className="botao botao--fantasma" disabled={celular?.id === item.id && celular.estado === 'enviando'} onClick={() => mandarParaCelular(item)}>
                         {celular?.id === item.id && celular.estado === 'enviando' ? 'Mandando...' : 'Mandar para o celular'}

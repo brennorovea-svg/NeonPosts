@@ -2,7 +2,7 @@
 // Piloto só da Neon Scripts (tabela publicacao_direta). Não chama a IA.
 // - "hora" (pg_cron, a cada 5 min, cabeçalho x-segredo): pega o que chegou na hora, cria o contêiner,
 //   espera processar e publica. Vídeo que ainda processa fica para a próxima volta.
-// - "teste" (login do dono): confere token e conta, sem publicar nada.
+// - "teste" (login do dono) e "conferir" (x-segredo, todas as marcas ligadas): confere token e conta, sem publicar nada.
 // Deploy: supabase functions deploy publicar --no-verify-jwt (a função confere o acesso por dentro).
 // Token: Secret com o nome guardado em publicacao_direta.segredo (ex.: INSTAGRAM_TOKEN_NEON_SCRIPTS).
 // Lógica da API igual à do ig.mjs (setup-instagram): token EAA = graph.facebook.com, não vence.
@@ -180,6 +180,14 @@ Deno.serve(async (req) => {
   if (acao === 'hora') {
     if (!SEGREDO || req.headers.get('x-segredo') !== SEGREDO) return erro('Sem permissão.', 401)
     return hora()
+  }
+
+  if (acao === 'conferir') {
+    if (!SEGREDO || req.headers.get('x-segredo') !== SEGREDO) return erro('Sem permissão.', 401)
+    const { data: marcas } = await banco.from('publicacao_direta').select('negocio')
+    const resultados = []
+    for (const m of marcas || []) resultados.push(await (await teste(m.negocio)).json())
+    return resposta({ marcas: resultados })
   }
 
   const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '')

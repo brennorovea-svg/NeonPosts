@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
   const { data: conta } = await banco.auth.getUser(token)
   if (!conta?.user) return erro('Entre de novo para continuar.', 401)
 
-  const { data: negocio } = await banco.from('negocios').select('id, limite_pecas').eq('dono', conta.user.id).single()
+  const { data: negocio } = await banco.from('negocios').select('id, limite_pecas, plano').eq('dono', conta.user.id).single()
   if (!negocio) return erro('Não achamos o seu negócio.', 404)
 
   let corpo: { pedido?: string; formato?: string; video?: boolean; fotos?: string[]; refazer?: string; ajuste?: string; modelo?: string; calibrar?: boolean; regras?: string[]; carro_chefe?: string; boas_vindas?: boolean; rede?: string; como?: string; carrossel?: { tipo?: string; quantos?: number; gancho?: string } }
@@ -121,6 +121,10 @@ Deno.serve(async (req) => {
       return { tipo, quantos, gancho: String(pedidoCarrossel.gancho || 'ia'), papeis: sequencia(tipo, quantos) }
     })()
     : null
+  // Carrossel só nos planos pagos (Brenno, 13/11): no Grátis um carrossel gastaria o mês inteiro.
+  if (carrossel && !corpo.refazer && !['essencial', 'pro'].includes(String(negocio.plano))) {
+    return erro('O carrossel é dos planos Essencial e Pro. No Grátis, crie post ou story.', 403)
+  }
   const peso = carrossel ? carrossel.quantos : 1
   if (carrossel) { formato = 'post'; layout = '' }
 

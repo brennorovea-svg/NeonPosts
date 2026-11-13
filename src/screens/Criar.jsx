@@ -11,6 +11,7 @@ import { dadosEmTexto, listaDeNomes, MARCADORES, marcadoresDe, perguntasAntes, p
 import { profissionalFeito, salvarPerfil } from '../lib/perfil.js'
 import { acordarIA, escolherVersao, gerarPeca, guardarImagem, salvarTexto } from '../lib/pecas.js'
 import { desenhar, layoutsDoGrupo, NOMES_DOS_MODELOS, paraArquivo, prepararFontes } from '../lib/desenhar.js'
+import { PAGOS, PLANOS } from '../lib/planos.js'
 import { GANCHOS, MAX_SLIDES, MIN_SLIDES, TIPOS_DE_CARROSSEL } from '../lib/carrossel.js'
 import { DURACAO_DO_SLIDE } from '../lib/desenhar.js'
 import { avisoDoResultado, baixarArquivo, baixarArquivos, baixarLegenda, entregar, imagemDe, nomeDoArquivo, podeCompartilhar, prepararArquivo, textoDaLegenda } from '../lib/publicar.js'
@@ -287,7 +288,7 @@ const semDadosDoPedido = (t) => String(t || '').split('\n\nUse estes dados:')[0]
 const paraInput = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 const quandoPorExtenso = (d) => d.toLocaleString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
 
-export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, pedidoInicial = '', videoInicial = false, marca = null, onCompletar, onSair, onPerfil, onPerfilProfissional, onCriou, onAgendar, onPostou, onMandarParaCelular = null, noPlanner = false }) {
+export default function Criar({ negocioId, perfil, plano = 'gratis', onPlanos = null, pecaInicial, formatoInicial, pedidoInicial = '', videoInicial = false, marca = null, onCompletar, onSair, onPerfil, onPerfilProfissional, onCriou, onAgendar, onPostou, onMandarParaCelular = null, noPlanner = false }) {
   // Veio do planner: o tema marcado já abre escrito, para a pessoa completar.
   const [pedido, setPedido] = useState(() => (pedidoInicial ? `${pedidoInicial.trim()}. ` : ''))
   const [tipo, setTipo] = useState(null)
@@ -311,7 +312,11 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
   const [carQuantos, setCarQuantos] = useState(TIPOS_DE_CARROSSEL.apresentacao.padrao)
   const [carGancho, setCarGancho] = useState('ia')
   const [slide, setSlide] = useState(0)
-  const pedindoCarrossel = formato === 'carrossel'
+  // Carrossel só nos planos pagos (Brenno, 13/11): no Grátis (5 posts) um carrossel gastaria o mês todo.
+  const carrosselLiberado = PAGOS.includes(plano)
+  const pedindoCarrossel = formato === 'carrossel' && carrosselLiberado
+  const [avisoCarrossel, setAvisoCarrossel] = useState(false)
+  useEffect(() => { if (formato === 'carrossel' && !carrosselLiberado) setFormato('post') }, [carrosselLiberado])
   function escolherTipoDeCarrossel(t) { setCarTipo(t); setCarQuantos(TIPOS_DE_CARROSSEL[t].padrao) }
   const [dispensouMarca, setDispensouMarca] = useState(false)
   const [gravando, setGravando] = useState(null) // null ou de 0 a 1
@@ -697,14 +702,24 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
                 <div className="campo">
                   <span className="campo__rotulo">Formato</span>
                   <div className="criar__formatos" role="group" aria-label="Formato">
-                    {formatosDaTela.map(([valor, rotulo, medida]) => (
-                      <button key={valor} type="button" className="criar__formato" aria-pressed={formato === valor} onClick={() => setFormato(valor)}>
-                        <span className={`criar__moldura criar__moldura--${valor}`} aria-hidden="true" />
-                        <strong>{rotulo}</strong>
-                        <span className="mono">{medida}</span>
-                      </button>
-                    ))}
+                    {formatosDaTela.map(([valor, rotulo, medida]) => {
+                      const travado = valor === 'carrossel' && !carrosselLiberado
+                      return (
+                        <button key={valor} type="button" className={`criar__formato${travado ? ' criar__formato--travado' : ''}`} aria-pressed={travado ? avisoCarrossel : formato === valor} onClick={() => (travado ? setAvisoCarrossel((v) => !v) : (setFormato(valor), setAvisoCarrossel(false)))}>
+                          <span className={`criar__moldura criar__moldura--${valor}`} aria-hidden="true" />
+                          <strong>{rotulo}</strong>
+                          <span className="mono">{travado ? 'Essencial e Pro' : medida}</span>
+                        </button>
+                      )
+                    })}
                   </div>
+                  {avisoCarrossel && (
+                    <div className="criar__faltando">
+                      <p className="criar__faltando-titulo">Carrossel é dos planos Essencial e Pro</p>
+                      <p className="criar__faltando-texto">Cada slide conta como um post, e o Grátis tem {PLANOS.gratis.pecas} por mês. Mude de plano para criar carrosséis de 5 a 10 slides.</p>
+                      {onPlanos && <button type="button" className="botao botao--destaque" onClick={onPlanos}>Ver planos</button>}
+                    </div>
+                  )}
                   <div className="criar__movimentos" role="group" aria-label="Movimento">
                     {MOVIMENTOS.map(([valor, rotulo, medida]) => (
                       <button key={rotulo} type="button" className="criar__movimento" aria-pressed={video === valor} onClick={() => setVideo(valor)}>

@@ -363,3 +363,5 @@
 .criar__slide-pontos button[aria-current="true"] { opacity: 1; background: var(--violeta); transform: scale(1.25); }
 .criar__slide-conta { font-size: 12px; color: var(--cinza-claro); min-width: 3.5ch; text-align: center; }
 @media (prefers-reduced-motion: reduce) { .criar__quantos button, .criar__slide-seta, .criar__slide-pontos button { transition: none; } }
+.criar__formato--travado { opacity: .6; }
+.criar__formato--travado[aria-pressed="true"] { opacity: 1; border-color: var(--borda); background: var(--painel); color: var(--texto-2); }

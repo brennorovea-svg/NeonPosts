@@ -11,7 +11,7 @@ export const NOMES_DOS_MODELOS = {
   citacao: 'Citação', dividido: 'Dividido', foto: 'Foto inteira', cartao: 'Cartão',
   numero: 'Número', cupom: 'Cupom', agenda: 'Agenda', conversa: 'Conversa', mosaico: 'Mosaico', faixas: 'Faixas',
   capa: 'Capa de revista', comparar: 'Antes e depois', tabela: 'Tabela', enquete: 'Enquete', polaroid: 'Polaroid',
-  cenas: 'Em cenas',
+  cenas: 'Em cenas', carrossel: 'Carrossel',
   zoom: 'Zoom lento', cortina: 'Cortina', cardfoto: 'Card que sobe', deslize: 'Antes e depois deslizando',
   moldura: 'Moldura acesa', portas: 'Porta que abre', foco: 'Foco no produto',
   ...NOMES_DAS_HISTORIAS,
@@ -305,7 +305,7 @@ function medir(ctx, texto, opcoes) {
   relogio = null
   ctx.save()
   ctx.fillStyle = 'transparent'
-  const fim = bloco(ctx, texto, { ...opcoes, y: 0, cor: 'rgba(0,0,0,0)' })
+  const fim = bloco(ctx, texto, { ...opcoes, y: 0, cor: 'rgba(0,0,0,0)', corMarca: 'rgba(0,0,0,0)' })
   ctx.restore()
   relogio = guardado
   return fim
@@ -2538,6 +2538,169 @@ function focoNoProduto(ctx, a) {
   textoNoPe(ctx, a, { de: 3.0 })
 }
 
+// Carrossel (instagram-carousel, 13/11): uma peça com vários slides 4:5. `slide` diz qual desenhar.
+// Fundo alterna claro e escuro, solução/veredito e o último em degradê da marca; barra de progresso
+// "1/7" em todos e a seta de arrastar em todos menos o último. Medidas da skill (420 px) vezes 2,57.
+const PAPEIS_EM_DEGRADE = ['solucao', 'veredito']
+export const slidesDe = (r) => (Array.isArray(r?.slides) ? r.slides : [])
+function fundoDoSlide(papel, i, total) {
+  if (i === total - 1 || PAPEIS_EM_DEGRADE.includes(papel)) return 'degrade'
+  return i % 2 === 0 ? 'claro' : 'escuro'
+}
+// No animado, cada slide vira um vídeo curto com as motions da Neon (Brenno, 13/11): a etiqueta
+// decodifica (12), o título entra palavra por palavra e acende (05), o número do item conta (06),
+// as linhas entre os itens se desenham (10) e a barra de progresso acende até o slide atual (44).
+export const DURACAO_DO_SLIDE = 5
+function carrossel(ctx, { L, A, c, r, logo, fotos, nome, slide = 0 }) {
+  // Progresso de 0 a 1 de um efeito que começa em `ini` (s) e dura `dur`. Parado, já está pronto.
+  const anda = (ini, dur) => (relogio ? suave((relogio.t - ini) / dur) : 1)
+  const lista = slidesDe(r)
+  const total = Math.max(lista.length, 1)
+  const i = Math.min(Math.max(0, slide), total - 1)
+  const s = lista[i] || { papel: 'gancho', titulo: r.titulo, texto: r.apoio }
+  const p = c[0]
+  const escuroBg = misturar(p, '#000000', 0.88)
+  const claroBg = misturar(p, '#FFFFFF', 0.93)
+  const marcaEscura = misturar(p, '#000000', 0.3)
+  const marcaClara = misturar(p, '#FFFFFF', 0.2)
+  let tipo = fundoDoSlide(s.papel, i, total)
+  const foto = i === 0 && fotos?.[0] ? fotos[0] : null
+  if (foto) tipo = 'foto'
+  if (tipo === 'claro') { ctx.fillStyle = claroBg; ctx.fillRect(0, 0, L, A); sobre(claroBg) }
+  else if (tipo === 'escuro') { ctx.fillStyle = escuroBg; ctx.fillRect(0, 0, L, A); brilho(ctx, L * 0.9, A * 0.1, L * 0.8, p, 0.22); sobre(escuroBg) }
+  else if (tipo === 'foto') {
+    cobrir(ctx, foto, 0, 0, L, A)
+    const g = ctx.createLinearGradient(0, 0, 0, A)
+    g.addColorStop(0, 'rgba(8,8,12,.35)')
+    g.addColorStop(1, 'rgba(8,8,12,.82)')
+    ctx.fillStyle = g
+    ctx.fillRect(0, 0, L, A)
+    sobre('#1A1A20')
+  } else {
+    // 165° da skill: do tom escuro da marca, passando pela cor, até o tom claro.
+    const g = ctx.createLinearGradient(L * 0.37, 0, L * 0.63, A)
+    g.addColorStop(0, marcaEscura)
+    g.addColorStop(0.5, p)
+    g.addColorStop(1, marcaClara)
+    ctx.fillStyle = g
+    ctx.fillRect(0, 0, L, A)
+    sobre(p)
+  }
+  const claro = tipo === 'claro'
+  const tinta = claro ? '#141418' : tipo === 'degrade' ? textoSobre(p) : '#FFFFFF'
+  const suaveTxt = claro ? 'rgba(20,20,24,.62)' : tinta === '#FFFFFF' ? 'rgba(255,255,255,.72)' : 'rgba(20,20,24,.7)'
+  const destaque = claro ? (luz(p) > 0.5 ? marcaEscura : p) : tipo === 'degrade' ? (tinta === '#FFFFFF' ? 'rgba(255,255,255,.62)' : 'rgba(20,20,24,.6)') : legivel(marcaClara, '#FFFFFF')
+  const m = 92
+  const largura = L - m * 2 - (i < total - 1 ? 60 : 0)
+  const ultimo = i === total - 1
+  const centrado = s.papel === 'gancho' || ultimo
+  const al = ultimo ? 'center' : 'left'
+  const x = ultimo ? (L - largura) / 2 : m
+
+  // Altura do conteúdo, para centrar (gancho e chamada) ou assentar em cima da barra (o resto).
+  const tamTitulo = centrado ? 92 : 78
+  const opTitulo = { x, largura, tamanho: tamTitulo, minimo: 52, maxLinhas: centrado ? 5 : 4, entre: 1.08, alinhar: al, cor: tinta, ...marca(r, destaque) }
+  const opTexto = { x, largura, tamanho: 38, minimo: 30, peso: 400, maxLinhas: 6, entre: 1.45, alinhar: al, cor: suaveTxt }
+  const itens = (s.itens || []).filter(Boolean).slice(0, 5)
+  const numerado = ['passos', 'passo'].includes(s.papel)
+  const opItem = { x: x + 92, largura: largura - 92, tamanho: 36, minimo: 28, peso: 600, maxLinhas: 2, entre: 1.3, cor: tinta }
+  const hEtiqueta = s.etiqueta ? 70 : 0
+  const hNumero = s.papel === 'item' ? 130 : 0
+  const hTitulo = medir(ctx, s.titulo, opTitulo)
+  const hTexto = s.texto ? 34 + medir(ctx, s.texto, opTexto) : 0
+  const hItens = itens.reduce((t, it) => t + Math.max(96, medir(ctx, it, opItem) + 46), itens.length ? 30 : 0)
+  const hBotao = ultimo && s.botao ? 150 : 0
+  const altura = hNumero + hEtiqueta + hTitulo + hTexto + hItens + hBotao
+  const topoLivre = 220, baseLivre = A - 150
+  let y = centrado ? Math.max(topoLivre, (topoLivre + baseLivre - altura) / 2) : Math.max(topoLivre, baseLivre - altura)
+
+  if (i === 0 || ultimo) selo(ctx, { logo, nome, x: ultimo ? L / 2 : m, y: 88, altura: 64, alinhar: ultimo ? 'center' : 'left', claro: !claro })
+  if (hNumero) {
+    const n = lista.slice(0, i + 1).filter((t) => t.papel === 'item').length
+    ctx.font = fonteDoBloco(700, 120, 120)
+    ctx.fillStyle = destaque
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'alphabetic'
+    // 06 Contador: no animado, o número sobe até o do item, com um leve passo a mais no fim.
+    const k = relogio ? Math.min(n, Math.round(n * anda(0.2, 0.9) * 1.04)) : n
+    ctx.fillText(String(k).padStart(2, '0'), x, y + 104)
+    y += hNumero
+  }
+  if (s.etiqueta) {
+    rotulo(ctx, s.etiqueta, { x: ancora(al, x, largura), y: y + 30, tamanho: 26, cor: destaque, alinhar: al, espaco: 5 })
+    y += hEtiqueta
+  }
+  // 05 Neon que liga: no gancho e na chamada, o título acende com brilho da marca.
+  if (relogio && centrado) {
+    ctx.save()
+    ctx.shadowColor = comAlfa(p, 0.55 * acender(0.3))
+    ctx.shadowBlur = 36
+    y = bloco(ctx, s.titulo, { ...opTitulo, y })
+    ctx.restore()
+  } else y = bloco(ctx, s.titulo, { ...opTitulo, y })
+  if (s.texto) y = bloco(ctx, s.texto, { ...opTexto, y: y + 34 })
+  if (itens.length) {
+    y += 30
+    itens.forEach((it, k) => {
+      // 10 Traço que desenha: a linha de cada item corre da esquerda para a direita, uma depois da outra.
+      ctx.fillStyle = claro ? 'rgba(20,20,24,.1)' : 'rgba(255,255,255,.12)'
+      ctx.fillRect(x, y, largura * anda(0.8 + k * 0.35, 0.6), 2)
+      ctx.textAlign = 'left'
+      ctx.textBaseline = 'alphabetic'
+      if (numerado) {
+        ctx.font = `300 64px ${fonteTitulo.familia}, ${FONTE}`
+        ctx.fillStyle = destaque
+        ctx.fillText(String(k + 1).padStart(2, '0'), x, y + 76)
+      } else {
+        ctx.beginPath()
+        ctx.arc(x + 22, y + 52, 11, 0, Math.PI * 2)
+        ctx.fillStyle = destaque
+        ctx.fill()
+      }
+      const fim = bloco(ctx, it, { ...opItem, y: y + 30 })
+      y = Math.max(y + 96, fim + 46)
+    })
+  }
+  if (hBotao) {
+    ctx.font = `600 38px ${FONTE}`
+    const w = Math.min(largura, ctx.measureText(s.botao).width + 150)
+    pilula(ctx, s.botao, { x: (L - w) / 2, y: y + 46, largura: w, altura: 108, tamanho: 38, fundo: claroBg, cor: marcaEscura })
+  }
+
+  // Barra de progresso com o contador, e a seta de arrastar (menos no último).
+  const bx = 72, by = A - 60, bw = L - 72 * 2 - 90
+  ctx.fillStyle = claro ? 'rgba(0,0,0,.08)' : 'rgba(255,255,255,.14)'
+  arredondado(ctx, bx, by, bw, 8, 4); ctx.fill()
+  // 44 Linha que acende: a barra parte de onde o slide anterior parou e acende até a posição deste.
+  const de = i / total, ate = (i + 1) / total
+  ctx.save()
+  if (relogio) ctx.globalAlpha = 0.35 + 0.65 * acender(0.4)
+  ctx.fillStyle = claro ? p : '#FFFFFF'
+  arredondado(ctx, bx, by, Math.max(8, bw * (de + (ate - de) * anda(0.4, 1.2))), 8, 4); ctx.fill()
+  ctx.restore()
+  ctx.font = `500 28px ${FONTE}`
+  ctx.fillStyle = claro ? 'rgba(0,0,0,.34)' : 'rgba(255,255,255,.5)'
+  ctx.textAlign = 'right'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(`${i + 1}/${total}`, L - 72, by + 4)
+  if (!ultimo) {
+    const g = ctx.createLinearGradient(L - 124, 0, L, 0)
+    g.addColorStop(0, 'rgba(0,0,0,0)')
+    g.addColorStop(1, claro ? 'rgba(0,0,0,.06)' : 'rgba(255,255,255,.08)')
+    ctx.fillStyle = g
+    ctx.fillRect(L - 124, 0, 124, A)
+    ctx.strokeStyle = claro ? 'rgba(0,0,0,.28)' : 'rgba(255,255,255,.4)'
+    ctx.lineWidth = 6.5
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+    ctx.beginPath()
+    ctx.moveTo(L - 70, A / 2 - 30)
+    ctx.lineTo(L - 40, A / 2)
+    ctx.lineTo(L - 70, A / 2 + 30)
+    ctx.stroke()
+  }
+}
+
 // Os animados feitos para a foto (com os stories e o "cenas", só no vídeo).
 const ANIMADOS_FEITOS_PARA_FOTO = { zoom: zoomLento, cortina, cardfoto: cardQueSobe, deslize, moldura, portas, foco: focoNoProduto }
 
@@ -2559,7 +2722,7 @@ const ESTILOS = criarEstilos({
 const MODELOS = {
   promo, aviso, bastidores, manchete, lista, citacao, dividido, foto: fotoInteira, cartao,
   numero, cupom, agenda, conversa, mosaico, faixas, capa, comparar, tabela, enquete, polaroid, cenas,
-  ...HISTORIAS, ...ANIMADOS_FEITOS_PARA_FOTO, ...ESTILOS,
+  ...HISTORIAS, ...ANIMADOS_FEITOS_PARA_FOTO, ...ESTILOS, carrossel,
 }
 
 // Marca d'água (W2): neonposts.com.br repetido na diagonal sobre a peça inteira, bem fraco.
@@ -2642,7 +2805,7 @@ function paletaDe(cores = []) {
 
 export function desenhar(canvas, opcoes) {
   if (opcoes.rede === 'tiktok') return desenharParaTikTok(canvas, opcoes)
-  const { formato, modelo, roteiro, cores, logo, foto, fotos, nome, fonte, tempo = null, total = 8 } = opcoes
+  const { formato, modelo, roteiro, cores, logo, foto, fotos, nome, fonte, tempo = null, total = 8, slide = 0 } = opcoes
   const [L, A] = TAMANHOS[formato] || TAMANHOS.post
   canvas.width = L
   canvas.height = A
@@ -2657,7 +2820,7 @@ export function desenhar(canvas, opcoes) {
   try {
     // Sem a chamada no roteiro, nenhum modelo desenha a cápsula nem reserva o espaço dela.
     const r = chamadaOculta ? { ...roteiro, chamada: '' } : roteiro
-    const args = { L, A, story: formato === 'story', c, r, logo, foto: todas[0] || null, fotos: todas, nome }
+    const args = { L, A, story: formato === 'story', c, r, logo, foto: todas[0] || null, fotos: todas, nome, slide }
     const comFoto = args.foto && VERSAO_COM_FOTO[modelo]?.(args)
     ;(comFoto || MODELOS[modelo] || aviso)(ctx, args)
     if (comMarcaDagua) marcaDagua(ctx, L, A)

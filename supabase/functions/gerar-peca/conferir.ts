@@ -301,7 +301,7 @@ const DICAS_DO_LAYOUT: Record<string, string> = {
   pictograma: 'título de até 6 palavras; apoio de até 14 palavras.',
 }
 
-type Perfil = {
+export type Perfil = {
   identidade: { nome: string; ramo: string }
   voz: Record<string, unknown>
   padrao: { tipos: string[]; hashtags: string; chamada: string; layouts?: { gosto?: unknown; nao?: unknown } }
@@ -376,7 +376,7 @@ const LINKEDIN_PESSOA = `O post é em nome da pessoa do <perfil_profissional>, e
 - O tom da marca vale só como referência; aqui a voz é a da pessoa, mais profissional.`
 const LINKEDIN_EMPRESA = `O post é em nome da empresa, na voz da marca, falando como "a gente", com o tom um pouco mais profissional que no Instagram.`
 
-const MARCADORES: Record<string, string> = {
+export const MARCADORES: Record<string, string> = {
   '[SEU PREÇO]': 'Falta o preço',
   '[ENDEREÇO]': 'Falta o endereço',
   '[DATA]': 'Falta a data',
@@ -426,6 +426,25 @@ export function formatarPreco(preco: string) {
     return 'R$ ' + valor.toLocaleString('pt-BR', { minimumFractionDigits: Number.isInteger(valor) ? 0 : 2, maximumFractionDigits: 2 })
   }
   return /^r\$/i.test(limpo) ? limpo : `R$ ${limpo}`
+}
+
+// Limpeza de dados inventados para quem escreve fora do roteiro de uma peça (o carrossel).
+// Mesma regra do conferir(): número que não veio do pedido nem dos dados vira marcador.
+export function limpador(perfil: Perfil, pedido: string) {
+  const fonte = numerosDaFonte(pedido + ' ' + JSON.stringify(perfil.dados))
+  const trocados = new Set<string>()
+  const limpar = (texto: unknown) => {
+    let t = String(texto ?? '').trim()
+    for (const [padrao, marcador] of SUSPEITOS) {
+      t = t.replace(padrao, (trecho) => {
+        if (permitido(trecho, fonte)) return trecho
+        trocados.add(marcador)
+        return marcador
+      })
+    }
+    return t
+  }
+  return { limpar, trocados }
 }
 
 export function conferir(bruto: Record<string, unknown>, perfil: Perfil, pedido: string, layout = '', fotos = 0, video = false, rede = '', profissional: Record<string, string> | null = null) {

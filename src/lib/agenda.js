@@ -10,10 +10,15 @@ const BASICAS = 'id, peca, titulo, formato, quando, lembrete_minutos, avisado_em
 // Publicar sozinho no Instagram (migração 0020). Antes da migração o banco recusa essas colunas
 // e a lista volta só com as básicas, sem quebrar o Planner.
 const DIRETO = 'publicar, midia, publicacao_estado, publicacao_erro, permalink'
-let COLUNAS = `${BASICAS}, ${DIRETO}`
+// Carrossel (migração 0021): os slides que sobem para publicar sozinho.
+const OPCOES = [`${BASICAS}, ${DIRETO}, midias`, `${BASICAS}, ${DIRETO}`, BASICAS]
+let COLUNAS = OPCOES[0]
 async function comColunas(consulta) {
-  const r = await consulta(COLUNAS)
-  if (r.error && COLUNAS !== BASICAS && /column|coluna/i.test(r.error.message)) { COLUNAS = BASICAS; return consulta(COLUNAS) }
+  let r = await consulta(COLUNAS)
+  while (r.error && COLUNAS !== BASICAS && /column|coluna/i.test(r.error.message)) {
+    COLUNAS = OPCOES[OPCOES.indexOf(COLUNAS) + 1]
+    r = await consulta(COLUNAS)
+  }
   return r
 }
 

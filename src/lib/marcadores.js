@@ -16,7 +16,9 @@ export function listaDeNomes(marcadores) {
   return nomes.length > 1 ? `${nomes.slice(0, -1).join(', ')} e ${nomes.at(-1)}` : nomes[0] || ''
 }
 
-const textos = (r) => [r.titulo, r.apoio, r.chamada, r.legenda, r.autor, r.numero, r.cupom, r.data, r.horario, ...(r.pontos || []), ...(r.itens || []).map((i) => i.preco)]
+// No carrossel, o texto de todos os slides também.
+const textosDosSlides = (r) => (r.slides || []).flatMap((s) => [s.etiqueta, s.titulo, s.texto, s.botao, ...(s.itens || [])])
+const textos = (r) => [r.titulo, r.apoio, r.chamada, r.legenda, r.autor, r.numero, r.cupom, r.data, r.horario, ...(r.pontos || []), ...(r.itens || []).map((i) => i.preco), ...textosDosSlides(r)]
 
 export function marcadoresDe(roteiro) {
   const tudo = textos(roteiro || {}).join(' ')
@@ -38,6 +40,7 @@ export function preencher(roteiro, valores) {
     horario: trocar(roteiro.horario),
     pontos: (roteiro.pontos || []).map(trocar),
     itens: (roteiro.itens || []).map((i) => ({ ...i, preco: trocar(i.preco) })),
+    ...(roteiro.slides ? { slides: roteiro.slides.map((s) => ({ ...s, etiqueta: trocar(s.etiqueta), titulo: trocar(s.titulo), texto: trocar(s.texto), botao: trocar(s.botao), itens: (s.itens || []).map(trocar) })) } : {}),
     // Os avisos dos marcadores viram campos; os outros continuam.
     avisos: (roteiro.avisos || []).filter((a) => !Object.keys(MARCADORES).some((m) => a.includes(m))),
   }

@@ -3,7 +3,8 @@ import { agendar, chaveDoDia, horaDe, juntarDiaEHora, LEMBRETES, mudarAgenda, pa
 import { avisosDisponiveis, avisosNegados } from '../lib/avisos.js'
 import { enderecoDaImagem } from '../lib/perfil.js'
 import { gerarGrade, ideiaDoDia } from '../lib/preencher.js'
-import { avisoDoResultado, baixarArquivo, ehAnimado, entregar, legendaDe, nomeDoArquivo, opcoesDaPeca, podeCompartilhar, prepararArquivo } from '../lib/publicar.js'
+import { carrosselAnimado } from '../lib/carrossel.js'
+import { avisoDoResultado, baixarArquivo, baixarArquivos, ehAnimado, roteiroDaPeca, entregar, legendaDe, nomeDoArquivo, opcoesDaPeca, podeCompartilhar, prepararArquivo } from '../lib/publicar.js'
 import { ehIphone, instalado } from '../lib/push.js'
 import { agendarNoInstagram, cancelarNoInstagram, contaDireta, NaoDaParaPublicar } from '../lib/publicarDireto.js'
 import Instalar from '../components/Instalar.jsx'
@@ -24,6 +25,8 @@ const Forma = ({ formato }) => (
     {formato === 'story' ? <rect x="7" y="3" width="10" height="18" rx="2.5" /> : <rect x="3" y="3" width="18" height="18" rx="2.5" />}
   </svg>
 )
+// Sai em vídeo: modelo só animado, ou carrossel marcado como animado.
+const animadoDe = (peca) => ehAnimado(peca.modelo) || (peca.modelo === 'carrossel' && carrosselAnimado(roteiroDaPeca(peca)))
 const Ponto = () => <span className="planner__ponto" aria-hidden="true" />
 
 function Miniatura({ peca, formato }) {
@@ -177,7 +180,7 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, push 
     const pronto = prontos[item.id]
     if (!pronto?.arquivo) return
     setErro('')
-    const r = await entregar(pronto.arquivo, legendaDe(pecaPorId[item.peca]))
+    const r = await entregar(pronto.arquivos || pronto.arquivo, legendaDe(pecaPorId[item.peca]))
     if (r === 'cancelou') return
     // Só vira "Postada" quando a pessoa confirma: o compartilhar abrir não quer dizer que postou (Brenno, 30/10).
     setConfirmando({ id: item.id, resultado: r })
@@ -190,7 +193,7 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, push 
     setErro('')
     setEnviandoDireto(item.id)
     try {
-      await agendarNoInstagram(negocioId, item, pronto.arquivo, legendaDe(pecaPorId[item.peca]))
+      await agendarNoInstagram(negocioId, item, pronto.arquivos || pronto.arquivo, legendaDe(pecaPorId[item.peca]))
       onMudou()
     } catch (e) {
       setErro(e instanceof NaoDaParaPublicar ? e.message : 'Não deu para agendar agora. Confira a internet e tente de novo.')
@@ -329,24 +332,25 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, push 
     let vivo = true
     const marcar = (id, valor) => { if (vivo) setProntos((p) => ({ ...p, [id]: { ...(p[id] || {}), ...valor } })) }
     const fila = doDiaAberto.filter((i) => i.peca && !i.postado_em && pecaPorId[i.peca])
-    fila.sort((a, b) => Number(ehAnimado(pecaPorId[a.peca].modelo)) - Number(ehAnimado(pecaPorId[b.peca].modelo)))
+    fila.sort((a, b) => Number(animadoDe(pecaPorId[a.peca])) - Number(animadoDe(pecaPorId[b.peca])))
     ;(async () => {
       for (const item of fila) {
         const peca = pecaPorId[item.peca]
-        const animado = ehAnimado(peca.modelo)
+        const animado = animadoDe(peca)
         const nome = nomeDoArquivo(item.titulo, peca, animado)
         try {
-          let arquivo
-          if (!animado && peca.imagem) {
+          let arquivo, arquivos
+          // Carrossel: um arquivo por slide (a miniatura guardada é só o primeiro).
+          if (!animado && peca.imagem && peca.modelo !== 'carrossel') {
             const resposta = await fetch(await enderecoDaImagem(peca.imagem), { signal: controle.signal })
             arquivo = new File([await resposta.blob()], `${nome}.png`, { type: 'image/png' })
           } else {
             if (animado) marcar(item.id, { progresso: 0 })
             const opcoes = await opcoesDaPeca(peca, perfil)
-            ;({ arquivo } = await prepararArquivo(opcoes, { video: animado, nome, aoAvancar: (p) => marcar(item.id, { progresso: p }), sinal: controle.signal }))
+            ;({ arquivo, arquivos } = await prepararArquivo(opcoes, { video: animado, nome, aoAvancar: (p) => marcar(item.id, { progresso: p }), sinal: controle.signal }))
           }
           if (!vivo) return
-          marcar(item.id, { arquivo, progresso: null })
+          marcar(item.id, { arquivo, arquivos, progresso: null })
         } catch (e) {
           if (e.name === 'AbortError') return
           marcar(item.id, { erro: true, progresso: null })
@@ -407,7 +411,7 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, push 
             <Miniatura peca={peca} formato={item.formato} />
             <div className="planner__cartao-corpo">
               <div className="planner__cartao-tags">
-                <span className="planner__tag">{peca && ehAnimado(peca.modelo) ? 'Animado' : item.formato === 'story' ? 'Story' : 'Post'}</span>
+                <span className="planner__tag">{peca?.modelo === 'carrossel' ? `Carrossel · ${peca.roteiro?.slides?.length || ''}${animadoDe(peca) ? ' · animado' : ''}` : peca && ehAnimado(peca.modelo) ? 'Animado' : item.formato === 'story' ? 'Story' : 'Post'}</span>
                 <span className="mono planner__cartao-hora">{horaDe(quando)}</span>
                 {item.postado_em && <span className="planner__tag planner__tag--ok">Postada</span>}
               </div>
@@ -443,7 +447,7 @@ export default function Planner({ negocioId, perfil, itens, pecas, avisos, push 
                   <div className="planner__confirmar-acoes">
                     <button type="button" className="botao botao--primario" onClick={async () => { if (await tentar(() => mudarAgenda(item.id, { postado_em: new Date().toISOString() }))) setConfirmando(null) }}>Sim, postei</button>
                     <button type="button" className="botao botao--fantasma" onClick={() => setConfirmando(null)}>Ainda não</button>
-                    {confirmando.resultado.startsWith('falhou') && prontos[item.id]?.arquivo && <button type="button" className="botao botao--fantasma" onClick={() => baixarArquivo(prontos[item.id].arquivo)}>Baixar o arquivo</button>}
+                    {confirmando.resultado.startsWith('falhou') && prontos[item.id]?.arquivo && <button type="button" className="botao botao--fantasma" onClick={() => (prontos[item.id].arquivos ? baixarArquivos(prontos[item.id].arquivos) : baixarArquivo(prontos[item.id].arquivo))}>{prontos[item.id].arquivos ? 'Baixar os slides' : 'Baixar o arquivo'}</button>}
                   </div>
                 </div>
               )}

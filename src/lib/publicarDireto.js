@@ -37,27 +37,40 @@ async function paraJpeg(arquivo) {
 // Erros que a tela mostra com texto próprio.
 export class NaoDaParaPublicar extends Error {}
 
+// Carrossel: `arquivo` é a lista de slides; cada um sobe na ordem e vai em `midias` (migração 0021).
 export async function agendarNoInstagram(negocioId, item, arquivo, legenda) {
+  const arquivos = Array.isArray(arquivo) ? arquivo : [arquivo]
+  const carrossel = arquivos.length > 1
   if (temMarcador(legenda)) throw new NaoDaParaPublicar('A legenda ainda tem um dado para preencher. Abra o post e complete antes.')
   if (legenda.length > 2200) throw new NaoDaParaPublicar('A legenda passou de 2.200 caracteres, o limite do Instagram.')
-  const video = arquivo.type.startsWith('video/')
-  if (video && !arquivo.type.startsWith('video/mp4')) throw new NaoDaParaPublicar('Este navegador gravou o vídeo num formato que o Instagram não aceita. Agende pelo computador (Chrome).')
+  if (arquivos.length > 10) throw new NaoDaParaPublicar('O Instagram aceita até 10 slides por carrossel.')
+  if (arquivos.some((a) => a.type.startsWith('video/') && !a.type.startsWith('video/mp4'))) throw new NaoDaParaPublicar('Este navegador gravou o vídeo num formato que o Instagram não aceita. Agende pelo computador (Chrome).')
   if (modoDeTeste()) return mudarAgenda(item.id, { publicar: true, legenda, publicacao_estado: 'agendado' })
-  const corpo = video ? arquivo : await paraJpeg(arquivo)
-  const caminho = `${negocioId}/${item.id}-${Date.now()}.${video ? 'mp4' : 'jpg'}`
-  const { error } = await supabase.storage.from('publicar').upload(caminho, corpo, { contentType: video ? 'video/mp4' : 'image/jpeg' })
-  if (error) throw error
-  if (item.midia) await supabase.storage.from('publicar').remove([item.midia])
+  const agora = Date.now()
+  const caminhos = []
+  for (const [i, a] of arquivos.entries()) {
+    const video = a.type.startsWith('video/')
+    const caminho = `${negocioId}/${item.id}-${agora}${carrossel ? `-${String(i + 1).padStart(2, '0')}` : ''}.${video ? 'mp4' : 'jpg'}`
+    const { error } = await supabase.storage.from('publicar').upload(caminho, video ? a : await paraJpeg(a), { contentType: video ? 'video/mp4' : 'image/jpeg' })
+    if (error) {
+      if (caminhos.length) await supabase.storage.from('publicar').remove(caminhos)
+      throw error
+    }
+    caminhos.push(caminho)
+  }
+  const antigos = [...new Set([item.midia, ...(item.midias || [])].filter(Boolean))]
+  if (antigos.length) await supabase.storage.from('publicar').remove(antigos)
   return mudarPublicacao(item.id, {
-    publicar: true, midia: caminho, legenda, publicacao_estado: 'agendado',
+    publicar: true, midia: caminhos[0], ...(carrossel || item.midias ? { midias: carrossel ? caminhos : null } : {}), legenda, publicacao_estado: 'agendado',
     publicacao_erro: null, container_id: null, tentativas: 0, publicando_em: null,
   })
 }
 
 export async function cancelarNoInstagram(item) {
   if (modoDeTeste()) return mudarAgenda(item.id, { publicar: false, publicacao_estado: null })
-  if (item.midia) await supabase.storage.from('publicar').remove([item.midia])
-  return mudarPublicacao(item.id, { publicar: false, midia: null, publicacao_estado: null, publicacao_erro: null, container_id: null })
+  const antigos = [...new Set([item.midia, ...(item.midias || [])].filter(Boolean))]
+  if (antigos.length) await supabase.storage.from('publicar').remove(antigos)
+  return mudarPublicacao(item.id, { publicar: false, midia: null, ...(item.midias ? { midias: null } : {}), publicacao_estado: null, publicacao_erro: null, container_id: null })
 }
 
 async function mudarPublicacao(id, campos) {

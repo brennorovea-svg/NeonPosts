@@ -11,7 +11,9 @@ import { dadosEmTexto, listaDeNomes, MARCADORES, marcadoresDe, perguntasAntes, p
 import { profissionalFeito, salvarPerfil } from '../lib/perfil.js'
 import { acordarIA, escolherVersao, gerarPeca, guardarImagem, salvarTexto } from '../lib/pecas.js'
 import { desenhar, layoutsDoGrupo, NOMES_DOS_MODELOS, paraArquivo, prepararFontes } from '../lib/desenhar.js'
-import { avisoDoResultado, baixarArquivo, baixarLegenda, entregar, imagemDe, nomeDoArquivo, podeCompartilhar, prepararArquivo, textoDaLegenda } from '../lib/publicar.js'
+import { GANCHOS, MAX_SLIDES, MIN_SLIDES, TIPOS_DE_CARROSSEL } from '../lib/carrossel.js'
+import { DURACAO_DO_SLIDE } from '../lib/desenhar.js'
+import { avisoDoResultado, baixarArquivo, baixarArquivos, baixarLegenda, entregar, imagemDe, nomeDoArquivo, podeCompartilhar, prepararArquivo, textoDaLegenda } from '../lib/publicar.js'
 import './Criar.css'
 
 const suave = (t) => 1 - Math.pow(1 - Math.min(1, Math.max(0, t)), 4)
@@ -90,7 +92,8 @@ const EXEMPLOS = [
 ]
 const AJUSTES = ['Mais curto', 'Mais divertido', 'Outro título', 'Outro layout', 'Título maior', 'Fundo claro', 'Fundo escuro']
 
-const FORMATOS = [['post', 'Post', '4:5'], ['story', 'Story', '9:16']]
+const FORMATOS = [['post', 'Post', '4:5'], ['story', 'Story', '9:16'], ['carrossel', 'Carrossel', '4:5 · 5 a 10']]
+// Carrossel (Brenno, 13/11): skill instagram-carousel. Conta como um post por slide.
 // Parado ou animado vale para post e story (Brenno, 30/10). O animado a IA escreve igual, e o app anima e grava no aparelho.
 const TONS = [['normal', 'Insta / TikTok'], ['profissional', 'LinkedIn']]
 const MOVIMENTOS = [[false, 'Parado', 'imagem'], [true, 'Animado', `vídeo ${DURACAO}-17s`]]
@@ -272,7 +275,7 @@ function sugestoesDeQuando() {
 // O Criar abre com o último formato e movimento que a pessoa usou (fica neste aparelho).
 const CHAVE_ESCOLHA = 'neonposts-ultima-escolha'
 function ultimaEscolha() {
-  try { const v = JSON.parse(localStorage.getItem(CHAVE_ESCOLHA) || '{}'); return { formato: v.formato === 'story' ? 'story' : 'post', video: Boolean(v.video), tom: v.tom === 'profissional' || v.rede === 'linkedin' ? 'profissional' : 'normal', como: v.como === 'pessoa' ? 'pessoa' : 'empresa' } } catch { return { formato: 'post', video: false, tom: 'normal', como: 'empresa' } }
+  try { const v = JSON.parse(localStorage.getItem(CHAVE_ESCOLHA) || '{}'); return { formato: ['story', 'carrossel'].includes(v.formato) ? v.formato : 'post', video: Boolean(v.video), tom: v.tom === 'profissional' || v.rede === 'linkedin' ? 'profissional' : 'normal', como: v.como === 'pessoa' ? 'pessoa' : 'empresa' } } catch { return { formato: 'post', video: false, tom: 'normal', como: 'empresa' } }
 }
 function guardarEscolha(formato, video, tom, como = 'empresa') {
   try { localStorage.setItem(CHAVE_ESCOLHA, JSON.stringify({ formato, video, tom, como })) } catch { /* sem armazenamento, abre no padrão */ }
@@ -290,7 +293,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
   const [tipo, setTipo] = useState(null)
   // Veio do planner ou da vitrine: usa o que veio. Senão, a última escolha da pessoa.
   const [formato, setFormato] = useState(() => (formatoInicial ? (formatoInicial === 'story' ? 'story' : 'post') : ultimaEscolha().formato))
-  const [video, setVideo] = useState(() => Boolean(videoInicial) || (!formatoInicial && ultimaEscolha().video))
+  const [video, setVideo] = useState(() => Boolean(videoInicial) || Boolean(pecaInicial?.roteiro?.carrossel?.animado) || (!formatoInicial && !pecaInicial && ultimaEscolha().video))
   // Tom do texto (Brenno, 02/11): sem rede definida, quem escolhe o app é a pessoa na hora de postar.
   // "Profissional" usa as regras do LinkedIn (texto mais longo, até 3 hashtags, número só com fonte),
   // sai sempre em post 4:5 e pode falar em nome da empresa ou da pessoa.
@@ -303,6 +306,13 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
   const comoPessoa = linkedin && como === 'pessoa'
   const faltaProfissional = comoPessoa && !profissionalFeito(perfil)
   const formatosDaTela = soPost ? FORMATOS.filter(([v]) => v === 'post') : FORMATOS
+  // Carrossel: tipo, quantos slides e gancho, perguntados antes de criar.
+  const [carTipo, setCarTipo] = useState('apresentacao')
+  const [carQuantos, setCarQuantos] = useState(TIPOS_DE_CARROSSEL.apresentacao.padrao)
+  const [carGancho, setCarGancho] = useState('ia')
+  const [slide, setSlide] = useState(0)
+  const pedindoCarrossel = formato === 'carrossel'
+  function escolherTipoDeCarrossel(t) { setCarTipo(t); setCarQuantos(TIPOS_DE_CARROSSEL[t].padrao) }
   const [dispensouMarca, setDispensouMarca] = useState(false)
   const [gravando, setGravando] = useState(null) // null ou de 0 a 1
   const [avisoVideo, setAvisoVideo] = useState('')
@@ -380,8 +390,11 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
     desenhar(quadro, opcoes)
     const comVideo = video
     const parado = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const carrossel = opcoes.modelo === 'carrossel'
     let parar = null
-    if (comVideo && !parado) parar = tocar(canvas.current, opcoes)
+    // Carrossel: a prévia do slide da vez fica no efeito de baixo; aqui só os arquivos.
+    if (carrossel) { /* prévia no efeito do slide */ }
+    else if (comVideo && !parado) parar = tocar(canvas.current, opcoes)
     // Parado, o vídeo mostra o último quadro; o vídeo em cenas mostra a capa.
     else desenhar(canvas.current, comVideo && opcoes.modelo !== 'cenas' ? { ...opcoes, tempo: duracaoDe(opcoes), total: duracaoDe(opcoes) } : opcoes)
     const t = setTimeout(async () => {
@@ -395,14 +408,16 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
     const base = nomeDoArquivo(nome, peca, comVideo)
     const controle = new AbortController()
     let tGravar = null
-    if (!comVideo) {
+    if (carrossel && !comVideo) {
+      prepararArquivo(opcoes, { video: false, nome: base }).then((r) => vivo && setArquivo(r)).catch((falha) => vivo && setErro(falha.message))
+    } else if (!comVideo) {
       paraArquivo(quadro, `${base}.png`).then((a) => vivo && setArquivo({ arquivo: a, extensao: 'png' }))
     } else {
       tGravar = setTimeout(async () => {
         setGravando(0)
         setAvisoVideo('')
         try {
-          const r = await prepararArquivo(opcoes, { video: true, nome: base, aoAvancar: (p) => vivo && setGravando(p), sinal: controle.signal })
+          const r = await prepararArquivo(opcoes, { video: true, nome: carrossel ? base.replace(/-video$/, '-carrossel') : base, aoAvancar: (p) => vivo && setGravando(p), sinal: controle.signal })
           if (!vivo) return
           setArquivo(r)
           setAvisoVideo(r.extensao === 'webm' ? 'Este aparelho gravou em WebM. Se o Instagram não aceitar, poste pelo celular com Chrome ou Safari atualizado.' : '')
@@ -419,6 +434,15 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
   function opcoesDoDesenho() {
     return { formato: peca.formato, modelo: peca.modelo, roteiro, cores: perfil.identidade.cores, nome, fonte, logo: imagens.logo, fotos: imagens.fotos }
   }
+
+  // Prévia do carrossel: o slide da vez (animado em loop, ou parado no último quadro).
+  useEffect(() => {
+    if (!peca || peca.modelo !== 'carrossel' || !canvas.current || estado !== 'pronta' || !imagens.pronto) return
+    const opcoes = { ...opcoesDoDesenho(), slide }
+    if (video && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) return tocar(canvas.current, opcoes)
+    desenhar(canvas.current, video ? { ...opcoes, tempo: DURACAO_DO_SLIDE, total: DURACAO_DO_SLIDE } : opcoes)
+  }, [peca, imagens, estado, video, dadosFaltando, slide])
+  useEffect(() => { setSlide(0) }, [peca?.id, peca?.refeitas])
 
   // Texto editado pelo dono: a arte redesenha a cada tecla e o banco recebe um pouco depois.
   const [mexeuNoTexto, setMexeuNoTexto] = useState(false)
@@ -444,9 +468,10 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
     setEstado('gerando')
     window.scrollTo({ top: 0 })
     try {
+      const carrossel = !refazer && pedindoCarrossel ? { tipo: carTipo, quantos: carQuantos, gancho: carGancho } : undefined
       const r = await gerarPeca(refazer
         ? { refazer: peca.id, formato: peca.formato, video, rede: redeDaIA, como: linkedin ? como : undefined, pedido: pedidoNovo.trim(), ajuste: ajuste.trim() }
-        : { pedido: pedido.trim() + dadosEmTexto(dadosFaltando), formato, video, fotos, rede: redeDaIA, como: linkedin ? como : undefined, modelo: layout === 'ia' ? undefined : layout })
+        : { pedido: pedido.trim() + dadosEmTexto(dadosFaltando), formato: carrossel ? 'post' : formato, video, fotos, rede: redeDaIA, como: linkedin ? como : undefined, modelo: carrossel || layout === 'ia' ? undefined : layout, carrossel })
       if (!refazer) {
         setRespondidos(Object.keys(dadosFaltando).filter((m) => (dadosFaltando[m] || '').trim()))
         guardarEscolha(formato, video, tom, como)
@@ -473,7 +498,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
     if (!arquivo) return
     setErro('')
     setAvisoPost('')
-    const r = await entregar(arquivo.arquivo, textoDaLegenda(roteiro))
+    const r = await entregar(arquivo.arquivos || arquivo.arquivo, textoDaLegenda(roteiro))
     if (r === 'cancelou') return
     setResultado(r)
   }
@@ -534,6 +559,8 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
   // Parado e animado têm layouts diferentes: fora do grupo novo, o post passa para o primeiro sugerido dele.
   function trocarMovimento(animado) {
     setVideo(animado)
+    // Carrossel: o movimento fica no roteiro, para o Planner gerar os arquivos do mesmo jeito.
+    if (peca.modelo === 'carrossel') { editarTexto('carrossel', { ...roteiroDaIA.carrossel, animado }); return }
     const temFoto = imagens.fotos.length > 0
     if (!layoutsDoGrupo(temFoto, animado).includes(peca.modelo)) trocar('modelo', sugeridosDaMarca(sugerirLayouts(tipoDoPedido(null, versoes[indice]?.pedido), temFoto, animado), temFoto, animado, perfil)[0])
   }
@@ -544,6 +571,14 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
   const faltando = marcadoresDe(roteiroDaIA)
   const roteiro = roteiroDaIA && preencher(roteiroDaIA, dadosFaltando)
   const semDados = faltando.filter((m) => !(dadosFaltando[m] || '').trim())
+  const ehCarrossel = peca?.modelo === 'carrossel'
+  const slidesDaIA = ehCarrossel ? roteiroDaIA?.slides || [] : []
+  const slideAtual = slidesDaIA[Math.min(slide, slidesDaIA.length - 1)] || null
+  function editarSlide(campo, valor) {
+    editarTexto('slides', slidesDaIA.map((s, i) => (i === slide ? { ...s, [campo]: valor } : s)))
+  }
+  const irPara = (i) => setSlide(Math.max(0, Math.min(slidesDaIA.length - 1, i)))
+  const toqueInicial = useRef(null)
   // Dado pedido uma vez só: o que a pessoa respondeu antes de gerar já entrou e não volta a ser perguntado.
   const perguntarAgora = faltando.filter((m) => !respondidos.includes(m))
   function escolher(i) {
@@ -558,7 +593,9 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
   const guia = (tipo && (linkedin ? TIPOS_LINKEDIN : TIPOS)[tipo]) || (linkedin ? GERAL_LINKEDIN : GERAL)
   const exemplos = sortear(guia.exemplos, rodada).slice(0, 3)
   const antes = estado === 'pedido' ? perguntasAntes(pedido, perfil.dados) : []
-  const resumoDasOpcoes = `${linkedin ? 'Tom corporativo · ' : ''}${formato === 'story' ? 'Story 9:16' : 'Post 4:5'} · ${video ? 'animado' : 'parado'} · ${layout === 'ia' ? 'a IA escolhe o layout' : (NOMES_DOS_MODELOS[layout] || layout)}`
+  const resumoDasOpcoes = pedindoCarrossel
+    ? `Carrossel de ${carQuantos} slides · ${video ? 'animado' : 'parado'}`
+    : `${linkedin ? 'Tom corporativo · ' : ''}${formato === 'story' ? 'Story 9:16' : 'Post 4:5'} · ${video ? 'animado' : 'parado'} · ${layout === 'ia' ? 'a IA escolhe o layout' : (NOMES_DOS_MODELOS[layout] || layout)}`
   const semTexto = pedido.trim().length < 3 || (tipo && pedido.trim() === ((linkedin ? TIPOS_LINKEDIN : TIPOS)[tipo]?.comeco || '').trim())
   const nomePessoa = perfil.profissional?.nome?.trim() || 'Você'
   // Trocar o tom muda os tipos: a ficha marcada do outro tom sai.
@@ -678,6 +715,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
                     ))}
                   </div>
                 </div>
+                {!pedindoCarrossel && (
                 <div className="campo">
                   <span className="campo__rotulo">Layout</span>
                   <p className="campo__ajuda">Escolha um jeito para a arte ou deixe a IA decidir. Dá para trocar depois.</p>
@@ -686,13 +724,45 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
                     perfil={perfil} formato={formato} animado={video} {...miniaturas}
                   />
                 </div>
+                )}
               </div>
             )}
           </div>
 
+          {pedindoCarrossel && !linkedin && (
+            <div className="criar__carrossel">
+              <div className="campo">
+                <span className="campo__rotulo">Tipo de carrossel</span>
+                <div className="fichas" role="group" aria-label="Tipo de carrossel">
+                  {Object.entries(TIPOS_DE_CARROSSEL).map(([valor, t]) => (
+                    <button key={valor} type="button" className="ficha" aria-pressed={carTipo === valor} onClick={() => escolherTipoDeCarrossel(valor)}>{t.nome}</button>
+                  ))}
+                </div>
+                <p className="campo__ajuda">{TIPOS_DE_CARROSSEL[carTipo].descricao}</p>
+              </div>
+              <div className="campo">
+                <span className="campo__rotulo">Quantos slides</span>
+                <div className="criar__quantos" role="group" aria-label="Quantos slides">
+                  <button type="button" aria-label="Menos um slide" disabled={carQuantos <= MIN_SLIDES} onClick={() => setCarQuantos((n) => n - 1)}>−</button>
+                  <strong className="mono">{carQuantos}</strong>
+                  <button type="button" aria-label="Mais um slide" disabled={carQuantos >= MAX_SLIDES} onClick={() => setCarQuantos((n) => n + 1)}>+</button>
+                </div>
+                <p className="campo__ajuda">Conta como {carQuantos} posts no seu mês. O primeiro chama atenção e o último leva para a ação.</p>
+              </div>
+              <div className="campo">
+                <span className="campo__rotulo">Primeiro slide</span>
+                <div className="fichas" role="group" aria-label="Gancho do primeiro slide">
+                  {Object.entries(GANCHOS).map(([valor, rotulo]) => (
+                    <button key={valor} type="button" className="ficha" aria-pressed={carGancho === valor} onClick={() => setCarGancho(valor)}>{rotulo}</button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           {erro && <p className="campo__erro" role="alert">{erro}</p>}
           <button type="button" className="botao botao--primario" disabled={pedido.trim().length < 3 || faltaProfissional} onClick={() => criar(false)}>
-            {linkedin ? `Criar post${video ? ' animado' : ''} corporativo` : <>Criar {formato === 'story' ? 'story' : 'post'}{video ? ' animado' : ''}</>}
+            {linkedin ? `Criar post${video ? ' animado' : ''} corporativo` : pedindoCarrossel ? `Criar carrossel${video ? ' animado' : ''} de ${carQuantos} slides` : <>Criar {formato === 'story' ? 'story' : 'post'}{video ? ' animado' : ''}</>}
           </button>
           <p className="criar__nota">Preço, endereço e horário saem só dos seus dados fixos. Nada inventado.</p>
           {erro && <DeuProblema contexto={{ Negócio: nome, Pedido: pedido.trim(), Formato: video ? 'vídeo' : formato, Erro: erro }} />}
@@ -727,6 +797,28 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
                 <canvas ref={canvas} aria-label={`Prévia: ${roteiro.titulo}`} />
               </div>
             </article>
+          ) : ehCarrossel ? (
+            <div className="criar__previa criar__previa--post criar__previa--carrossel">
+              <canvas
+                ref={canvas} aria-label={`Slide ${slide + 1} de ${slidesDaIA.length}: ${roteiro.slides?.[slide]?.titulo || ''}`}
+                onPointerDown={(e) => { toqueInicial.current = e.clientX }}
+                onPointerUp={(e) => { const dx = e.clientX - (toqueInicial.current ?? e.clientX); toqueInicial.current = null; if (Math.abs(dx) > 40) irPara(slide + (dx < 0 ? 1 : -1)) }}
+              />
+              <div className="criar__slides" role="group" aria-label="Slides">
+                <button type="button" className="criar__slide-seta" aria-label="Slide anterior" disabled={slide === 0} onClick={() => irPara(slide - 1)}>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+                </button>
+                <div className="criar__slide-pontos">
+                  {slidesDaIA.map((_, i) => (
+                    <button key={i} type="button" aria-label={`Slide ${i + 1}`} aria-current={i === slide} onClick={() => irPara(i)} />
+                  ))}
+                </div>
+                <span className="mono criar__slide-conta">{slide + 1}/{slidesDaIA.length}</span>
+                <button type="button" className="criar__slide-seta" aria-label="Próximo slide" disabled={slide >= slidesDaIA.length - 1} onClick={() => irPara(slide + 1)}>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+                </button>
+              </div>
+            </div>
           ) : (
           <div className={`criar__previa criar__previa--${peca.formato}`}>
             <canvas ref={canvas} aria-label={`Prévia: ${roteiro.titulo}`} />
@@ -789,6 +881,37 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
               </div>
             )}
 
+            {ehCarrossel && slideAtual ? (
+            <div className="criar__texto">
+              <span className="campo__rotulo">Texto do slide {slide + 1}</span>
+              <p className="campo__ajuda">Mexa à vontade. A arte muda enquanto você digita. Troque de slide pelas setas da prévia.</p>
+              <div className="campo">
+                <label htmlFor="slide-etiqueta">Etiqueta</label>
+                <input id="slide-etiqueta" maxLength={28} value={slideAtual.etiqueta || ''} onChange={(e) => editarSlide('etiqueta', e.target.value)} />
+              </div>
+              <div className="campo">
+                <label htmlFor="slide-titulo">Título</label>
+                <input id="slide-titulo" maxLength={90} value={slideAtual.titulo || ''} onChange={(e) => editarSlide('titulo', e.target.value)} />
+              </div>
+              {slideAtual.itens?.length > 0 ? (
+                <div className="campo">
+                  <label htmlFor="slide-itens">Itens (um por linha)</label>
+                  <textarea id="slide-itens" rows={4} maxLength={300} value={slideAtual.itens.join('\n')} onChange={(e) => editarSlide('itens', e.target.value.split('\n').slice(0, 4))} />
+                </div>
+              ) : (
+                <div className="campo">
+                  <label htmlFor="slide-texto">Texto</label>
+                  <textarea id="slide-texto" rows={3} maxLength={220} value={slideAtual.texto || ''} onChange={(e) => editarSlide('texto', e.target.value)} />
+                </div>
+              )}
+              {slide === slidesDaIA.length - 1 && (
+                <div className="campo">
+                  <label htmlFor="slide-botao">Botão</label>
+                  <input id="slide-botao" maxLength={40} value={slideAtual.botao || ''} onChange={(e) => editarSlide('botao', e.target.value)} />
+                </div>
+              )}
+            </div>
+            ) : (
             <div className="criar__texto">
               <span className="campo__rotulo">Texto do post</span>
               <p className="campo__ajuda">Mexa à vontade. A arte muda enquanto você digita.</p>
@@ -809,7 +932,9 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
                 </div>
               )}
             </div>
+            )}
 
+            {!ehCarrossel && (
             <div className="campo">
               <span className="campo__rotulo">Modelo</span>
               <p className="campo__ajuda">Toque num para ver o seu texto nele.</p>
@@ -820,10 +945,12 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
                 roteiro={roteiro} logo={imagens.logo} foto={imagens.fotos[0] || null} fotoDaMarca={miniaturas.fotoDaMarca}
               />
             </div>
+            )}
             <div className="campo">
-              <span className="campo__rotulo">Formato</span>
+              <span className="campo__rotulo">{ehCarrossel ? 'Movimento' : 'Formato'}</span>
+              {ehCarrossel && <p className="campo__ajuda">Animado: cada slide vira um vídeo de {DURACAO_DO_SLIDE} s com o texto acendendo.</p>}
               <div className="fichas">
-                {formatosDaTela.map(([valor, rotulo, medida]) => (
+                {!ehCarrossel && formatosDaTela.filter(([v]) => v !== 'carrossel').map(([valor, rotulo, medida]) => (
                   <button
                     key={valor} type="button" className="ficha" disabled={gravando !== null}
                     aria-pressed={peca.formato === valor} onClick={() => trocar('formato', valor)}
@@ -911,8 +1038,8 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
               )}
               <button type="button" className="botao botao--primario" onClick={postar} disabled={!arquivo}>
                 {gravando !== null
-                  ? `Preparando o vídeo... ${Math.ceil(duracaoDe(opcoesDoDesenho()) * (1 - gravando))} s`
-                  : !arquivo ? 'Preparando...' : podeCompartilhar() ? 'Postar' : 'Baixar para postar'}
+                  ? `Preparando ${ehCarrossel ? 'os vídeos' : 'o vídeo'}... ${Math.ceil((ehCarrossel ? DURACAO_DO_SLIDE * slidesDaIA.length : duracaoDe(opcoesDoDesenho())) * (1 - gravando))} s`
+                  : !arquivo ? 'Preparando...' : podeCompartilhar() ? 'Postar' : ehCarrossel ? `Baixar os ${slidesDaIA.length} slides` : 'Baixar para postar'}
               </button>
               {gravando !== null && (
                 <div className="criar__gravando" aria-hidden="true"><span style={{ transform: `scaleX(${gravando})` }} /></div>
@@ -927,7 +1054,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
                   <div className="criar__postou-acoes">
                     <button type="button" className="botao botao--primario" onClick={confirmarPostou}>Sim, postei</button>
                     <button type="button" className="botao botao--fantasma" onClick={() => setResultado(null)}>Ainda não</button>
-                    {resultado.startsWith('falhou') && <button type="button" className="botao botao--fantasma" onClick={() => baixarArquivo(arquivo.arquivo)}>Baixar o arquivo</button>}
+                    {resultado.startsWith('falhou') && <button type="button" className="botao botao--fantasma" onClick={() => (arquivo.arquivos ? baixarArquivos(arquivo.arquivos) : baixarArquivo(arquivo.arquivo))}>{arquivo.arquivos ? 'Baixar os slides' : 'Baixar o arquivo'}</button>}
                     {resultado.startsWith('baixou') && <button type="button" className="botao botao--fantasma" onClick={() => baixarLegenda(textoDaLegenda(roteiro), nomeDoArquivo(nome, peca, video))}>Baixar legenda</button>}
                     {resultado.startsWith('baixou') && onMandarParaCelular && (
                       <button type="button" className="botao botao--fantasma" disabled={celular === 'enviando'} onClick={mandarParaCelular}>
@@ -939,6 +1066,7 @@ export default function Criar({ negocioId, perfil, pecaInicial, formatoInicial, 
                   {celular === 'nenhum' && <span>Nenhum celular com avisos ligados. No celular, abra o Neonposts, vá em Redes e toque em Ativar avisos.</span>}
                 </div>
               )}
+              {ehCarrossel && !resultado && !postou && <p className="criar__nota">No Instagram, escolha os {slidesDaIA.length} arquivos na ordem (01, 02...) para montar o carrossel.</p>}
               {postou && <p className="criar__nota criar__nota--ok" role="status">Postado. Já está no planner como postado.</p>}
               <button type="button" className="botao botao--destaque" onClick={copiar}>{copiou ? 'Legenda copiada' : 'Copiar legenda'}</button>
               <div className="criar__acoes-linha">

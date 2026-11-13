@@ -242,3 +242,8 @@
   .planner__direita:has(.planner__preencher) .planner__visoes { flex-basis: 100%; }
   .planner__direita:has(.planner__preencher) .planner__visao { flex: 1; }
 }
+
+/* Publicar sozinho no Instagram (piloto da Neon Scripts). */
+.planner__direto { margin: 0; font-size: 13px; color: var(--texto-2); }
+.planner__direto--erro { color: #FF9A9A; }
+.planner__direto--link { color: #8DE8B0; text-decoration: underline; text-underline-offset: 3px; width: fit-content; }

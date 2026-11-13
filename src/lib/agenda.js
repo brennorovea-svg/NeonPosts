@@ -6,7 +6,16 @@ import { modoDeTeste } from './perfil.js'
 // na hora e abre o compartilhar com a legenda copiada; a pessoa escolhe o app ali.
 // A coluna `rede` fica no banco, opcional (migração 0019), para quando as redes forem conectadas.
 export const LEMBRETES = [[0, 'Na hora'], [10, '10 min antes'], [30, '30 min antes'], [60, '1 h antes'], [1440, 'Um dia antes']]
-const COLUNAS = 'id, peca, titulo, formato, quando, lembrete_minutos, avisado_em, postado_em'
+const BASICAS = 'id, peca, titulo, formato, quando, lembrete_minutos, avisado_em, postado_em'
+// Publicar sozinho no Instagram (migração 0020). Antes da migração o banco recusa essas colunas
+// e a lista volta só com as básicas, sem quebrar o Planner.
+const DIRETO = 'publicar, midia, publicacao_estado, publicacao_erro, permalink'
+let COLUNAS = `${BASICAS}, ${DIRETO}`
+async function comColunas(consulta) {
+  const r = await consulta(COLUNAS)
+  if (r.error && COLUNAS !== BASICAS && /column|coluna/i.test(r.error.message)) { COLUNAS = BASICAS; return consulta(COLUNAS) }
+  return r
+}
 
 // Datas no fuso da pessoa: a chave do dia é "2026-11-05".
 export const chaveDoDia = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -39,8 +48,8 @@ export async function listarAgenda(negocioId, de, ate) {
     agendaDeTeste ??= exemploDeTeste()
     return agendaDeTeste.filter((i) => i.quando >= de.toISOString() && i.quando < ate.toISOString()).sort((a, b) => a.quando.localeCompare(b.quando))
   }
-  const { data, error } = await supabase.from('agenda').select(COLUNAS)
-    .eq('negocio', negocioId).gte('quando', de.toISOString()).lt('quando', ate.toISOString()).order('quando')
+  const { data, error } = await comColunas((c) => supabase.from('agenda').select(c)
+    .eq('negocio', negocioId).gte('quando', de.toISOString()).lt('quando', ate.toISOString()).order('quando'))
   if (error) throw error
   return data
 }
@@ -53,7 +62,7 @@ export async function agendar(negocioId, { titulo, formato, quando, peca = null,
     agendaDeTeste = [...(agendaDeTeste ?? exemploDeTeste()), item]
     return item
   }
-  const { data, error } = await supabase.from('agenda').insert({ negocio: negocioId, ...linha }).select(COLUNAS).single()
+  const { data, error } = await comColunas((c) => supabase.from('agenda').insert({ negocio: negocioId, ...linha }).select(c).single())
   if (error) throw error
   return data
 }
@@ -61,7 +70,7 @@ export async function agendar(negocioId, { titulo, formato, quando, peca = null,
 // Uma marcação pelo id (o aviso do celular traz só o id).
 export async function agendaPorId(id) {
   if (modoDeTeste()) return (agendaDeTeste ?? exemploDeTeste()).find((i) => i.id === id) || null
-  const { data } = await supabase.from('agenda').select(COLUNAS).eq('id', id).maybeSingle()
+  const { data } = await comColunas((c) => supabase.from('agenda').select(c).eq('id', id).maybeSingle())
   return data || null
 }
 
@@ -72,7 +81,7 @@ export async function mudarAgenda(id, campos) {
     agendaDeTeste = (agendaDeTeste ?? exemploDeTeste()).map((i) => (i.id === id ? { ...i, ...mudanca } : i))
     return agendaDeTeste.find((i) => i.id === id)
   }
-  const { data, error } = await supabase.from('agenda').update(mudanca).eq('id', id).select(COLUNAS).single()
+  const { data, error } = await comColunas((c) => supabase.from('agenda').update(mudanca).eq('id', id).select(c).single())
   if (error) throw error
   return data
 }

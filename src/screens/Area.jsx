@@ -461,6 +461,8 @@ export default function Area({ sessao, teste = false }) {
             formatoInicial={criarCom?.formato}
             pedidoInicial={criarCom?.titulo}
             videoInicial={videoInicial}
+            plano={negocio.plano || 'gratis'}
+            onPlanos={() => { setCriando(null); setVendoPlanos(true) }}
             marca={{ feitas: total, proxima: proxima >= 0 ? PARTES[proxima] : null }}
             onCompletar={() => { setCriando(null); setVideoInicial(false); setEditando(proxima); window.scrollTo({ top: 0 }) }}
             onCriou={ligarAoPlanner}

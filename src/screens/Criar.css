@@ -32,6 +32,7 @@
 .criar__mais-corpo { display: flex; flex-direction: column; gap: 24px; animation: aparecer 300ms var(--ease) both; }
 @media (prefers-reduced-motion: reduce) { .criar__mais-botao, .criar__mais-botao svg, .criar__mais-corpo { transition: none; animation: none; } }
 .criar__formatos, .criar__movimentos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.criar__formatos { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
 .criar__movimentos { margin-top: 10px; }
 .criar__formato, .criar__movimento {
   display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 14px; align-items: center;
@@ -53,6 +54,8 @@
 }
 .criar__moldura { grid-row: span 2; width: 28px; border: 2px solid currentColor; border-radius: 5px; }
 .criar__moldura--post { height: 35px; }
+/* Carrossel: a moldura do post com a beira do próximo slide atrás. */
+.criar__moldura--carrossel { height: 35px; width: 24px; box-shadow: 6px 0 0 -2px var(--painel), 6px 0 0 0 currentColor; margin-right: 6px; }
 .criar__moldura--story, .criar__moldura--video { width: 22px; height: 39px; }
 /* Vídeo: um triângulo de play dentro da moldura do story. */
 .criar__moldura--video { position: relative; }
@@ -329,3 +332,36 @@
 .criar__linkedin-quem span { font-size: 13px; color: var(--texto-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .criar__linkedin-texto { margin: 0; font-size: 14px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .criar__linkedin-texto span { color: var(--texto-2); margin-left: 4px; }
+
+/* Carrossel (13/11) */
+.criar__carrossel { display: flex; flex-direction: column; gap: 20px; padding: 18px; border: 1px solid var(--borda); border-radius: var(--raio-cartao); background: var(--painel); }
+.criar__quantos { display: inline-flex; align-items: center; gap: 14px; }
+.criar__quantos button {
+  width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--borda); background: transparent;
+  color: var(--neve); font: inherit; font-size: 22px; line-height: 1; cursor: pointer;
+  transition: transform var(--dur-controle) var(--ease);
+}
+.criar__quantos button:active { transform: scale(.94); }
+.criar__quantos button:disabled { opacity: .35; cursor: default; }
+.criar__quantos strong { min-width: 2ch; text-align: center; font-size: 22px; color: var(--neve); }
+.criar__previa--carrossel { flex-direction: column; align-items: center; gap: 14px; }
+.criar__previa--carrossel canvas { touch-action: pan-y; cursor: grab; }
+.criar__slides { display: flex; align-items: center; gap: 12px; }
+.criar__slide-seta {
+  width: 44px; height: 44px; display: grid; place-items: center; border-radius: 50%;
+  border: 1px solid var(--borda); background: var(--painel); color: var(--neve); cursor: pointer;
+  transition: transform var(--dur-controle) var(--ease);
+}
+.criar__slide-seta:active { transform: scale(.94); }
+.criar__slide-seta:disabled { opacity: .3; cursor: default; }
+.criar__slide-seta svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.criar__slide-pontos { display: flex; gap: 6px; }
+.criar__slide-pontos button {
+  width: 8px; height: 8px; padding: 0; border: 0; border-radius: 50%; background: var(--cinza-claro); opacity: .4; cursor: pointer;
+  transition: opacity var(--dur-controle) var(--ease), transform var(--dur-controle) var(--ease);
+}
+.criar__slide-pontos button[aria-current="true"] { opacity: 1; background: var(--violeta); transform: scale(1.25); }
+.criar__slide-conta { font-size: 12px; color: var(--cinza-claro); min-width: 3.5ch; text-align: center; }
+@media (prefers-reduced-motion: reduce) { .criar__quantos button, .criar__slide-seta, .criar__slide-pontos button { transition: none; } }
+.criar__formato--travado { opacity: .6; }
+.criar__formato--travado[aria-pressed="true"] { opacity: 1; border-color: var(--borda); background: var(--painel); color: var(--texto-2); }

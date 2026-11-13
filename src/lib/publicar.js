@@ -5,6 +5,7 @@
 import { carregarImagem, desenhar, paraArquivo, SO_NO_VIDEO } from './desenhar.js'
 import { enderecoDaImagem } from './perfil.js'
 import { gravar } from './video.js'
+import { arquivosDoCarrossel } from './carrossel.js'
 
 // Modelo animado: sai em vídeo, nunca em imagem parada.
 export const ehAnimado = (modelo) => SO_NO_VIDEO.includes(modelo)
@@ -53,7 +54,12 @@ export async function opcoesDaPeca(peca, perfil) {
 
 // Gera o arquivo do post fora da tela: PNG para o parado, vídeo para o animado.
 // `aoAvancar` recebe de 0 a 1 enquanto grava; `sinal` cancela a gravação.
+// Carrossel: `arquivos` traz um arquivo por slide, na ordem; `arquivo` é o primeiro.
 export async function prepararArquivo(opcoes, { video, nome, aoAvancar, sinal } = {}) {
+  if (opcoes.modelo === 'carrossel') {
+    const arquivos = await arquivosDoCarrossel(opcoes, { video, nome, aoAvancar, sinal })
+    return { arquivo: arquivos[0], arquivos, extensao: video ? arquivos[0].name.split('.').pop() : 'png' }
+  }
   if (video) {
     const r = await gravar(opcoes, nome, aoAvancar, sinal)
     return { arquivo: r.arquivo, extensao: r.extensao }
@@ -80,20 +86,23 @@ export function podeCompartilhar() {
 let falha = ''
 let tentarSemTexto = false
 export const ultimaFalha = () => falha
-export async function entregar(arquivo, legenda) {
+// Aceita um arquivo ou a lista do carrossel (o compartilhar leva todos de uma vez).
+export async function entregar(arquivoOuLista, legenda) {
+  const arquivos = Array.isArray(arquivoOuLista) ? arquivoOuLista : [arquivoOuLista]
+  const arquivo = arquivos[0]
   // A cópia começa antes do compartilhar e não espera: os dois saem no mesmo toque.
   let copiou = true
   const copia = navigator.clipboard?.writeText(legenda).catch(() => { copiou = false }) || Promise.resolve((copiou = false))
   const fim = async (r) => { await copia; return copiou ? r : `${r}-sem-copiar` }
   falha = ''
-  if (!podeCompartilhar()) { baixarArquivo(arquivo); return fim('baixou') }
-  if (!navigator.canShare({ files: [arquivo] })) {
-    falha = `tipo ${arquivo.type || 'desconhecido'}`
-    baixarArquivo(arquivo)
+  if (!podeCompartilhar()) { baixarArquivos(arquivos); return fim('baixou') }
+  if (!navigator.canShare({ files: arquivos })) {
+    falha = `tipo ${arquivo.type || 'desconhecido'}${arquivos.length > 1 ? ` x${arquivos.length}` : ''}`
+    baixarArquivos(arquivos)
     return fim('tipo')
   }
   // Depois de uma recusa, tenta só com o arquivo: a legenda já vai copiada e algumas redes recusam texto junto.
-  const dados = tentarSemTexto ? { files: [arquivo] } : { files: [arquivo], text: legenda }
+  const dados = tentarSemTexto ? { files: arquivos } : { files: arquivos, text: legenda }
   try {
     await navigator.share(dados)
     tentarSemTexto = false
@@ -123,6 +132,11 @@ export function baixarArquivo(arquivo) {
   link.download = arquivo.name
   link.click()
   setTimeout(() => URL.revokeObjectURL(link.href), 4000)
+}
+
+// Vários arquivos (carrossel): um por vez, com folga, para o navegador não barrar os downloads seguidos.
+export function baixarArquivos(arquivos) {
+  arquivos.forEach((a, i) => setTimeout(() => baixarArquivo(a), i * 350))
 }
 
 // A legenda num arquivo de texto, para quem posta pelo computador.

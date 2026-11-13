@@ -3,6 +3,7 @@
 import Anthropic from 'npm:@anthropic-ai/sdk@0.132.1'
 import { createClient } from 'npm:@supabase/supabase-js@2.117.3'
 import { conferir, ESQUEMA, INSTRUCOES, MODELOS, montarMensagem, SO_NO_VIDEO } from './conferir.ts'
+import { conferirCarrossel, ESQUEMA_CARROSSEL, INSTRUCOES_CARROSSEL, MAX_SLIDES, MIN_SLIDES, montarCarrossel, sequencia, TIPOS_DE_CARROSSEL } from './carrossel.ts'
 
 const CABECALHOS = {
   'Access-Control-Allow-Origin': '*',
@@ -74,10 +75,10 @@ Deno.serve(async (req) => {
   const { data: conta } = await banco.auth.getUser(token)
   if (!conta?.user) return erro('Entre de novo para continuar.', 401)
 
-  const { data: negocio } = await banco.from('negocios').select('id, limite_pecas').eq('dono', conta.user.id).single()
+  const { data: negocio } = await banco.from('negocios').select('id, limite_pecas, plano').eq('dono', conta.user.id).single()
   if (!negocio) return erro('Não achamos o seu negócio.', 404)
 
-  let corpo: { pedido?: string; formato?: string; video?: boolean; fotos?: string[]; refazer?: string; ajuste?: string; modelo?: string; calibrar?: boolean; regras?: string[]; carro_chefe?: string; boas_vindas?: boolean; rede?: string; como?: string }
+  let corpo: { pedido?: string; formato?: string; video?: boolean; fotos?: string[]; refazer?: string; ajuste?: string; modelo?: string; calibrar?: boolean; regras?: string[]; carro_chefe?: string; boas_vindas?: boolean; rede?: string; como?: string; carrossel?: { tipo?: string; quantos?: number; gancho?: string } }
   try { corpo = await req.json() } catch { return erro('Pedido inválido.', 400) }
   if (corpo.calibrar) return calibrar(banco, negocio.id, corpo)
 
@@ -104,9 +105,28 @@ Deno.serve(async (req) => {
         .eq('id', corpo.refazer).eq('negocio', negocio.id).maybeSingle()
       : boasVindas
         ? banco.from('pecas').select('id', { count: 'exact', head: true }).eq('negocio', negocio.id).eq('cortesia', true)
-        : banco.from('pecas').select('id', { count: 'exact', head: true })
+        : banco.from('pecas').select('peso')
           .eq('negocio', negocio.id).eq('cortesia', false).gte('criado_em', inicioDoMes()),
   ])
+
+  // Carrossel: conta como tantos posts quantos slides tiver (Brenno, 13/11). Refeito, segue o tipo e a quantidade de antes.
+  const antigoCarrossel = corpo.refazer ? ((anterior.data as { roteiro?: { carrossel?: { tipo: string; gancho: string }; slides?: unknown[] } } | null)?.roteiro) : null
+  const pedidoCarrossel = antigoCarrossel?.carrossel
+    ? { tipo: antigoCarrossel.carrossel.tipo, quantos: antigoCarrossel.slides?.length || 0, gancho: antigoCarrossel.carrossel.gancho }
+    : !corpo.refazer && corpo.carrossel ? corpo.carrossel : null
+  const carrossel = pedidoCarrossel && TIPOS_DE_CARROSSEL[String(pedidoCarrossel.tipo)]
+    ? (() => {
+      const tipo = String(pedidoCarrossel.tipo)
+      const quantos = Math.min(MAX_SLIDES, Math.max(MIN_SLIDES, Math.round(Number(pedidoCarrossel.quantos) || TIPOS_DE_CARROSSEL[tipo].padrao)))
+      return { tipo, quantos, gancho: String(pedidoCarrossel.gancho || 'ia'), papeis: sequencia(tipo, quantos) }
+    })()
+    : null
+  // Carrossel só nos planos pagos (Brenno, 13/11): no Grátis um carrossel gastaria o mês inteiro.
+  if (carrossel && !corpo.refazer && !['essencial', 'pro'].includes(String(negocio.plano))) {
+    return erro('O carrossel é dos planos Essencial e Pro. No Grátis, crie post ou story.', 403)
+  }
+  const peso = carrossel ? carrossel.quantos : 1
+  if (carrossel) { formato = 'post'; layout = '' }
 
   if (corpo.refazer) {
     const data = anterior.data as (NonNullable<typeof refeita> & { formato: string; fotos: string[] }) | null
@@ -119,8 +139,10 @@ Deno.serve(async (req) => {
     fotos = data.fotos
   } else if (boasVindas) {
     if ((anterior.count ?? 0) > 0) return erro('O post de boas-vindas já foi criado. Escreva um pedido novo.', 409)
-  } else if ((anterior.count ?? 0) >= negocio.limite_pecas) {
-    return erro(`Você usou os ${negocio.limite_pecas} posts deste mês.`, 429)
+  } else {
+    const usadas = ((anterior.data || []) as { peso: number | null }[]).reduce((t, p) => t + (p.peso ?? 1), 0)
+    if (usadas >= negocio.limite_pecas) return erro(`Você usou os ${negocio.limite_pecas} posts deste mês.`, 429)
+    if (usadas + peso > negocio.limite_pecas) return erro(`Este carrossel conta como ${peso} posts e só restam ${negocio.limite_pecas - usadas} neste mês. Escolha menos slides.`, 429)
   }
   if (pedido.length < 3 || pedido.length > 600) return erro('Escreva o pedido com 3 a 600 letras.', 400)
 
@@ -149,17 +171,20 @@ Deno.serve(async (req) => {
     // e no teste com a IA real o Haiku no médio fez isso bem (Brenno, 28/10). O baixo saiu mais rápido,
     // mas errou a voz da marca e o tamanho do texto. As instruções ficam em cache.
     // O Haiku 5.5 não tem fallback no servidor, então o pedido vai sem `fallbacks`.
+    const anteriorRoteiro = refeita && (refeita.versoes?.[refeita.escolhida ?? -1]?.roteiro || refeita.roteiro)
     const msg = await ia.messages.create({
       model: 'claude-haiku-5-5',
       max_tokens: 16000,
       // @ts-ignore: output_config.format ainda sem tipo nesta versão do SDK
-      output_config: { effort: 'medium', format: { type: 'json_schema', schema: ESQUEMA } },
-      system: [{ type: 'text', text: INSTRUCOES, cache_control: { type: 'ephemeral' } }],
+      output_config: { effort: 'medium', format: { type: 'json_schema', schema: carrossel ? ESQUEMA_CARROSSEL : ESQUEMA } },
+      system: [{ type: 'text', text: carrossel ? INSTRUCOES_CARROSSEL : INSTRUCOES, cache_control: { type: 'ephemeral' } }],
       messages: [{
         role: 'user',
         content: [
           ...imagens.map((data) => ({ type: 'image' as const, source: { type: 'base64' as const, media_type: 'image/jpeg' as const, data } })),
-          { type: 'text' as const, text: montarMensagem(perfil, pedido, formato, refeita && (refeita.versoes?.[refeita.escolhida ?? -1]?.roteiro || refeita.roteiro), ajuste, fotos.length, layout, video, imagens.length, rede, profissional) },
+          { type: 'text' as const, text: carrossel
+            ? montarCarrossel(perfil, pedido, carrossel.tipo, carrossel.papeis, carrossel.gancho, anteriorRoteiro, ajuste)
+            : montarMensagem(perfil, pedido, formato, anteriorRoteiro, ajuste, fotos.length, layout, video, imagens.length, rede, profissional) },
         ],
       }],
     })
@@ -173,11 +198,13 @@ Deno.serve(async (req) => {
     return erro('A IA não respondeu agora. Tente de novo.', 502)
   }
 
-  const roteiro = conferir(bruto, perfil, pedido, layout, fotos.length, video, rede, profissional)
+  const roteiro = carrossel
+    ? conferirCarrossel(bruto, perfil, pedido, carrossel.tipo, carrossel.papeis, carrossel.gancho, video) as unknown as ReturnType<typeof conferir>
+    : conferir(bruto, perfil, pedido, layout, fotos.length, video, rede, profissional)
   // Ajuste que a IA não consegue fazer (trocar foto, layout, fonte) volta igual; avisa em vez de parecer que nada aconteceu.
   const base = refeita && (refeita.versoes?.[refeita.escolhida ?? -1]?.roteiro || refeita.roteiro) as Record<string, unknown> | null
   const igual = (k: string) => JSON.stringify(base?.[k] ?? null) === JSON.stringify((roteiro as Record<string, unknown>)[k] ?? null)
-  if (ajuste && base && ['modelo', 'titulo', 'apoio', 'chamada', 'legenda', 'pontos', 'numero', 'cupom', 'data', 'horario', 'arte', 'cores', 'ordem_fotos'].every(igual)) {
+  if (ajuste && base && !carrossel && ['modelo', 'titulo', 'apoio', 'chamada', 'legenda', 'pontos', 'numero', 'cupom', 'data', 'horario', 'arte', 'cores', 'ordem_fotos'].every(igual)) {
     roteiro.avisos.push('Esse ajuste não mudou nada. Por aqui a IA muda o texto, as cores, o layout, o destaque e a ordem das fotos; trocar a foto ou a fonte ainda não dá (a fonte fica no perfil da marca).')
   }
   const linha = {
@@ -192,7 +219,7 @@ Deno.serve(async (req) => {
       ...linha, pedido, refeitas: refeita.refeitas + 1, escolhida: null,
       versoes: [...(refeita.versoes || []), { pedido: refeita.pedido, roteiro: refeita.roteiro }],
     }).eq('id', refeita.id)
-    : banco.from('pecas').insert({ ...linha, negocio: negocio.id, pedido, fotos, cortesia: boasVindas })
+    : banco.from('pecas').insert({ ...linha, negocio: negocio.id, pedido, fotos, cortesia: boasVindas, peso })
   const { data: peca, error } = await consulta.select('*').single()
   if (error) { console.error('banco', error); return erro('Não deu para guardar o post. Tente de novo.', 500) }
   return resposta({ peca, refeitasRestantes: MAX_REFEITAS - peca.refeitas })

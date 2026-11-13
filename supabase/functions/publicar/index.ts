@@ -2,7 +2,7 @@
 // Piloto só da Neon Scripts (tabela publicacao_direta). Não chama a IA.
 // - "hora" (pg_cron, a cada 5 min, cabeçalho x-segredo): pega o que chegou na hora, cria o contêiner,
 //   espera processar e publica. Vídeo que ainda processa fica para a próxima volta.
-// - "teste" (login do dono): confere token e conta, sem publicar nada.
+// - "teste" (login do dono) e "conferir" (x-segredo, todas as marcas ligadas): confere token e conta, sem publicar nada.
 // Deploy: supabase functions deploy publicar --no-verify-jwt (a função confere o acesso por dentro).
 // Token: Secret com o nome guardado em publicacao_direta.segredo (ex.: INSTAGRAM_TOKEN_NEON_SCRIPTS).
 // Lógica da API igual à do ig.mjs (setup-instagram): token EAA = graph.facebook.com, não vence.
@@ -45,7 +45,7 @@ async function avisar(negocio: string, titulo: string, corpo: string, url: strin
 }
 
 type Item = {
-  id: string; negocio: string; titulo: string; formato: 'post' | 'story'; quando: string; midia: string; legenda: string | null
+  id: string; negocio: string; titulo: string; formato: 'post' | 'story'; quando: string; midia: string; midias: string[] | null; legenda: string | null
   publicacao_estado: 'agendado' | 'processando'; container_id: string | null; tentativas: number; conta_id: string; segredo: string
 }
 
@@ -97,7 +97,41 @@ async function publicarItem(item: Item) {
   }
 
   try {
+    const lista = item.formato === 'post' && (item.midias?.length ?? 0) > 1 ? item.midias!.slice(0, 10) : null
     let container = item.container_id
+    // Carrossel: um contêiner por slide ("filhos:id1,id2..."); quando todos terminam, o contêiner do carrossel.
+    if (lista && !container) {
+      const filhos: string[] = []
+      for (const caminho of lista) {
+        const { data: link, error } = await banco.storage.from('publicar').createSignedUrl(caminho, 60 * 60)
+        if (error || !link) throw new ErroMeta('Arquivo de um slide não encontrado.', true)
+        const campos: Record<string, string> = ehVideo(caminho)
+          ? { media_type: 'VIDEO', video_url: link.signedUrl, is_carousel_item: 'true' }
+          : { image_url: link.signedUrl, is_carousel_item: 'true' }
+        filhos.push((await chamar('POST', `/${item.conta_id}/media`, campos)).id as string)
+      }
+      container = `filhos:${filhos.join(',')}`
+      await banco.from('agenda').update({ container_id: container, publicacao_estado: 'processando' }).eq('id', item.id)
+    }
+    if (container?.startsWith('filhos:')) {
+      const filhos = container.slice(7).split(',')
+      let prontos = 0
+      for (let i = 0; i < 12 && prontos < filhos.length; i++) {
+        prontos = 0
+        for (const f of filhos) {
+          const s = await chamar('GET', `/${f}`, { fields: 'status_code,status' })
+          if (s.status_code === 'ERROR' || s.status_code === 'EXPIRED') throw new ErroMeta(`O Instagram recusou um slide: ${s.status || s.status_code}`, true)
+          if (s.status_code === 'FINISHED') prontos++
+        }
+        if (prontos < filhos.length) await espera(5000)
+      }
+      if (prontos < filhos.length) {
+        if (item.tentativas >= MAX_TENTATIVAS + 4) throw new ErroMeta('O Instagram demorou demais para processar.', true)
+        return marcar(item.id, { publicacao_estado: 'processando' })
+      }
+      container = (await chamar('POST', `/${item.conta_id}/media`, { media_type: 'CAROUSEL', children: filhos.join(','), caption: item.legenda || '' })).id as string
+      await banco.from('agenda').update({ container_id: container }).eq('id', item.id)
+    }
     if (!container) {
       const { data: link, error } = await banco.storage.from('publicar').createSignedUrl(item.midia, 60 * 60)
       if (error || !link) throw new ErroMeta('Arquivo do post não encontrado.', true)
@@ -112,7 +146,7 @@ async function publicarItem(item: Item) {
 
     // Imagem processa em segundos; vídeo pode passar de minutos e volta na próxima rodada.
     let pronto = false
-    for (let i = 0; i < (video ? 6 : 12); i++) {
+    for (let i = 0; i < (video && !lista ? 6 : 12); i++) {
       const s = await chamar('GET', `/${container}`, { fields: 'status_code,status' })
       if (s.status_code === 'FINISHED') { pronto = true; break }
       if (s.status_code === 'ERROR' || s.status_code === 'EXPIRED') throw new ErroMeta(`O Instagram recusou o arquivo: ${s.status || s.status_code}`, true)
@@ -131,7 +165,7 @@ async function publicarItem(item: Item) {
     })
     await avisar(item.negocio, `Saiu no Instagram: ${item.titulo}`, 'Toque para ver no Planner.', `./?agenda=${item.id}`, `publicado-${item.id}`)
     // O arquivo já foi para o Instagram: não precisa mais ficar guardado.
-    await banco.storage.from('publicar').remove([item.midia]).catch(() => {})
+    await banco.storage.from('publicar').remove(lista || [item.midia]).catch(() => {})
   } catch (e) {
     const definitivo = e instanceof ErroMeta ? e.definitivo : false
     const mensagem = e instanceof Error ? e.message : String(e)
@@ -180,6 +214,14 @@ Deno.serve(async (req) => {
   if (acao === 'hora') {
     if (!SEGREDO || req.headers.get('x-segredo') !== SEGREDO) return erro('Sem permissão.', 401)
     return hora()
+  }
+
+  if (acao === 'conferir') {
+    if (!SEGREDO || req.headers.get('x-segredo') !== SEGREDO) return erro('Sem permissão.', 401)
+    const { data: marcas } = await banco.from('publicacao_direta').select('negocio')
+    const resultados = []
+    for (const m of marcas || []) resultados.push(await (await teste(m.negocio)).json())
+    return resposta({ marcas: resultados })
   }
 
   const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '')

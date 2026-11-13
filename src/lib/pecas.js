@@ -1,6 +1,7 @@
 import { supabase } from './supabase.js'
 import { modoDeTeste, perfilDeTeste } from './perfil.js'
 import { SUPABASE_URL } from '../config.js'
+import { carrosselDeTeste, TIPOS_DE_CARROSSEL } from './carrossel.js'
 
 // Peças geradas. A IA roda na função gerar-peca do Supabase; aqui só chamamos,
 // listamos e guardamos a imagem que o aparelho desenhou.
@@ -28,10 +29,24 @@ export function acordarIA() {
   fetch(`${SUPABASE_URL}/functions/v1/gerar-peca`).catch(() => {})
 }
 
-export async function gerarPeca({ pedido, formato, video = false, fotos = [], refazer, ajuste, modelo, boas_vindas = false, rede, como }) {
+export async function gerarPeca({ pedido, formato, video = false, fotos = [], refazer, ajuste, modelo, boas_vindas = false, rede, como, carrossel }) {
   if (modoDeTeste()) {
     await new Promise((ok) => setTimeout(ok, 6000))
     const antiga = refazer && pecasDeTeste.find((p) => p.id === refazer)
+    // Carrossel: slides de exemplo no tipo e na quantidade pedidos; conta como um post por slide.
+    const configCarrossel = carrossel || (antiga?.modelo === 'carrossel' && { tipo: antiga.roteiro.carrossel.tipo, quantos: antiga.peso })
+    if (configCarrossel) {
+      const tipo = TIPOS_DE_CARROSSEL[configCarrossel.tipo] ? configCarrossel.tipo : 'apresentacao'
+      const quantos = Math.min(10, Math.max(5, Number(configCarrossel.quantos) || TIPOS_DE_CARROSSEL[tipo].padrao))
+      const peca = {
+        id: antiga?.id || `teste-${Date.now()}`, formato: 'post', modelo: 'carrossel', peso: quantos,
+        pedido: pedido || antiga?.pedido, fotos: antiga?.fotos || fotos, roteiro: carrosselDeTeste(tipo, quantos, video),
+        imagem: null, refeitas: (antiga?.refeitas ?? -1) + 1, criado_em: new Date().toISOString(),
+        versoes: antiga ? [...antiga.versoes, { pedido: antiga.pedido, roteiro: antiga.roteiro }] : [], escolhida: null,
+      }
+      pecasDeTeste = [peca, ...pecasDeTeste.filter((p) => p.id !== peca.id)]
+      return { peca, refeitasRestantes: 3 - peca.refeitas }
+    }
     if (boas_vindas) {
       const peca = {
         id: `teste-${Date.now()}`, formato, modelo: modelo || 'manchete', pedido: 'Post de apresentação da marca', fotos: [], cortesia: true,
@@ -58,7 +73,7 @@ export async function gerarPeca({ pedido, formato, video = false, fotos = [], re
     pecasDeTeste = [peca, ...pecasDeTeste.filter((p) => p.id !== peca.id)]
     return { peca, refeitasRestantes: 3 - peca.refeitas }
   }
-  const { data, error } = await supabase.functions.invoke('gerar-peca', { body: { pedido, formato, video, fotos, refazer, ajuste, modelo, boas_vindas, rede, como } })
+  const { data, error } = await supabase.functions.invoke('gerar-peca', { body: { pedido, formato, video, fotos, refazer, ajuste, modelo, boas_vindas, rede, como, carrossel } })
   if (error) {
     let mensagem = 'Não deu para criar agora. Tente de novo.'
     try { mensagem = (await error.context.json()).erro || mensagem } catch { /* resposta sem corpo */ }
@@ -85,8 +100,12 @@ export async function pecaPorId(id) {
   return data || null
 }
 
+// Soma o peso: carrossel conta como um post por slide (migração 0021). Sem a coluna, conta uma por peça.
 export async function pecasDoMes(negocioId) {
-  if (modoDeTeste()) return pecasDeTeste.filter((p) => !p.cortesia).length
+  if (modoDeTeste()) return pecasDeTeste.filter((p) => !p.cortesia).reduce((t, p) => t + (p.peso || 1), 0)
+  const { data, error } = await supabase.from('pecas').select('peso')
+    .eq('negocio', negocioId).eq('cortesia', false).gte('criado_em', inicioDoMes())
+  if (!error) return (data || []).reduce((t, p) => t + (p.peso || 1), 0)
   const { count } = await supabase.from('pecas').select('id', { count: 'exact', head: true })
     .eq('negocio', negocioId).eq('cortesia', false).gte('criado_em', inicioDoMes())
   return count ?? 0

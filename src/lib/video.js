@@ -1,11 +1,12 @@
 // Story em vídeo: a mesma arte, desenhada quadro a quadro com o relógio do desenhar().
 // Gravado no próprio aparelho com MediaRecorder, sem som. MP4 quando o aparelho grava MP4;
 // senão WebM (o app avisa, porque o Instagram nem sempre aceita).
-import { desenhar, duracaoDasCenas } from './desenhar.js'
+import { desenhar, duracaoDasCenas, DURACAO_DO_SLIDE } from './desenhar.js'
 
 export const DURACAO = 10
 // O vídeo em cenas dura conforme o número de cenas (cerca de 12 a 17 s).
-export const duracaoDe = (opcoes) => (opcoes.modelo === 'cenas' ? duracaoDasCenas(opcoes.roteiro) : DURACAO)
+// Cada slide do carrossel animado é um vídeo curto (o Instagram pede de 3 a 60 s por slide).
+export const duracaoDe = (opcoes) => (opcoes.modelo === 'cenas' ? duracaoDasCenas(opcoes.roteiro) : opcoes.modelo === 'carrossel' ? DURACAO_DO_SLIDE : DURACAO)
 
 const TIPOS = [
   ['video/mp4;codecs=avc1.42E01E', 'mp4'],
